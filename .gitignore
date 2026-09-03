@@ -1,1 +1,5 @@
-
+*.jks
+*.keystore
+keystore.properties
+local.properties
+/docs/reference/*.pdf
