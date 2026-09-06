@@ -1,0 +1,1454 @@
+{
+  "catalogueId": "easa-amc-part66-appendix-ii",
+  "version": "2026.1",
+  "status": "IN_FORCE",
+  "source": "Appendix II to AMC to Annex III (Part-66), ED Decision 2023/019/R",
+  "sourceRevision": "Easy Access Rules for Continuing Airworthiness, September 2025",
+  "displayName": "Appendix II to AMC to Annex III (Part-66)",
+  "references": {
+    "B": "Appendix II to AMC to Annex III (Part-66) — Table B, Specific tasks for sailplanes and powered sailplanes",
+    "A_ENGINE": "Appendix II to AMC to Annex III (Part-66) — Table A, Specific tasks for aeroplanes, referenced from Table B"
+  },
+  "notes": "Metal structures is tagged to all four subcategories: the section title refers to all-metal gliders, but metal fittings occur in wood/fabric and composite aircraft alike and the tasks are creditable there. Wood/fabric remains restricted, since a composite glider has no plywood skin or fabric covering. Table B in full, plus the Table A blocks cross-referenced by Table B: propeller, piston engine, fuel and control, ignition, engine indications and exhaust.",
+  "thresholds": {
+    "L1": 0.5,
+    "L1C": 0.5,
+    "L2": 0.5,
+    "L2C": 0.5,
+    "rule": "AMC 66.A.45(d);(e)3;(f)1;(g)1;(h) — 50% of tasks relevant to the licence category and applicable ratings, covering tasks from each paragraph"
+  },
+  "statements": {
+    "ML_A_801_B2_INDEPENDENT": "certifies that the work specified, except as otherwise specified, was carried out in accordance with Part-ML, and in respect to that work, the aircraft is considered ready for release to service.",
+    "ML_A_803_PILOT_OWNER": "certifies that the limited pilot-owner maintenance specified, except as otherwise specified, was carried out in accordance with Part-ML, and in respect to that work, the aircraft is considered ready for release to service."
+  },
+  "tasks": [
+    {
+      "id": "B.GEN.01",
+      "table": "B",
+      "section": "General activities",
+      "sectionCode": "GEN",
+      "text": "Placards check or replace",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — General activities"
+    },
+    {
+      "id": "B.GEN.02",
+      "table": "B",
+      "section": "General activities",
+      "sectionCode": "GEN",
+      "text": "Weighing, weight & balance sheet",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — General activities"
+    },
+    {
+      "id": "B.GEN.03",
+      "table": "B",
+      "section": "General activities",
+      "sectionCode": "GEN",
+      "text": "Documentation of annual inspection, repair",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — General activities"
+    },
+    {
+      "id": "B.GEN.04",
+      "table": "B",
+      "section": "General activities",
+      "sectionCode": "GEN",
+      "text": "Review records for compliance with airworthiness directives",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — General activities"
+    },
+    {
+      "id": "B.GEN.05",
+      "table": "B",
+      "section": "General activities",
+      "sectionCode": "GEN",
+      "text": "Five annual inspections",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — General activities"
+    },
+    {
+      "id": "B.GEN.06",
+      "table": "B",
+      "section": "General activities",
+      "sectionCode": "GEN",
+      "text": "Inspection after an occurrence",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — General activities"
+    },
+    {
+      "id": "B.GEN.07",
+      "table": "B",
+      "section": "General activities",
+      "sectionCode": "GEN",
+      "text": "Dismantling/reinstallation of wings and empennages",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — General activities"
+    },
+    {
+      "id": "B.LVL.01",
+      "table": "B",
+      "section": "Leveling and weighing",
+      "sectionCode": "LVL",
+      "text": "Level the sailplane",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Leveling and weighing"
+    },
+    {
+      "id": "B.LVL.02",
+      "table": "B",
+      "section": "Leveling and weighing",
+      "sectionCode": "LVL",
+      "text": "Weighing, weight & balance sheet",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Leveling and weighing"
+    },
+    {
+      "id": "B.LVL.03",
+      "table": "B",
+      "section": "Leveling and weighing",
+      "sectionCode": "LVL",
+      "text": "Prepare a weight and balance amendment",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Leveling and weighing"
+    },
+    {
+      "id": "B.LVL.04",
+      "table": "B",
+      "section": "Leveling and weighing",
+      "sectionCode": "LVL",
+      "text": "Check the list of equipment",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Leveling and weighing"
+    },
+    {
+      "id": "B.FCS.01",
+      "table": "B",
+      "section": "Flight controls and flight control systems",
+      "sectionCode": "FCS",
+      "text": "Aileron, flaps: Removal — Balancing — Reinstallation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Flight controls and flight control systems"
+    },
+    {
+      "id": "B.FCS.02",
+      "table": "B",
+      "section": "Flight controls and flight control systems",
+      "sectionCode": "FCS",
+      "text": "Elevator: Removal — Balancing — Reinstallation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Flight controls and flight control systems"
+    },
+    {
+      "id": "B.FCS.03",
+      "table": "B",
+      "section": "Flight controls and flight control systems",
+      "sectionCode": "FCS",
+      "text": "Rudder: Removal — Balancing — Reinstallation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Flight controls and flight control systems"
+    },
+    {
+      "id": "B.FCS.04",
+      "table": "B",
+      "section": "Flight controls and flight control systems",
+      "sectionCode": "FCS",
+      "text": "Rudder cable: Fabrication and installation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Flight controls and flight control systems"
+    },
+    {
+      "id": "B.FCS.05",
+      "table": "B",
+      "section": "Flight controls and flight control systems",
+      "sectionCode": "FCS",
+      "text": "Elevator pushrod: Installation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Flight controls and flight control systems"
+    },
+    {
+      "id": "B.FCS.06",
+      "table": "B",
+      "section": "Flight controls and flight control systems",
+      "sectionCode": "FCS",
+      "text": "Safeguarding of pins, screws, castellated nuts",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Flight controls and flight control systems"
+    },
+    {
+      "id": "B.FCS.07",
+      "table": "B",
+      "section": "Flight controls and flight control systems",
+      "sectionCode": "FCS",
+      "text": "Sealing of gaps",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Flight controls and flight control systems"
+    },
+    {
+      "id": "B.ELE.01",
+      "table": "B",
+      "section": "Electrical systems",
+      "sectionCode": "ELE",
+      "text": "Electrical components, wiring: Removal — Installation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Electrical systems"
+    },
+    {
+      "id": "B.ELE.02",
+      "table": "B",
+      "section": "Electrical systems",
+      "sectionCode": "ELE",
+      "text": "Batteries — Servicing",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Electrical systems"
+    },
+    {
+      "id": "B.AVI.01",
+      "table": "B",
+      "section": "Avionics systems",
+      "sectionCode": "AVI",
+      "text": "COM: Removal — Installation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Avionics systems"
+    },
+    {
+      "id": "B.AVI.02",
+      "table": "B",
+      "section": "Avionics systems",
+      "sectionCode": "AVI",
+      "text": "NAV: Removal — Installation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Avionics systems"
+    },
+    {
+      "id": "B.AVI.03",
+      "table": "B",
+      "section": "Avionics systems",
+      "sectionCode": "AVI",
+      "text": "XPDR: Removal — Installation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Avionics systems"
+    },
+    {
+      "id": "B.AVI.04",
+      "table": "B",
+      "section": "Avionics systems",
+      "sectionCode": "AVI",
+      "text": "Antenna/antenna cable: Removal — Installation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Avionics systems"
+    },
+    {
+      "id": "B.CAB.01",
+      "table": "B",
+      "section": "Cabin equipment/systems",
+      "sectionCode": "CAB",
+      "text": "Belts/safety harnesses: Removal — Installation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Cabin equipment/systems"
+    },
+    {
+      "id": "B.CAB.02",
+      "table": "B",
+      "section": "Cabin equipment/systems",
+      "sectionCode": "CAB",
+      "text": "Oxygen system removal installation — Test",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Cabin equipment/systems"
+    },
+    {
+      "id": "B.CAB.03",
+      "table": "B",
+      "section": "Cabin equipment/systems",
+      "sectionCode": "CAB",
+      "text": "Canopy replacement or repair",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Cabin equipment/systems"
+    },
+    {
+      "id": "B.CAB.04",
+      "table": "B",
+      "section": "Cabin equipment/systems",
+      "sectionCode": "CAB",
+      "text": "Pitot/static system: Removal — Installation — Test",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Cabin equipment/systems"
+    },
+    {
+      "id": "B.CAB.05",
+      "table": "B",
+      "section": "Cabin equipment/systems",
+      "sectionCode": "CAB",
+      "text": "Flight instruments: Removal — Installation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Cabin equipment/systems"
+    },
+    {
+      "id": "B.CAB.06",
+      "table": "B",
+      "section": "Cabin equipment/systems",
+      "sectionCode": "CAB",
+      "text": "Installation of approved equipment",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Cabin equipment/systems"
+    },
+    {
+      "id": "B.CAB.07",
+      "table": "B",
+      "section": "Cabin equipment/systems",
+      "sectionCode": "CAB",
+      "text": "Compass: Installation — Compensation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Cabin equipment/systems"
+    },
+    {
+      "id": "B.CAB.08",
+      "table": "B",
+      "section": "Cabin equipment/systems",
+      "sectionCode": "CAB",
+      "text": "Tow release: Removal — Installation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Cabin equipment/systems"
+    },
+    {
+      "id": "B.CAB.09",
+      "table": "B",
+      "section": "Cabin equipment/systems",
+      "sectionCode": "CAB",
+      "text": "Water ballast system: Removal — Installation — Test",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Cabin equipment/systems"
+    },
+    {
+      "id": "B.CAB.10",
+      "table": "B",
+      "section": "Cabin equipment/systems",
+      "sectionCode": "CAB",
+      "text": "Undercarriage: Removal — Installation",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Cabin equipment/systems"
+    },
+    {
+      "id": "B.CAB.11",
+      "table": "B",
+      "section": "Cabin equipment/systems",
+      "sectionCode": "CAB",
+      "text": "Brake system: Replacement of components",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Cabin equipment/systems"
+    },
+    {
+      "id": "B.FOLD.01",
+      "table": "B",
+      "section": "Powered sailplane folding system",
+      "sectionCode": "FOLD",
+      "text": "Verification and adjustment of folding system of powered sailplanes",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Powered sailplane folding system"
+    },
+    {
+      "id": "B.WOOD.01",
+      "table": "B",
+      "section": "Wooden structures/Metal tubes and fabric",
+      "sectionCode": "WOOD",
+      "text": "Inspection/testing for damages",
+      "appliesTo": {
+        "L1": true,
+        "L1C": false,
+        "L2": true,
+        "L2C": false
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Wooden structures/Metal tubes and fabric"
+    },
+    {
+      "id": "B.WOOD.02",
+      "table": "B",
+      "section": "Wooden structures/Metal tubes and fabric",
+      "sectionCode": "WOOD",
+      "text": "Rib structure repair",
+      "appliesTo": {
+        "L1": true,
+        "L1C": false,
+        "L2": true,
+        "L2C": false
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Wooden structures/Metal tubes and fabric"
+    },
+    {
+      "id": "B.WOOD.03",
+      "table": "B",
+      "section": "Wooden structures/Metal tubes and fabric",
+      "sectionCode": "WOOD",
+      "text": "Plywood skin repair",
+      "appliesTo": {
+        "L1": true,
+        "L1C": false,
+        "L2": true,
+        "L2C": false
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Wooden structures/Metal tubes and fabric"
+    },
+    {
+      "id": "B.WOOD.04",
+      "table": "B",
+      "section": "Wooden structures/Metal tubes and fabric",
+      "sectionCode": "WOOD",
+      "text": "Recover or repair structure with fabric",
+      "appliesTo": {
+        "L1": true,
+        "L1C": false,
+        "L2": true,
+        "L2C": false
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Wooden structures/Metal tubes and fabric"
+    },
+    {
+      "id": "B.WOOD.05",
+      "table": "B",
+      "section": "Wooden structures/Metal tubes and fabric",
+      "sectionCode": "WOOD",
+      "text": "Protective coating and finishing",
+      "appliesTo": {
+        "L1": true,
+        "L1C": false,
+        "L2": true,
+        "L2C": false
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Wooden structures/Metal tubes and fabric"
+    },
+    {
+      "id": "B.WOOD.06",
+      "table": "B",
+      "section": "Wooden structures/Metal tubes and fabric",
+      "sectionCode": "WOOD",
+      "text": "Install patch on fabric material",
+      "appliesTo": {
+        "L1": true,
+        "L1C": false,
+        "L2": true,
+        "L2C": false
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Wooden structures/Metal tubes and fabric"
+    },
+    {
+      "id": "B.WOOD.07",
+      "table": "B",
+      "section": "Wooden structures/Metal tubes and fabric",
+      "sectionCode": "WOOD",
+      "text": "Repair of fairings",
+      "appliesTo": {
+        "L1": true,
+        "L1C": false,
+        "L2": true,
+        "L2C": false
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Wooden structures/Metal tubes and fabric"
+    },
+    {
+      "id": "B.COMP.01",
+      "table": "B",
+      "section": "Composite structures",
+      "sectionCode": "COMP",
+      "text": "Laminate repair",
+      "appliesTo": {
+        "L1": false,
+        "L1C": true,
+        "L2": false,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Composite structures"
+    },
+    {
+      "id": "B.COMP.02",
+      "table": "B",
+      "section": "Composite structures",
+      "sectionCode": "COMP",
+      "text": "Sandwich structure repair",
+      "appliesTo": {
+        "L1": false,
+        "L1C": true,
+        "L2": false,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Composite structures"
+    },
+    {
+      "id": "B.COMP.03",
+      "table": "B",
+      "section": "Composite structures",
+      "sectionCode": "COMP",
+      "text": "Partial gel coat repair",
+      "appliesTo": {
+        "L1": false,
+        "L1C": true,
+        "L2": false,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Composite structures"
+    },
+    {
+      "id": "B.COMP.04",
+      "table": "B",
+      "section": "Composite structures",
+      "sectionCode": "COMP",
+      "text": "Complete gel coating",
+      "appliesTo": {
+        "L1": false,
+        "L1C": true,
+        "L2": false,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Composite structures"
+    },
+    {
+      "id": "B.COMP.05",
+      "table": "B",
+      "section": "Composite structures",
+      "sectionCode": "COMP",
+      "text": "Repair of fairings",
+      "appliesTo": {
+        "L1": false,
+        "L1C": true,
+        "L2": false,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Composite structures"
+    },
+    {
+      "id": "B.METAL.01",
+      "table": "B",
+      "section": "Metal structures",
+      "sectionCode": "METAL",
+      "text": "Crack testing",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Metal structures"
+    },
+    {
+      "id": "B.METAL.02",
+      "table": "B",
+      "section": "Metal structures",
+      "sectionCode": "METAL",
+      "text": "Repair of covering",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Metal structures"
+    },
+    {
+      "id": "B.METAL.03",
+      "table": "B",
+      "section": "Metal structures",
+      "sectionCode": "METAL",
+      "text": "Drilling cracks",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Metal structures"
+    },
+    {
+      "id": "B.METAL.04",
+      "table": "B",
+      "section": "Metal structures",
+      "sectionCode": "METAL",
+      "text": "Riveting jobs",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Metal structures"
+    },
+    {
+      "id": "B.METAL.05",
+      "table": "B",
+      "section": "Metal structures",
+      "sectionCode": "METAL",
+      "text": "Bonding of structures",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Metal structures"
+    },
+    {
+      "id": "B.METAL.06",
+      "table": "B",
+      "section": "Metal structures",
+      "sectionCode": "METAL",
+      "text": "Anti-corrosion treatment",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Metal structures"
+    },
+    {
+      "id": "B.METAL.07",
+      "table": "B",
+      "section": "Metal structures",
+      "sectionCode": "METAL",
+      "text": "Repair of fairings",
+      "appliesTo": {
+        "L1": true,
+        "L1C": true,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table B — Metal structures"
+    },
+    {
+      "id": "A.PROP.01",
+      "table": "A_ENGINE",
+      "section": "Propeller",
+      "sectionCode": "PROP",
+      "text": "Assemble prop after transportation.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Propeller, referenced from Table B"
+    },
+    {
+      "id": "A.PROP.02",
+      "table": "A_ENGINE",
+      "section": "Propeller",
+      "sectionCode": "PROP",
+      "text": "Replace propeller.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Propeller, referenced from Table B"
+    },
+    {
+      "id": "A.PROP.03",
+      "table": "A_ENGINE",
+      "section": "Propeller",
+      "sectionCode": "PROP",
+      "text": "Replace governor.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Propeller, referenced from Table B"
+    },
+    {
+      "id": "A.PROP.04",
+      "table": "A_ENGINE",
+      "section": "Propeller",
+      "sectionCode": "PROP",
+      "text": "Adjust governor.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Propeller, referenced from Table B"
+    },
+    {
+      "id": "A.PROP.05",
+      "table": "A_ENGINE",
+      "section": "Propeller",
+      "sectionCode": "PROP",
+      "text": "Perform static functional checks.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Propeller, referenced from Table B"
+    },
+    {
+      "id": "A.PROP.06",
+      "table": "A_ENGINE",
+      "section": "Propeller",
+      "sectionCode": "PROP",
+      "text": "Check operation during ground run.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Propeller, referenced from Table B"
+    },
+    {
+      "id": "A.PROP.07",
+      "table": "A_ENGINE",
+      "section": "Propeller",
+      "sectionCode": "PROP",
+      "text": "Check track.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Propeller, referenced from Table B"
+    },
+    {
+      "id": "A.PROP.08",
+      "table": "A_ENGINE",
+      "section": "Propeller",
+      "sectionCode": "PROP",
+      "text": "Check setting of micro switches.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Propeller, referenced from Table B"
+    },
+    {
+      "id": "A.PROP.09",
+      "table": "A_ENGINE",
+      "section": "Propeller",
+      "sectionCode": "PROP",
+      "text": "Assessment of blade damage i.a.w. AMM.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Propeller, referenced from Table B"
+    },
+    {
+      "id": "A.PROP.10",
+      "table": "A_ENGINE",
+      "section": "Propeller",
+      "sectionCode": "PROP",
+      "text": "Dynamically balance prop.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Propeller, referenced from Table B"
+    },
+    {
+      "id": "A.PROP.11",
+      "table": "A_ENGINE",
+      "section": "Propeller",
+      "sectionCode": "PROP",
+      "text": "Troubleshoot faulty system.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Propeller, referenced from Table B"
+    },
+    {
+      "id": "A.PIST.01",
+      "table": "A_ENGINE",
+      "section": "Piston Engines",
+      "sectionCode": "PIST",
+      "text": "Remove/install reduction gear.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Piston Engines, referenced from Table B"
+    },
+    {
+      "id": "A.PIST.02",
+      "table": "A_ENGINE",
+      "section": "Piston Engines",
+      "sectionCode": "PIST",
+      "text": "Check crankshaft run-out.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Piston Engines, referenced from Table B"
+    },
+    {
+      "id": "A.PIST.03",
+      "table": "A_ENGINE",
+      "section": "Piston Engines",
+      "sectionCode": "PIST",
+      "text": "Check tappet clearance.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Piston Engines, referenced from Table B"
+    },
+    {
+      "id": "A.PIST.04",
+      "table": "A_ENGINE",
+      "section": "Piston Engines",
+      "sectionCode": "PIST",
+      "text": "Check compression.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Piston Engines, referenced from Table B"
+    },
+    {
+      "id": "A.PIST.05",
+      "table": "A_ENGINE",
+      "section": "Piston Engines",
+      "sectionCode": "PIST",
+      "text": "Extract broken stud.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Piston Engines, referenced from Table B"
+    },
+    {
+      "id": "A.PIST.06",
+      "table": "A_ENGINE",
+      "section": "Piston Engines",
+      "sectionCode": "PIST",
+      "text": "Install helicoil.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Piston Engines, referenced from Table B"
+    },
+    {
+      "id": "A.PIST.07",
+      "table": "A_ENGINE",
+      "section": "Piston Engines",
+      "sectionCode": "PIST",
+      "text": "Perform ground run.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Piston Engines, referenced from Table B"
+    },
+    {
+      "id": "A.PIST.08",
+      "table": "A_ENGINE",
+      "section": "Piston Engines",
+      "sectionCode": "PIST",
+      "text": "Establish/check reference RPM.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Piston Engines, referenced from Table B"
+    },
+    {
+      "id": "A.PIST.09",
+      "table": "A_ENGINE",
+      "section": "Piston Engines",
+      "sectionCode": "PIST",
+      "text": "Troubleshoot.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Piston Engines, referenced from Table B"
+    },
+    {
+      "id": "A.FUEL.01",
+      "table": "A_ENGINE",
+      "section": "Fuel and control, piston",
+      "sectionCode": "FUEL",
+      "text": "Replace engine driven pump.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Fuel and control, piston, referenced from Table B"
+    },
+    {
+      "id": "A.FUEL.02",
+      "table": "A_ENGINE",
+      "section": "Fuel and control, piston",
+      "sectionCode": "FUEL",
+      "text": "Adjust AMC.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Fuel and control, piston, referenced from Table B"
+    },
+    {
+      "id": "A.FUEL.03",
+      "table": "A_ENGINE",
+      "section": "Fuel and control, piston",
+      "sectionCode": "FUEL",
+      "text": "Adjust ABC.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Fuel and control, piston, referenced from Table B"
+    },
+    {
+      "id": "A.FUEL.04",
+      "table": "A_ENGINE",
+      "section": "Fuel and control, piston",
+      "sectionCode": "FUEL",
+      "text": "Install carburettor/injector.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Fuel and control, piston, referenced from Table B"
+    },
+    {
+      "id": "A.FUEL.05",
+      "table": "A_ENGINE",
+      "section": "Fuel and control, piston",
+      "sectionCode": "FUEL",
+      "text": "Adjust carburettor/injector.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Fuel and control, piston, referenced from Table B"
+    },
+    {
+      "id": "A.FUEL.06",
+      "table": "A_ENGINE",
+      "section": "Fuel and control, piston",
+      "sectionCode": "FUEL",
+      "text": "Clean injector nozzles.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Fuel and control, piston, referenced from Table B"
+    },
+    {
+      "id": "A.FUEL.07",
+      "table": "A_ENGINE",
+      "section": "Fuel and control, piston",
+      "sectionCode": "FUEL",
+      "text": "Replace primer line.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Fuel and control, piston, referenced from Table B"
+    },
+    {
+      "id": "A.FUEL.08",
+      "table": "A_ENGINE",
+      "section": "Fuel and control, piston",
+      "sectionCode": "FUEL",
+      "text": "Check carburettor float setting.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Fuel and control, piston, referenced from Table B"
+    },
+    {
+      "id": "A.FUEL.09",
+      "table": "A_ENGINE",
+      "section": "Fuel and control, piston",
+      "sectionCode": "FUEL",
+      "text": "Troubleshoot faulty system.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Fuel and control, piston, referenced from Table B"
+    },
+    {
+      "id": "A.IGN.01",
+      "table": "A_ENGINE",
+      "section": "Ignition systems, piston",
+      "sectionCode": "IGN",
+      "text": "Change magneto.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Ignition systems, piston, referenced from Table B"
+    },
+    {
+      "id": "A.IGN.02",
+      "table": "A_ENGINE",
+      "section": "Ignition systems, piston",
+      "sectionCode": "IGN",
+      "text": "Change ignition vibrator.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Ignition systems, piston, referenced from Table B"
+    },
+    {
+      "id": "A.IGN.03",
+      "table": "A_ENGINE",
+      "section": "Ignition systems, piston",
+      "sectionCode": "IGN",
+      "text": "Change plugs.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Ignition systems, piston, referenced from Table B"
+    },
+    {
+      "id": "A.IGN.04",
+      "table": "A_ENGINE",
+      "section": "Ignition systems, piston",
+      "sectionCode": "IGN",
+      "text": "Test plugs.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Ignition systems, piston, referenced from Table B"
+    },
+    {
+      "id": "A.IGN.05",
+      "table": "A_ENGINE",
+      "section": "Ignition systems, piston",
+      "sectionCode": "IGN",
+      "text": "Check H.T. leads.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Ignition systems, piston, referenced from Table B"
+    },
+    {
+      "id": "A.IGN.06",
+      "table": "A_ENGINE",
+      "section": "Ignition systems, piston",
+      "sectionCode": "IGN",
+      "text": "Install new leads.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Ignition systems, piston, referenced from Table B"
+    },
+    {
+      "id": "A.IGN.07",
+      "table": "A_ENGINE",
+      "section": "Ignition systems, piston",
+      "sectionCode": "IGN",
+      "text": "Check timing.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Ignition systems, piston, referenced from Table B"
+    },
+    {
+      "id": "A.IGN.08",
+      "table": "A_ENGINE",
+      "section": "Ignition systems, piston",
+      "sectionCode": "IGN",
+      "text": "Check system bonding.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Ignition systems, piston, referenced from Table B"
+    },
+    {
+      "id": "A.IGN.09",
+      "table": "A_ENGINE",
+      "section": "Ignition systems, piston",
+      "sectionCode": "IGN",
+      "text": "Troubleshoot faulty system.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Ignition systems, piston, referenced from Table B"
+    },
+    {
+      "id": "A.IND.01",
+      "table": "A_ENGINE",
+      "section": "Engine Indicating",
+      "sectionCode": "IND",
+      "text": "Replace engine instruments(s).",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Engine Indicating, referenced from Table B"
+    },
+    {
+      "id": "A.IND.02",
+      "table": "A_ENGINE",
+      "section": "Engine Indicating",
+      "sectionCode": "IND",
+      "text": "Replace oil temperature bulb.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Engine Indicating, referenced from Table B"
+    },
+    {
+      "id": "A.IND.03",
+      "table": "A_ENGINE",
+      "section": "Engine Indicating",
+      "sectionCode": "IND",
+      "text": "Replace thermocouples.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Engine Indicating, referenced from Table B"
+    },
+    {
+      "id": "A.IND.04",
+      "table": "A_ENGINE",
+      "section": "Engine Indicating",
+      "sectionCode": "IND",
+      "text": "Check calibration.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Engine Indicating, referenced from Table B"
+    },
+    {
+      "id": "A.IND.05",
+      "table": "A_ENGINE",
+      "section": "Engine Indicating",
+      "sectionCode": "IND",
+      "text": "Troubleshoot faulty system.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Engine Indicating, referenced from Table B"
+    },
+    {
+      "id": "A.EXH.01",
+      "table": "A_ENGINE",
+      "section": "Exhaust, piston",
+      "sectionCode": "EXH",
+      "text": "Replace exhaust gasket.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Exhaust, piston, referenced from Table B"
+    },
+    {
+      "id": "A.EXH.02",
+      "table": "A_ENGINE",
+      "section": "Exhaust, piston",
+      "sectionCode": "EXH",
+      "text": "Inspect welded repair.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Exhaust, piston, referenced from Table B"
+    },
+    {
+      "id": "A.EXH.03",
+      "table": "A_ENGINE",
+      "section": "Exhaust, piston",
+      "sectionCode": "EXH",
+      "text": "Pressure check cabin heater muff.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Exhaust, piston, referenced from Table B"
+    },
+    {
+      "id": "A.EXH.04",
+      "table": "A_ENGINE",
+      "section": "Exhaust, piston",
+      "sectionCode": "EXH",
+      "text": "Troubleshoot faulty system.",
+      "appliesTo": {
+        "L1": false,
+        "L1C": false,
+        "L2": true,
+        "L2C": true
+      },
+      "reference": "Appendix II to AMC to Annex III (Part-66), Table A — Exhaust, piston, referenced from Table B"
+    }
+  ]
+}
