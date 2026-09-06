@@ -53,12 +53,17 @@ class CatalogueLoaderTest {
     }
 
     @Test
-    fun `maps table, section and text through unchanged`() {
+    fun `maps table, section, sectionCode, text and reference through unchanged`() {
         val row = CatalogueLoader.parse(fixture).first { it.id == "B.GEN.01" }
 
         assertEquals("B", row.table)
         assertEquals("General activities", row.section)
+        assertEquals("GEN", row.sectionCode)
         assertEquals("Placards check or replace", row.text)
+        assertEquals(
+            "Appendix II to AMC to Annex III (Part-66), Table B — General activities",
+            row.reference,
+        )
     }
 
     @Test

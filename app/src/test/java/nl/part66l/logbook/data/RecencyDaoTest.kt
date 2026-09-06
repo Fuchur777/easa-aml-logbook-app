@@ -112,7 +112,7 @@ class RecencyDaoTest {
     }
 
     @Test
-    fun `completedTasksBySection groups completions by their catalogue section`() = runBlocking {
+    fun `completedTasksBySection groups completions by their catalogue section code`() = runBlocking {
         db.workEntries().insert(entry("e1", aircraftId = null))
         db.workEntries().insert(entry("e2", aircraftId = null))
         db.workSessions().insert(session("s1", "e1", LocalDate.of(2024, 2, 1)))
@@ -120,13 +120,17 @@ class RecencyDaoTest {
 
         db.catalogue().upsertAll(listOf(
             CatalogueTaskEntity(
-                id = "B.GEN.01", catalogueVersion = "2026.1", table = "B", section = "General activities",
+                id = "B.GEN.01", catalogueVersion = "2026.1", table = "B",
+                section = "General activities", sectionCode = "GEN",
                 text = "Placards check or replace",
+                reference = "Appendix II to AMC to Annex III (Part-66), Table B — General activities",
                 appliesToL1 = true, appliesToL1C = true, appliesToL2 = true, appliesToL2C = true,
             ),
             CatalogueTaskEntity(
-                id = "B.WFAB.02", catalogueVersion = "2026.1", table = "B", section = "Wood and fabric structures",
+                id = "B.WFAB.02", catalogueVersion = "2026.1", table = "B",
+                section = "Wood and fabric structures", sectionCode = "WFAB",
                 text = "Repair local skin damage",
+                reference = "Appendix II to AMC to Annex III (Part-66), Table B — Wood and fabric structures",
                 appliesToL1 = true, appliesToL1C = false, appliesToL2 = true, appliesToL2C = false,
             ),
         ))
@@ -137,9 +141,9 @@ class RecencyDaoTest {
             TaskCompletionEntity(id = "c2", entryId = "e2", taskId = "B.WFAB.02", catalogueVersion = "2026.1", taskTextSnapshot = "Repair local skin damage"),
         )
 
-        val bySection = db.recency().completedTasksBySection(windowStart).associate { it.section to it.completed }
+        val bySection = db.recency().completedTasksBySection(windowStart).associate { it.sectionCode to it.completed }
 
-        assertEquals(mapOf("General activities" to 1, "Wood and fabric structures" to 1), bySection)
+        assertEquals(mapOf("GEN" to 1, "WFAB" to 1), bySection)
     }
 
     @Test

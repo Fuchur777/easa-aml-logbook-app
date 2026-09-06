@@ -303,13 +303,20 @@ data class DeferredItemEntity(
  * explicitly assigned: "Weighing, weight & balance sheet" appears twice in
  * Table B under different sections, so text hashing is not a valid ID scheme.
  */
-@Entity(tableName = "catalogue_task", indices = [Index("catalogueVersion"), Index("section")])
+@Entity(
+    tableName = "catalogue_task",
+    indices = [Index("catalogueVersion"), Index("section"), Index("sectionCode")],
+)
 data class CatalogueTaskEntity(
     @PrimaryKey val id: String,
     val catalogueVersion: String,
     val table: String,                   // "B" or "A_ENGINE"
     val section: String,
+    /** Short section identifier ("GEN", "WFAB", ...) — what Route B's per-section coverage groups on. */
+    val sectionCode: String,
     val text: String,
+    /** §6: "the reference is displayed, not just recorded" — printed on the task list and in the recency report. */
+    val reference: String,
     val appliesToL1: Boolean,
     val appliesToL1C: Boolean,
     val appliesToL2: Boolean,

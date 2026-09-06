@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "07b0bb27f98bd8a3c6cce1865c1ddebe",
+    "identityHash": "6302dd2040aff5b63da0ff595b733e12",
     "entities": [
       {
         "tableName": "aircraft",
@@ -1074,7 +1074,7 @@
       },
       {
         "tableName": "catalogue_task",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `catalogueVersion` TEXT NOT NULL, `table` TEXT NOT NULL, `section` TEXT NOT NULL, `text` TEXT NOT NULL, `appliesToL1` INTEGER NOT NULL, `appliesToL1C` INTEGER NOT NULL, `appliesToL2` INTEGER NOT NULL, `appliesToL2C` INTEGER NOT NULL, `supersedes` TEXT, `status` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `catalogueVersion` TEXT NOT NULL, `table` TEXT NOT NULL, `section` TEXT NOT NULL, `sectionCode` TEXT NOT NULL, `text` TEXT NOT NULL, `reference` TEXT NOT NULL, `appliesToL1` INTEGER NOT NULL, `appliesToL1C` INTEGER NOT NULL, `appliesToL2` INTEGER NOT NULL, `appliesToL2C` INTEGER NOT NULL, `supersedes` TEXT, `status` TEXT NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -1101,8 +1101,20 @@
             "notNull": true
           },
           {
+            "fieldPath": "sectionCode",
+            "columnName": "sectionCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
             "fieldPath": "text",
             "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reference",
+            "columnName": "reference",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -1166,6 +1178,15 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_catalogue_task_section` ON `${TABLE_NAME}` (`section`)"
+          },
+          {
+            "name": "index_catalogue_task_sectionCode",
+            "unique": false,
+            "columnNames": [
+              "sectionCode"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_catalogue_task_sectionCode` ON `${TABLE_NAME}` (`sectionCode`)"
           }
         ]
       },
@@ -1356,7 +1377,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '07b0bb27f98bd8a3c6cce1865c1ddebe')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6302dd2040aff5b63da0ff595b733e12')"
     ]
   }
 }

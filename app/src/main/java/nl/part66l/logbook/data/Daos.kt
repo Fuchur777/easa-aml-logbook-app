@@ -107,13 +107,13 @@ interface RecencyDao {
      * not a single percentage.
      */
     @Query("""
-        SELECT t.section AS section, COUNT(DISTINCT c.taskId) AS completed
+        SELECT t.sectionCode AS sectionCode, COUNT(DISTINCT c.taskId) AS completed
         FROM task_completion c
         JOIN catalogue_task t ON t.id = c.taskId
         JOIN work_entry e ON e.id = c.entryId
         JOIN work_session s ON s.entryId = e.id
         WHERE s.date >= :windowStart
-        GROUP BY t.section
+        GROUP BY t.sectionCode
     """)
     suspend fun completedTasksBySection(windowStart: LocalDate): List<SectionCount>
 
@@ -133,7 +133,7 @@ interface RecencyDao {
     suspend fun annualInspections(windowStart: LocalDate): Int
 }
 
-data class SectionCount(val section: String, val completed: Int)
+data class SectionCount(val sectionCode: String, val completed: Int)
 
 @Dao
 interface CatalogueDao {
