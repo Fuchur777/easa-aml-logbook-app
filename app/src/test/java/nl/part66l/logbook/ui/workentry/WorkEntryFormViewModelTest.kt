@@ -1,0 +1,194 @@
+package nl.part66l.logbook.ui.workentry
+
+import java.time.LocalDate
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import nl.part66l.logbook.data.PersonEntity
+import nl.part66l.logbook.domain.ActivityType
+import nl.part66l.logbook.domain.EntryRole
+import nl.part66l.logbook.domain.Propulsion
+import nl.part66l.logbook.domain.Structure
+import nl.part66l.logbook.fakes.FakeAircraftRepository
+import nl.part66l.logbook.fakes.FakePersonRepository
+import nl.part66l.logbook.fakes.FakeWorkEntryRepository
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+class WorkEntryFormViewModelTest {
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    private fun viewModel(
+        workEntryRepository: FakeWorkEntryRepository = FakeWorkEntryRepository(),
+        aircraftRepository: FakeAircraftRepository = FakeAircraftRepository(),
+        personRepository: FakePersonRepository = FakePersonRepository(),
+    ) = WorkEntryFormViewModel(workEntryRepository, aircraftRepository, personRepository)
+
+    @Test
+    fun `canSave requires a description, an aircraft selection and at least one activity, and defaults to no release claimed`() {
+        val viewModel = viewModel()
+
+        assertFalse(viewModel.state.value.canSave)
+        assertEquals(AircraftSelection.Unselected, viewModel.state.value.aircraftSelection)
+        assertEquals(EntryRole.NO_RELEASE, viewModel.state.value.role)
+        assertFalse(viewModel.state.value.supervisedAnother)
+
+        viewModel.onDescriptionChange("Bench-tested altimeter")
+        assertFalse(viewModel.state.value.canSave) // no aircraft selection or activity yet
+
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        assertFalse(viewModel.state.value.canSave) // still no activity
+
+        viewModel.onActivityTypeToggle(ActivityType.TROUBLESHOOTING)
+        assertTrue(viewModel.state.value.canSave)
+    }
+
+    @Test
+    fun `activity toggle adds and removes from the set`() {
+        val viewModel = viewModel()
+
+        viewModel.onActivityTypeToggle(ActivityType.REPAIRING)
+        viewModel.onActivityTypeToggle(ActivityType.TROUBLESHOOTING)
+        assertEquals(setOf(ActivityType.REPAIRING, ActivityType.TROUBLESHOOTING), viewModel.state.value.activityTypes)
+
+        viewModel.onActivityTypeToggle(ActivityType.REPAIRING)
+        assertEquals(setOf(ActivityType.TROUBLESHOOTING), viewModel.state.value.activityTypes)
+    }
+
+    @Test
+    fun `save creates the entry with the entered activities, role, supervision flag and helpers`() {
+        val repository = FakeWorkEntryRepository()
+        val viewModel = viewModel(workEntryRepository = repository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Replaced altimeter seal")
+        viewModel.onActivityTypeToggle(ActivityType.REPAIRING)
+        viewModel.onActivityTypeToggle(ActivityType.INSPECTION)
+        viewModel.onRoleChange(EntryRole.CERTIFIED_BY_ME_IN_APP)
+        viewModel.onSupervisedAnotherChange(true)
+        viewModel.onSessionDateChange(LocalDate.of(2026, 3, 4))
+        viewModel.onHelperAdd("Jan de Vries")
+
+        viewModel.save()
+
+        assertEquals(1, repository.created.size)
+        val created = repository.created.first()
+        assertEquals("Replaced altimeter seal", created.entry.description)
+        assertNull(created.entry.aircraftId)
+        assertEquals(setOf(ActivityType.REPAIRING, ActivityType.INSPECTION), created.activityTypes)
+        assertEquals(EntryRole.CERTIFIED_BY_ME_IN_APP, created.entry.role)
+        assertTrue(created.entry.supervisedAnother)
+        assertEquals(listOf("Jan de Vries"), created.helperNames)
+    }
+
+    @Test
+    fun `save resolves a specific aircraft selection to its id`() {
+        val repository = FakeWorkEntryRepository()
+        val aircraftRepository = FakeAircraftRepository()
+        val aircraftId = runBlocking {
+            aircraftRepository.create(
+                manufacturer = "Schleicher", type = "ASK 21", serialNumber = "1",
+                propulsion = Propulsion.UNPOWERED, structure = Structure.WOOD_AND_FABRIC,
+                subcategoryOverride = null, registration = "PH-0001", validFrom = LocalDate.of(2020, 1, 1),
+            )
+        }
+        val viewModel = viewModel(workEntryRepository = repository, aircraftRepository = aircraftRepository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Specific(aircraftId))
+        viewModel.onDescriptionChange("Wing inspection")
+        viewModel.onActivityTypeToggle(ActivityType.INSPECTION)
+
+        viewModel.save()
+
+        assertEquals(aircraftId, repository.created.first().entry.aircraftId)
+    }
+
+    @Test
+    fun `researchAndPaperwork is independent of the regulatory activity set and does not itself satisfy canSave`() {
+        val repository = FakeWorkEntryRepository()
+        val viewModel = viewModel(workEntryRepository = repository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Read the new AD")
+        viewModel.onResearchAndPaperworkChange(true)
+
+        assertFalse(viewModel.state.value.canSave) // still no regulatory activity type chosen
+
+        viewModel.onActivityTypeToggle(ActivityType.SERVICING)
+        viewModel.save()
+
+        assertTrue(repository.created.first().entry.researchAndPaperwork)
+    }
+
+    @Test
+    fun `helper add is a no-op for a blank or already-selected name`() {
+        val viewModel = viewModel()
+
+        viewModel.onHelperAdd("Jan de Vries")
+        viewModel.onHelperAdd("Jan de Vries")
+        viewModel.onHelperAdd("")
+
+        assertEquals(listOf("Jan de Vries"), viewModel.state.value.helperNames)
+    }
+
+    @Test
+    fun `aircraftOptions reflects the aircraft repository, excluding archived by default`() {
+        val aircraftRepository = FakeAircraftRepository()
+        val visibleId = runBlocking {
+            aircraftRepository.create(
+                manufacturer = "Schleicher", type = "ASK 21", serialNumber = "1",
+                propulsion = Propulsion.UNPOWERED, structure = Structure.WOOD_AND_FABRIC,
+                subcategoryOverride = null, registration = "PH-0001", validFrom = LocalDate.of(2020, 1, 1),
+            )
+        }
+        runBlocking {
+            val archivedId = aircraftRepository.create(
+                manufacturer = "Grob", type = "G103", serialNumber = "2",
+                propulsion = Propulsion.UNPOWERED, structure = Structure.COMPOSITE,
+                subcategoryOverride = null, registration = "PH-0002", validFrom = LocalDate.of(2020, 1, 1),
+            )
+            aircraftRepository.setArchived(archivedId, true)
+        }
+
+        val viewModel = viewModel(aircraftRepository = aircraftRepository)
+
+        assertEquals(1, viewModel.aircraftOptions.value.size)
+        assertEquals(visibleId, viewModel.aircraftOptions.value.first().aircraft.id)
+    }
+
+    @Test
+    fun `knownHelperNames reflects the person directory`() {
+        val personRepository = FakePersonRepository(initial = listOf(PersonEntity(id = "p1", name = "Jan de Vries")))
+
+        val viewModel = viewModel(personRepository = personRepository)
+
+        assertEquals(listOf("Jan de Vries"), viewModel.knownHelperNames.value)
+    }
+
+    @Test
+    fun `isDirty is false until a field changes, and false again after saving`() {
+        val viewModel = viewModel()
+        assertFalse(viewModel.isDirty())
+
+        viewModel.onDescriptionChange("Bench-tested altimeter")
+        assertTrue(viewModel.isDirty())
+
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onActivityTypeToggle(ActivityType.TROUBLESHOOTING)
+        viewModel.save()
+        assertFalse(viewModel.isDirty())
+    }
+}

@@ -17,6 +17,7 @@ import nl.part66l.logbook.data.DeferredItemDao
 import nl.part66l.logbook.data.DocumentationRefDao
 import nl.part66l.logbook.data.EntryHelperDao
 import nl.part66l.logbook.data.PartUsedDao
+import nl.part66l.logbook.data.PersonDao
 import nl.part66l.logbook.data.ProfileDao
 import nl.part66l.logbook.data.RecencyDao
 import nl.part66l.logbook.data.SearchDao
@@ -54,4 +55,5 @@ object DatabaseModule {
     @Provides fun provideDeferredItemDao(db: AppDatabase): DeferredItemDao = db.deferredItems()
     @Provides fun provideTaskCompletionDao(db: AppDatabase): TaskCompletionDao = db.taskCompletions()
     @Provides fun provideProfileDao(db: AppDatabase): ProfileDao = db.profile()
+    @Provides fun providePersonDao(db: AppDatabase): PersonDao = db.people()
 }

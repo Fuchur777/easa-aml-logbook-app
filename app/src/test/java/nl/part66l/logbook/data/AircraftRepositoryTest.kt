@@ -6,7 +6,6 @@ import androidx.test.core.app.ApplicationProvider
 import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.Structure
@@ -147,7 +146,7 @@ class AircraftRepositoryTest {
         val now = java.time.Instant.now()
         db.workEntries().insert(
             WorkEntryEntity(
-                id = "entry-1", aircraftId = id, description = "Test", activityType = ActivityType.INSPECTION, role = EntryRole.NO_RELEASE,
+                id = "entry-1", aircraftId = id, description = "Test", role = EntryRole.NO_RELEASE,
                 createdAt = now, updatedAt = now,
             ),
         )

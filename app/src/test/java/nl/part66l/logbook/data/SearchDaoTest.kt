@@ -5,7 +5,6 @@ import androidx.test.core.app.ApplicationProvider
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
-import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.Structure
@@ -44,7 +43,6 @@ class SearchDaoTest {
         id = id,
         aircraftId = aircraftId,
         description = description,
-        activityType = ActivityType.SERVICING,
         role = EntryRole.CERTIFIED_BY_ME_IN_APP,
         createdAt = Instant.EPOCH,
         updatedAt = Instant.EPOCH,

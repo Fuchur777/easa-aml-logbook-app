@@ -8,6 +8,8 @@ import nl.part66l.logbook.data.AircraftRepository
 import nl.part66l.logbook.data.AircraftRepositoryImpl
 import nl.part66l.logbook.data.CrsNumberingRepository
 import nl.part66l.logbook.data.CrsNumberingRepositoryImpl
+import nl.part66l.logbook.data.PersonRepository
+import nl.part66l.logbook.data.PersonRepositoryImpl
 import nl.part66l.logbook.data.ProfileRepository
 import nl.part66l.logbook.data.ProfileRepositoryImpl
 import nl.part66l.logbook.data.RecencyRepository
@@ -38,4 +40,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
+
+    @Binds
+    abstract fun bindPersonRepository(impl: PersonRepositoryImpl): PersonRepository
 }

@@ -5,7 +5,6 @@ import androidx.test.core.app.ApplicationProvider
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
-import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.RecencyRoute
@@ -64,7 +63,7 @@ class RecencyRepositoryTest {
 
     private fun entry(id: String, aircraftId: String?) = WorkEntryEntity(
         id = id, aircraftId = aircraftId, description = "test entry",
-        activityType = ActivityType.SERVICING, role = EntryRole.CERTIFIED_BY_ME_IN_APP,
+        role = EntryRole.CERTIFIED_BY_ME_IN_APP,
         createdAt = Instant.EPOCH, updatedAt = Instant.EPOCH,
     )
 

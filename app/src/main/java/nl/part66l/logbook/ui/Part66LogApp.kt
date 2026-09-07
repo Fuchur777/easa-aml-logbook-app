@@ -29,6 +29,8 @@ import nl.part66l.logbook.ui.aircraft.AircraftListScreen
 import nl.part66l.logbook.ui.navigation.Destination
 import nl.part66l.logbook.ui.profile.ProfileFormScreen
 import nl.part66l.logbook.ui.settings.SettingsScreen
+import nl.part66l.logbook.ui.workentry.WorkEntryFormScreen
+import nl.part66l.logbook.ui.workentry.WorkEntryListScreen
 
 @Composable
 fun Part66LogApp() {
@@ -59,6 +61,7 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
         Destination.AircraftEdit.ROUTE_PATTERN,
         Destination.Profile.route,
         Destination.Settings.route,
+        Destination.WorkEntryForm.route,
     )
     val showBottomBar = currentRoute?.hierarchy?.none { it.route in noBottomBarRoutes } ?: false
 
@@ -111,7 +114,15 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                     }
                 })
             }
-            composable(Destination.WorkEntries.route) { PlaceholderScreen("Work entries") }
+            composable(Destination.WorkEntries.route) {
+                WorkEntryListScreen(onAddEntry = { navController.navigate(Destination.WorkEntryForm.route) })
+            }
+            composable(Destination.WorkEntryForm.route) {
+                WorkEntryFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onClose = { navController.popBackStack() },
+                )
+            }
             composable(Destination.Aircraft.route) {
                 AircraftListScreen(
                     onAddAircraft = { navController.navigate(Destination.AircraftForm.route) },

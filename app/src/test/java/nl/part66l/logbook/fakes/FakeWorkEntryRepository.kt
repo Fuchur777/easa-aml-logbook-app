@@ -5,23 +5,31 @@ import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 import nl.part66l.logbook.data.WorkEntryEntity
+import nl.part66l.logbook.data.WorkEntryListRow
 import nl.part66l.logbook.data.WorkEntryRepository
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Provenance
 
+data class CreatedWorkEntry(
+    val entry: WorkEntryEntity,
+    val activityTypes: Set<ActivityType>,
+    val helperNames: List<String>,
+)
+
 /**
  * In-memory stand-in for ViewModel tests — no Room, no Robolectric.
  *
- * `pagedAll`/`filtered` aren't faked: no ViewModel needs them yet, and a
- * meaningful fake needs androidx.paging:paging-testing, which belongs with
- * the list-screen milestone that actually exercises them.
+ * The three PagingSource-returning methods aren't faked: no ViewModel test
+ * needs them (WorkEntryListViewModel is a thin Pager wrapper with nothing of
+ * its own to verify — [pagedAllWithDetails]'s real join/order behavior is
+ * covered against real Room in WorkEntryRepositoryTest instead).
  */
 class FakeWorkEntryRepository : WorkEntryRepository {
-    val created = mutableListOf<WorkEntryEntity>()
+    val created = mutableListOf<CreatedWorkEntry>()
 
     override fun pagedAll(): PagingSource<Int, WorkEntryEntity> =
-        throw UnsupportedOperationException("not faked yet — no ViewModel needs this until the list screen milestone")
+        throw UnsupportedOperationException("not faked — no ViewModel test needs this")
 
     override fun filtered(
         aircraftId: String?,
@@ -31,19 +39,30 @@ class FakeWorkEntryRepository : WorkEntryRepository {
         from: LocalDate?,
         to: LocalDate?,
     ): PagingSource<Int, WorkEntryEntity> =
-        throw UnsupportedOperationException("not faked yet — no ViewModel needs this until the list screen milestone")
+        throw UnsupportedOperationException("not faked — no ViewModel test needs this")
+
+    override fun pagedAllWithDetails(): PagingSource<Int, WorkEntryListRow> =
+        throw UnsupportedOperationException("not faked — no ViewModel test needs this")
 
     override suspend fun create(
         aircraftId: String?,
         description: String,
-        activityType: ActivityType,
+        activityTypes: Set<ActivityType>,
         role: EntryRole,
+        supervisedAnother: Boolean,
         sessionDate: LocalDate,
+        helperNames: List<String>,
+        researchAndPaperwork: Boolean,
     ): String {
         val id = UUID.randomUUID().toString()
-        created += WorkEntryEntity(
-            id = id, aircraftId = aircraftId, description = description, activityType = activityType,
-            role = role, createdAt = Instant.now(), updatedAt = Instant.now(),
+        created += CreatedWorkEntry(
+            entry = WorkEntryEntity(
+                id = id, aircraftId = aircraftId, description = description, role = role,
+                supervisedAnother = supervisedAnother, researchAndPaperwork = researchAndPaperwork,
+                createdAt = Instant.now(), updatedAt = Instant.now(),
+            ),
+            activityTypes = activityTypes,
+            helperNames = helperNames,
         )
         return id
     }

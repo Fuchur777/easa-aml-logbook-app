@@ -13,6 +13,10 @@ sealed interface Destination {
         override val route = "work-entries"
     }
 
+    data object WorkEntryForm : Destination {
+        override val route = "work-entries/new"
+    }
+
     data object Aircraft : Destination {
         override val route = "aircraft"
     }

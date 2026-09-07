@@ -97,8 +97,14 @@ data class WorkEntryEntity(
     @PrimaryKey val id: String,
     val aircraftId: String?,
     val description: String,
-    val activityType: ActivityType,
     val role: EntryRole,
+    /** Independent of [role] — you can certify/release AND have supervised someone else on the same entry. */
+    val supervisedAnother: Boolean = false,
+    /**
+     * Personal time-tracking only — deliberately NOT one of [ActivityType]'s values,
+     * which is a closed vocabulary matching AMC 66.A.20(b)(2) paragraph 2 exactly.
+     */
+    val researchAndPaperwork: Boolean = false,
 
     // Readings at the time of work — not counters.
     val airframeHoursAtWork: Double? = null,
@@ -150,6 +156,33 @@ data class WorkSessionEntity(
     val partialDays: Double? = null,
     val hours: Double? = null,
 )
+
+/** One entry can genuinely be more than one activity type at once (e.g. troubleshooting AND repairing). */
+@Entity(
+    tableName = "work_entry_activity_type",
+    primaryKeys = ["entryId", "activityType"],
+    foreignKeys = [ForeignKey(WorkEntryEntity::class, ["id"], ["entryId"], onDelete = ForeignKey.CASCADE)],
+    indices = [Index("entryId")],
+)
+data class WorkEntryActivityTypeEntity(
+    val entryId: String,
+    val activityType: ActivityType,
+)
+
+/**
+ * An entry plus its latest session date, current aircraft registration, and its
+ * activity types (comma-joined — Room can't project a one-to-many relation as a
+ * List column directly) — what the list screen renders.
+ */
+data class WorkEntryListRow(
+    @Embedded val entry: WorkEntryEntity,
+    val workDate: LocalDate?,
+    val aircraftRegistration: String?,
+    val activityTypesCsv: String?,
+) {
+    val activityTypes: List<ActivityType>
+        get() = activityTypesCsv?.split(",")?.filter { it.isNotBlank() }?.map(ActivityType::valueOf) ?: emptyList()
+}
 
 /** Helpers named on the entry and, later, in the record block of the CRS. */
 @Entity(

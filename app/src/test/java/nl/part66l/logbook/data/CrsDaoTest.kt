@@ -5,7 +5,6 @@ import androidx.test.core.app.ApplicationProvider
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
-import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.CertificationBasis
 import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.SignatureState
@@ -61,7 +60,6 @@ class CrsDaoTest {
                 id = "e1",
                 aircraftId = null,
                 description = "Annual inspection",
-                activityType = ActivityType.INSPECTION,
                 role = EntryRole.CERTIFIED_BY_ME_IN_APP,
                 createdAt = Instant.EPOCH,
                 updatedAt = Instant.EPOCH,

@@ -51,6 +51,7 @@ class Converters {
         PersonEntity::class,
         WorkEntryEntity::class,
         WorkEntryFts::class,
+        WorkEntryActivityTypeEntity::class,
         WorkSessionEntity::class,
         EntryHelperEntity::class,
         DocumentationRefEntity::class,
@@ -62,7 +63,7 @@ class Converters {
         TaskCompletionEntity::class,
         ProfileEntity::class,
     ],
-    version = 3,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -81,4 +82,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun deferredItems(): DeferredItemDao
     abstract fun taskCompletions(): TaskCompletionDao
     abstract fun profile(): ProfileDao
+    abstract fun people(): PersonDao
 }

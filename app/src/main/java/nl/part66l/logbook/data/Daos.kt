@@ -12,6 +12,7 @@ interface WorkEntryDao {
 
     @Insert suspend fun insert(entry: WorkEntryEntity)
     @Update suspend fun update(entry: WorkEntryEntity)
+    @Insert suspend fun insertActivityTypes(rows: List<WorkEntryActivityTypeEntity>)
 
     @Transaction
     @Query("SELECT * FROM work_entry ORDER BY id DESC")
@@ -46,6 +47,36 @@ interface WorkEntryDao {
         from: LocalDate?,
         to: LocalDate?,
     ): PagingSource<Int, WorkEntryEntity>
+
+    /**
+     * What the list screen actually renders: each entry with its latest session date,
+     * its aircraft's current registration, and its activity types (comma-joined).
+     * The session and activity-type joins each multiply rows per entry, but MAX and
+     * GROUP_CONCAT(DISTINCT ...) are both unaffected by that duplication.
+     */
+    @Transaction
+    @Query("""
+        SELECT e.*, MAX(s.date) AS workDate, ar.registration AS aircraftRegistration,
+               GROUP_CONCAT(DISTINCT wat.activityType) AS activityTypesCsv
+        FROM work_entry e
+        LEFT JOIN work_session s ON s.entryId = e.id
+        LEFT JOIN aircraft_registration ar ON ar.aircraftId = e.aircraftId AND ar.validTo IS NULL
+        LEFT JOIN work_entry_activity_type wat ON wat.entryId = e.id
+        GROUP BY e.id
+        ORDER BY workDate DESC
+    """)
+    fun pagedAllWithDetails(): PagingSource<Int, WorkEntryListRow>
+}
+
+@Dao
+interface PersonDao {
+    @Insert suspend fun insert(person: PersonEntity)
+
+    @Query("SELECT * FROM person ORDER BY name")
+    fun all(): Flow<List<PersonEntity>>
+
+    @Query("SELECT * FROM person WHERE name = :name LIMIT 1")
+    suspend fun byName(name: String): PersonEntity?
 }
 
 @Dao
