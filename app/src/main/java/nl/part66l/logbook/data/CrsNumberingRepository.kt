@@ -1,6 +1,16 @@
 package nl.part66l.logbook.data
 
+import javax.inject.Inject
+import javax.inject.Singleton
 import nl.part66l.logbook.domain.CrsNumberFormat
+
+interface CrsNumberingRepository {
+    /** The number that would be allocated next, without allocating anything. */
+    suspend fun nextNumber(format: CrsNumberFormat, year: Int? = null): String
+
+    /** The §9.2 collision check required before accepting a changed format. */
+    suspend fun collides(format: CrsNumberFormat, candidate: String): Boolean
+}
 
 /**
  * Wires [CrsNumberFormat] to the issued numbers actually in the database.
@@ -12,13 +22,14 @@ import nl.part66l.logbook.domain.CrsNumberFormat
  * signing pipeline once one exists (`CrsSigner` has no implementation yet), not
  * here: this class has no way to react to a signing outcome it can't observe.
  */
-class CrsNumberingRepository(private val crsDao: CrsDao) {
+@Singleton
+class CrsNumberingRepositoryImpl @Inject constructor(
+    private val crsDao: CrsDao,
+) : CrsNumberingRepository {
 
-    /** The number that would be allocated next, without allocating anything. */
-    suspend fun nextNumber(format: CrsNumberFormat, year: Int? = null): String =
+    override suspend fun nextNumber(format: CrsNumberFormat, year: Int?): String =
         format.nextNumber(crsDao.allNumbers(), year)
 
-    /** The §9.2 collision check required before accepting a changed format. */
-    suspend fun collides(format: CrsNumberFormat, candidate: String): Boolean =
+    override suspend fun collides(format: CrsNumberFormat, candidate: String): Boolean =
         format.collidesWith(candidate, crsDao.allNumbers())
 }

@@ -228,6 +228,10 @@ interface CatalogueDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(tasks: List<CatalogueTaskEntity>)
+
+    /** Backs first-run seeding: is there anything here yet at all? */
+    @Query("SELECT COUNT(*) FROM catalogue_task")
+    suspend fun count(): Int
 }
 
 @Dao

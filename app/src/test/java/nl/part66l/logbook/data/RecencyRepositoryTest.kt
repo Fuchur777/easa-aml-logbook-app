@@ -40,7 +40,7 @@ class RecencyRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = RecencyRepository(db.profile(), db.aircraft(), db.recency(), db.catalogue())
+        repository = RecencyRepositoryImpl(db.profile(), db.aircraft(), db.recency(), db.catalogue())
     }
 
     @After

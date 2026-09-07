@@ -11,8 +11,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import dagger.hilt.android.AndroidEntryPoint
 import nl.part66l.logbook.ui.theme.Part66LogTheme
 
+// @AndroidEntryPoint is required for hiltViewModel() to work anywhere in this
+// Activity's Compose tree — needed starting with the navigation shell, not yet.
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

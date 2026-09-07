@@ -1,10 +1,20 @@
 package nl.part66l.logbook.data
 
 import java.time.LocalDate
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
 import nl.part66l.logbook.domain.RecencyEvaluator
 import nl.part66l.logbook.domain.Subcategory
 import nl.part66l.logbook.domain.SubcategoryResolver
+
+interface RecencyRepository {
+    suspend fun evaluate(
+        today: LocalDate,
+        catalogueVersion: String,
+        windowMonths: Long = 24,
+    ): List<RecencyEvaluator.SubcategoryResult>
+}
 
 /**
  * Wires the stored profile, work sessions, task completions and catalogue into
@@ -21,18 +31,19 @@ import nl.part66l.logbook.domain.SubcategoryResolver
  * override yet recorded) contributes to none — silently skipped rather than
  * guessed, matching [SubcategoryResolver]'s own refusal to guess.
  */
-class RecencyRepository(
+@Singleton
+class RecencyRepositoryImpl @Inject constructor(
     private val profileDao: ProfileDao,
     private val aircraftDao: AircraftDao,
     private val recencyDao: RecencyDao,
     private val catalogueDao: CatalogueDao,
     private val evaluator: RecencyEvaluator = RecencyEvaluator(),
-) {
+) : RecencyRepository {
 
-    suspend fun evaluate(
+    override suspend fun evaluate(
         today: LocalDate,
         catalogueVersion: String,
-        windowMonths: Long = 24,
+        windowMonths: Long,
     ): List<RecencyEvaluator.SubcategoryResult> {
         val profileEntity = profileDao.get() ?: return emptyList()
         val heldSubcategories = buildSet {

@@ -33,7 +33,7 @@ class CrsNumberingRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = CrsNumberingRepository(db.crs())
+        repository = CrsNumberingRepositoryImpl(db.crs())
     }
 
     @After
