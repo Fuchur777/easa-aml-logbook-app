@@ -80,4 +80,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun partsUsed(): PartUsedDao
     abstract fun deferredItems(): DeferredItemDao
     abstract fun taskCompletions(): TaskCompletionDao
+    abstract fun profile(): ProfileDao
 }

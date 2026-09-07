@@ -131,9 +131,78 @@ interface RecencyDao {
           AND s.date >= :windowStart
     """)
     suspend fun annualInspections(windowStart: LocalDate): Int
+
+    /**
+     * Raw (date, aircraft) rows for Route A, one per session in the window. Unlike
+     * [daysInWindow], the aircraft is carried through so a repository can resolve
+     * each date to the subcategory whose privileges it was exercised under —
+     * [distinctDays] and [daysInWindow] answer "how many/which days", not "for
+     * which subcategory", so they can't build [nl.part66l.logbook.domain.RecencyEvaluator]'s
+     * per-subcategory input on their own.
+     */
+    @Query("""
+        SELECT DISTINCT s.date AS date, e.aircraftId AS aircraftId
+        FROM work_session s
+        JOIN work_entry e ON e.id = s.entryId
+        WHERE s.date >= :windowStart
+    """)
+    suspend fun sessionsInWindow(windowStart: LocalDate): List<SessionAircraftRow>
+
+    /** As [sessionsInWindow], restricted to annual-inspection entries, for Route C. */
+    @Query("""
+        SELECT DISTINCT s.date AS date, e.aircraftId AS aircraftId
+        FROM work_session s
+        JOIN work_entry e ON e.id = s.entryId
+        WHERE s.date >= :windowStart
+          AND e.annualInspection = 1
+    """)
+    suspend fun annualSessionsInWindow(windowStart: LocalDate): List<SessionAircraftRow>
+
+    /**
+     * Raw completions for Route B, one row per (task_completion, session) pair,
+     * carrying the completed task's per-subcategory applicability through — which
+     * subcategories a completion credits is a property of the *task* (from the
+     * catalogue), not of the aircraft the work happened to be performed on.
+     */
+    @Query("""
+        SELECT c.taskId AS taskId, t.sectionCode AS sectionCode, s.date AS date,
+               t.appliesToL1 AS appliesToL1, t.appliesToL1C AS appliesToL1C,
+               t.appliesToL2 AS appliesToL2, t.appliesToL2C AS appliesToL2C,
+               c.substituteText AS substituteText
+        FROM task_completion c
+        JOIN catalogue_task t ON t.id = c.taskId
+        JOIN work_entry e ON e.id = c.entryId
+        JOIN work_session s ON s.entryId = e.id
+        WHERE s.date >= :windowStart
+    """)
+    suspend fun taskCompletionsInWindow(windowStart: LocalDate): List<TaskCompletionRow>
 }
 
 data class SectionCount(val sectionCode: String, val completed: Int)
+
+data class SessionAircraftRow(val date: LocalDate, val aircraftId: String?)
+
+data class TaskCompletionRow(
+    val taskId: String,
+    val sectionCode: String,
+    val date: LocalDate,
+    val appliesToL1: Boolean,
+    val appliesToL1C: Boolean,
+    val appliesToL2: Boolean,
+    val appliesToL2C: Boolean,
+    /** Non-null when this completion is a user-authored substitute (AMC 66.A.45(h)). */
+    val substituteText: String?,
+)
+
+/** The single profile row (§4: one licence holder per installation). */
+@Dao
+interface ProfileDao {
+    @Query("SELECT * FROM profile WHERE id = 'self'")
+    suspend fun get(): ProfileEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(profile: ProfileEntity)
+}
 
 @Dao
 interface CatalogueDao {
