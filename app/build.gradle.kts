@@ -41,11 +41,42 @@ android {
             isIncludeAndroidResources = true
         }
     }
+    packaging {
+        // bcprov/bcpkix/bcutil are three separately-published jars from the same
+        // BouncyCastle release, each carrying its own copy of these META-INF text
+        // files at an identical path — not a real conflict, just three copies of
+        // the same license/notice text. None of it needs to end up in the APK.
+        resources {
+            excludes += setOf(
+                "META-INF/LICENSE.md",
+                "META-INF/LICENSE.txt",
+                "META-INF/LICENSE",
+                "META-INF/NOTICE.md",
+                "META-INF/NOTICE.txt",
+                "META-INF/NOTICE",
+                "META-INF/DEPENDENCIES",
+                "META-INF/INDEX.LIST",
+            )
+        }
+    }
 }
 
 ksp {
     // Room schemas are the migration history for legal records — committed, never gitignored.
     arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+configurations.all {
+    // PdfBox-Android transitively pulls the entire older jdk15to18-naming-scheme
+    // BouncyCastle family (bcprov, bcpkix, bcutil) alongside the jdk18on ones
+    // declared below — same org.bouncycastle.* classes and resource paths under
+    // different artifact IDs, so Gradle doesn't dedupe them and
+    // checkDebugDuplicateClasses/mergeDebugJavaResource fails on the clash.
+    // Excluding the older family keeps a single, consistent BouncyCastle version
+    // on the classpath. (bcprov alone wasn't enough — bcpkix and bcutil conflict too.)
+    exclude(group = "org.bouncycastle", module = "bcprov-jdk15to18")
+    exclude(group = "org.bouncycastle", module = "bcpkix-jdk15to18")
+    exclude(group = "org.bouncycastle", module = "bcutil-jdk15to18")
 }
 
 dependencies {
