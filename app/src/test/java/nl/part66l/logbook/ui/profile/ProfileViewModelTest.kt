@@ -155,6 +155,7 @@ class ProfileViewModelTest {
         viewModel.onEmailChange("frank@example.com")
         viewModel.onLicenceValidFromChange(LocalDate.of(2026, 1, 1))
         viewModel.onLicenceExpiryChange(LocalDate.of(2031, 1, 1))
+        viewModel.onInitialCertificationDateChange(LocalDate.of(2020, 6, 15))
 
         viewModel.save()
 
@@ -163,5 +164,6 @@ class ProfileViewModelTest {
         assertEquals("frank@example.com", stored?.email)
         assertEquals(LocalDate.of(2026, 1, 1), stored?.licenceValidFrom)
         assertEquals(LocalDate.of(2031, 1, 1), stored?.licenceExpiry)
+        assertEquals(LocalDate.of(2020, 6, 15), stored?.initialCertificationDate)
     }
 }

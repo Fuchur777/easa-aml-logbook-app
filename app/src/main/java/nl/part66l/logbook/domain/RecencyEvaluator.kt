@@ -30,6 +30,14 @@ class RecencyEvaluator(
          */
         val reductionGranted: Boolean,
         val reductionReference: String? = null,
+        /**
+         * When first certified. Within [windowMonths] of this date, the holder is
+         * current by default — the 24-month "no experience logged" failure condition
+         * cannot yet have occurred, since that much time hasn't passed since they
+         * could first have exercised privileges at all. Null (not recorded) means no
+         * grace period is applied — routes are evaluated exactly as before.
+         */
+        val initialCertificationDate: LocalDate? = null,
     )
 
     /** One day on which experience was gained, already resolved to a subcategory. */
@@ -96,7 +104,7 @@ class RecencyEvaluator(
         val windowStart = today.minusMonths(windowMonths)
 
         return profile.subcategories.sorted().map { sub ->
-            val routes = listOf(
+            val routes = listOfNotNull(
                 routeA(today, windowStart, profile, days.filter { it.subcategory == sub }),
                 routeB(
                     today, windowStart,
@@ -104,6 +112,7 @@ class RecencyEvaluator(
                     denominators[sub] ?: Denominator(emptySet(), emptySet()),
                 ),
                 routeC(today, windowStart, annuals.filter { it.subcategory == sub }, routeCStatus, routeCRequired),
+                routeInitialGrace(today, profile.initialCertificationDate),
             )
             SubcategoryResult(
                 subcategory = sub,
@@ -248,6 +257,41 @@ class RecencyEvaluator(
             lapseDate = if (meets && counts) lapseDate(dates, required) else null,
             detail = if (counts) "${dates.size} of $required annual inspections in the window."
                      else "${dates.size} of $required — proposed under NPA 2025-12, not yet applicable.",
+        )
+    }
+
+    // ---------------------------------------------------------------------
+    // Initial certification grace period
+    // ---------------------------------------------------------------------
+
+    /**
+     * A newly-certified holder is current by default for [windowMonths] from
+     * [initialCertificationDate] — the "no experience in the preceding 24 months"
+     * failure condition cannot yet have occurred, since that window hasn't fully
+     * elapsed since certification. One day past it, this stops applying and
+     * recency rests entirely on routes A/B/C as normal.
+     *
+     * Absent entirely — not just unsatisfied — when [initialCertificationDate] is
+     * null, so a profile that hasn't recorded one isn't silently penalised or
+     * credited by a date the app never actually knows.
+     */
+    private fun routeInitialGrace(today: LocalDate, initialCertificationDate: LocalDate?): RouteResult? {
+        if (initialCertificationDate == null) return null
+        val graceEnd = initialCertificationDate.plusMonths(windowMonths)
+        val withinGrace = !today.isAfter(graceEnd)
+
+        return RouteResult(
+            route = RecencyRoute.INITIAL_CERTIFICATION_GRACE_PERIOD,
+            status = RuleStatus.IN_FORCE,
+            satisfied = withinGrace,
+            have = 0,
+            need = 0,
+            lapseDate = if (withinGrace) graceEnd else null,
+            detail = if (withinGrace) {
+                "Within the grace period since initial certification on $initialCertificationDate; ends $graceEnd."
+            } else {
+                "Grace period since initial certification on $initialCertificationDate ended $graceEnd."
+            },
         )
     }
 

@@ -28,6 +28,7 @@ import nl.part66l.logbook.ui.aircraft.AircraftFormScreen
 import nl.part66l.logbook.ui.aircraft.AircraftListScreen
 import nl.part66l.logbook.ui.navigation.Destination
 import nl.part66l.logbook.ui.profile.ProfileFormScreen
+import nl.part66l.logbook.ui.recency.RecencyDashboardScreen
 import nl.part66l.logbook.ui.settings.SettingsScreen
 import nl.part66l.logbook.ui.workentry.WorkEntryFormScreen
 import nl.part66l.logbook.ui.workentry.WorkEntryListScreen
@@ -146,7 +147,7 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                     onClose = { navController.popBackStack() },
                 )
             }
-            composable(Destination.Recency.route) { PlaceholderScreen("Recency") }
+            composable(Destination.Recency.route) { RecencyDashboardScreen() }
             composable(Destination.Profile.route) {
                 ProfileFormScreen(onSaved = { navController.popBackStack() }, onClose = { navController.popBackStack() })
             }

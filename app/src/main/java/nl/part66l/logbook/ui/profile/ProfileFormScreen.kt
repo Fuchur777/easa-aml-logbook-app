@@ -151,6 +151,18 @@ fun ProfileFormScreen(
                         supportingText = state.licenceDatesError,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    DatePickerField(
+                        label = "Initial certification date",
+                        value = state.initialCertificationDate,
+                        onValueChange = viewModel::onInitialCertificationDateChange,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        "Optional. Starts a 24-month recency grace period — you're shown as current without " +
+                            "logging anything until this date passes, after which recency depends on the routes below.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
 
                     Text("Held subcategories", style = MaterialTheme.typography.labelLarge)
                     SubcategoryCheckbox("L1", state.holdsL1) { viewModel.onSubcategoryToggle(Subcategory.L1, it) }

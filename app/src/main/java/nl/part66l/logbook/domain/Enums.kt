@@ -85,7 +85,8 @@ enum class OwnershipRelation { OWNER, JOINT_OWNER, DESIGNATED_MEMBER_OF_OWNING_E
 enum class RuleStatus { IN_FORCE, PROPOSED, SUPERSEDED }
 
 /**
- * The three recency routes of 66.A.20(b)(2) and its AMC. Route C originates in
- * NPA 2025-12 and is PROPOSED until the corresponding ED Decision is published.
+ * The recency routes of 66.A.20(b)(2) and its AMC, plus the initial-certification
+ * grace period. Route C originates in NPA 2025-12 and is PROPOSED until the
+ * corresponding ED Decision is published.
  */
-enum class RecencyRoute { DAYS, TASKS, ANNUAL_INSPECTIONS }
+enum class RecencyRoute { DAYS, TASKS, ANNUAL_INSPECTIONS, INITIAL_CERTIFICATION_GRACE_PERIOD }

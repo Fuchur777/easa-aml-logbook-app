@@ -141,6 +141,66 @@ class RecencyEvaluatorTest {
     }
 
     // -----------------------------------------------------------------
+    // Initial certification grace period
+    // -----------------------------------------------------------------
+
+    @Test
+    fun `a newly-certified holder is current with nothing logged, until one day past the 24-month mark`() {
+        val certifiedOn = LocalDate.of(2025, 1, 1)
+        // A non-empty, wholly uncompleted denominator, so routes A/B/C genuinely
+        // fail — the point of this test is the grace route alone.
+        val denominator = RecencyEvaluator.Denominator(taskIds = setOf("X1"), sectionCodes = setOf("X"))
+        val profile = RecencyEvaluator.Profile(
+            subcategories = setOf(Subcategory.L1),
+            reductionGranted = false,
+            initialCertificationDate = certifiedOn,
+        )
+
+        val result = evaluateSingle(profile, denominators = mapOf(Subcategory.L1 to denominator))
+        val grace = result.routeResult(RecencyRoute.INITIAL_CERTIFICATION_GRACE_PERIOD)
+
+        assertTrue(grace.satisfied)
+        assertEquals(LocalDate.of(2027, 1, 1), grace.lapseDate)
+        assertTrue("nothing logged, but the grace period alone must still make the subcategory current", result.current)
+        assertEquals(LocalDate.of(2027, 1, 1), result.lapseDate)
+    }
+
+    @Test
+    fun `the grace period no longer applies one day past the 24-month mark`() {
+        val certifiedOn = LocalDate.of(2025, 1, 1)
+        val denominator = RecencyEvaluator.Denominator(taskIds = setOf("X1"), sectionCodes = setOf("X"))
+        val profile = RecencyEvaluator.Profile(
+            subcategories = setOf(Subcategory.L1),
+            reductionGranted = false,
+            initialCertificationDate = certifiedOn,
+        )
+
+        val stillGrace = evaluator.evaluate(
+            today = LocalDate.of(2027, 1, 1), profile = profile, days = emptyList(), tasks = emptyList(),
+            annuals = emptyList(), denominators = mapOf(Subcategory.L1 to denominator),
+        ).single()
+        assertTrue(stillGrace.current)
+
+        val pastGrace = evaluator.evaluate(
+            today = LocalDate.of(2027, 1, 2), profile = profile, days = emptyList(), tasks = emptyList(),
+            annuals = emptyList(), denominators = mapOf(Subcategory.L1 to denominator),
+        ).single()
+        val expiredGrace = pastGrace.routeResult(RecencyRoute.INITIAL_CERTIFICATION_GRACE_PERIOD)
+        assertFalse(expiredGrace.satisfied)
+        assertNull(expiredGrace.lapseDate)
+        assertFalse("with nothing logged and the grace period expired, no route is satisfied", pastGrace.current)
+    }
+
+    @Test
+    fun `no grace route is reported at all when no initial certification date is recorded`() {
+        val profile = RecencyEvaluator.Profile(subcategories = setOf(Subcategory.L1), reductionGranted = false)
+
+        val result = evaluateSingle(profile)
+
+        assertTrue(result.routes.none { it.route == RecencyRoute.INITIAL_CERTIFICATION_GRACE_PERIOD })
+    }
+
+    // -----------------------------------------------------------------
 
     private fun evaluateSingle(
         profile: RecencyEvaluator.Profile,

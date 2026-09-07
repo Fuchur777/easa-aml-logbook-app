@@ -403,6 +403,8 @@ data class ProfileEntity(
     val issuingAuthority: String?,
     val licenceValidFrom: LocalDate? = null,
     val licenceExpiry: LocalDate?,
+    /** Starts the 24-month recency grace period — see RecencyEvaluator.routeInitialGrace. */
+    val initialCertificationDate: LocalDate? = null,
     val holdsL1: Boolean = false,
     val holdsL1C: Boolean = false,
     val holdsL2: Boolean = false,

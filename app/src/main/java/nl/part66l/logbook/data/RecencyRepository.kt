@@ -14,6 +14,12 @@ interface RecencyRepository {
         catalogueVersion: String,
         windowMonths: Long = 24,
     ): List<RecencyEvaluator.SubcategoryResult>
+
+    /** What the dashboard calls — resolves the currently-seeded catalogue version automatically. */
+    suspend fun evaluateCurrent(
+        today: LocalDate,
+        windowMonths: Long = 24,
+    ): List<RecencyEvaluator.SubcategoryResult>
 }
 
 /**
@@ -40,6 +46,11 @@ class RecencyRepositoryImpl @Inject constructor(
     private val evaluator: RecencyEvaluator = RecencyEvaluator(),
 ) : RecencyRepository {
 
+    override suspend fun evaluateCurrent(today: LocalDate, windowMonths: Long): List<RecencyEvaluator.SubcategoryResult> {
+        val version = catalogueDao.currentVersion() ?: return emptyList()
+        return evaluate(today, version, windowMonths)
+    }
+
     override suspend fun evaluate(
         today: LocalDate,
         catalogueVersion: String,
@@ -58,6 +69,7 @@ class RecencyRepositoryImpl @Inject constructor(
             subcategories = heldSubcategories,
             reductionGranted = profileEntity.recencyReductionGranted,
             reductionReference = profileEntity.recencyReductionReference,
+            initialCertificationDate = profileEntity.initialCertificationDate,
         )
 
         val windowStart = today.minusMonths(windowMonths)

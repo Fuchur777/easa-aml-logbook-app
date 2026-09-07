@@ -263,6 +263,10 @@ interface CatalogueDao {
     /** Backs first-run seeding: is there anything here yet at all? */
     @Query("SELECT COUNT(*) FROM catalogue_task")
     suspend fun count(): Int
+
+    /** Only one catalogue version is ever seeded at a time, so any row's version is THE current one. */
+    @Query("SELECT catalogueVersion FROM catalogue_task LIMIT 1")
+    suspend fun currentVersion(): String?
 }
 
 @Dao

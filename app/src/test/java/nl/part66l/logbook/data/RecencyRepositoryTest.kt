@@ -47,11 +47,12 @@ class RecencyRepositoryTest {
         db.close()
     }
 
-    private fun profile(holdsL1: Boolean = false, holdsL2: Boolean = false) = ProfileEntity(
+    private fun profile(holdsL1: Boolean = false, holdsL2: Boolean = false, initialCertificationDate: LocalDate? = null) = ProfileEntity(
         name = "Test Pilot",
         licenceNumber = "L-123",
         issuingAuthority = "ILT",
         licenceExpiry = null,
+        initialCertificationDate = initialCertificationDate,
         holdsL1 = holdsL1,
         holdsL2 = holdsL2,
     )
@@ -131,5 +132,43 @@ class RecencyRepositoryTest {
     @Test
     fun `evaluate returns nothing when no profile has been recorded`() = runBlocking {
         assertTrue(repository.evaluate(today, catalogueVersion = "2026.1").isEmpty())
+    }
+
+    @Test
+    fun `evaluateCurrent resolves whichever catalogue version is actually seeded`() = runBlocking {
+        db.profile().upsert(profile(holdsL1 = true))
+        db.workEntries().insert(entry("e1", aircraftId = null))
+        db.workSessions().insert(session("s1", "e1", LocalDate.of(2025, 1, 1)))
+        db.catalogue().upsertAll(listOf(
+            CatalogueTaskEntity(
+                id = "T1", catalogueVersion = "2026.1", table = "B",
+                section = "General activities", sectionCode = "GEN", text = "Task",
+                reference = "ref", appliesToL1 = true, appliesToL1C = false, appliesToL2 = false, appliesToL2C = false,
+            ),
+        ))
+
+        val current = repository.evaluateCurrent(today)
+        val explicit = repository.evaluate(today, catalogueVersion = "2026.1")
+
+        assertEquals(explicit, current)
+    }
+
+    @Test
+    fun `a recorded initial certification date carries through to the evaluator as the grace period`() = runBlocking {
+        db.profile().upsert(profile(holdsL1 = true, initialCertificationDate = LocalDate.of(2025, 1, 1)))
+
+        val results = repository.evaluate(today, catalogueVersion = "none")
+
+        val grace = results.first { it.subcategory == Subcategory.L1 }
+            .routes.first { it.route == RecencyRoute.INITIAL_CERTIFICATION_GRACE_PERIOD }
+        assertTrue(grace.satisfied) // today (2026-09-04) is within 24 months of 2025-01-01
+        assertTrue(results.first { it.subcategory == Subcategory.L1 }.current)
+    }
+
+    @Test
+    fun `evaluateCurrent returns nothing when no catalogue has been seeded`() = runBlocking {
+        db.profile().upsert(profile(holdsL1 = true))
+
+        assertTrue(repository.evaluateCurrent(today).isEmpty())
     }
 }

@@ -49,6 +49,7 @@ class ProfileViewModel @Inject constructor(
     fun onIssuingAuthorityChange(value: String) = _state.update { it.copy(issuingAuthority = value) }
     fun onLicenceValidFromChange(value: LocalDate?) = _state.update { it.copy(licenceValidFrom = value) }
     fun onLicenceExpiryChange(value: LocalDate?) = _state.update { it.copy(licenceExpiry = value) }
+    fun onInitialCertificationDateChange(value: LocalDate?) = _state.update { it.copy(initialCertificationDate = value) }
 
     fun onSubcategoryToggle(subcategory: Subcategory, checked: Boolean) = _state.update {
         when (subcategory) {
