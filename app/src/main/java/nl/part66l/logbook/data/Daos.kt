@@ -240,6 +240,15 @@ interface CrsDao {
     @Query("SELECT number FROM crs WHERE number LIKE :prefixPattern ORDER BY number DESC LIMIT 1")
     suspend fun highestNumber(prefixPattern: String): String?
 
+    /**
+     * Every number ever issued, format-agnostic. Feeds
+     * [nl.part66l.logbook.domain.CrsNumberFormat.nextNumber] and `collidesWith`,
+     * which do their own format-aware filtering — a plain `LIKE` prefix can't
+     * correctly scope "any year" when annual reset is off (§9.2).
+     */
+    @Query("SELECT number FROM crs")
+    suspend fun allNumbers(): List<String>
+
     @Insert suspend fun insert(crs: CrsEntity)
 
     /** Signed certificates are never updated. Only draft and void transitions are permitted. */
