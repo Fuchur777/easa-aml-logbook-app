@@ -6,18 +6,29 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
-import nl.part66l.logbook.data.AircraftEntity
+import kotlinx.coroutines.launch
 import nl.part66l.logbook.data.AircraftRepository
+import nl.part66l.logbook.data.AircraftWithRegistration
+import nl.part66l.logbook.data.SettingsRepository
 
 @HiltViewModel
 class AircraftListViewModel @Inject constructor(
-    aircraftRepository: AircraftRepository,
+    private val aircraftRepository: AircraftRepository,
+    settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     // Eagerly, not WhileSubscribed: this is a small table for a single-user app,
     // and always-fresh state is simpler to reason about (and to test) than a
     // sharing policy tied to UI subscriber lifecycle for negligible resource gain.
-    val aircraft: StateFlow<List<AircraftEntity>> = aircraftRepository.all()
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val aircraft: StateFlow<List<AircraftWithRegistration>> = settingsRepository.showArchivedAircraft
+        .flatMapLatest { includeArchived -> aircraftRepository.observeAllWithRegistration(includeArchived) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Persists a full manual re-ordering, top to bottom. */
+    fun reorder(orderedIds: List<String>) {
+        viewModelScope.launch { aircraftRepository.reorder(orderedIds) }
+    }
 }

@@ -31,7 +31,14 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, "part66log.db").build()
+        Room.databaseBuilder(context, AppDatabase::class.java, "part66log.db")
+            // No Migration path exists yet — the schema is still moving during initial
+            // development and nothing has shipped. Recreating the DB on a schema change
+            // is correct for now; this must be replaced with real Migrations (schemas/
+            // are already exported for exactly that) before this app ever holds real CRS
+            // records that can't be regenerated.
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
 
     @Provides fun provideWorkEntryDao(db: AppDatabase): WorkEntryDao = db.workEntries()
     @Provides fun provideRecencyDao(db: AppDatabase): RecencyDao = db.recency()

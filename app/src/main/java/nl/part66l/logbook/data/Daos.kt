@@ -269,10 +269,14 @@ interface CrsDao {
 @Dao
 interface AircraftDao {
     @Insert suspend fun insert(aircraft: AircraftEntity)
+    @Update suspend fun update(aircraft: AircraftEntity)
     @Insert suspend fun insertRegistration(reg: AircraftRegistrationEntity)
 
     @Query("SELECT * FROM aircraft WHERE manufacturer = :manufacturer AND serialNumber = :serial")
     suspend fun bySerial(manufacturer: String, serial: String): AircraftEntity?
+
+    @Query("SELECT * FROM aircraft WHERE id = :id")
+    suspend fun byId(id: String): AircraftEntity?
 
     /** Registration as it stood on a given date — so old certificates print correctly. */
     @Query("""
@@ -284,8 +288,40 @@ interface AircraftDao {
     """)
     suspend fun registrationOn(aircraftId: String, on: LocalDate): String?
 
-    @Query("SELECT * FROM aircraft ORDER BY type")
-    fun all(): Flow<List<AircraftEntity>>
+    /** The current (validTo IS NULL) registration row — the one an edit needs to close out on a re-registration. */
+    @Query("SELECT * FROM aircraft_registration WHERE aircraftId = :aircraftId AND validTo IS NULL LIMIT 1")
+    suspend fun currentRegistrationRow(aircraftId: String): AircraftRegistrationEntity?
+
+    @Query("UPDATE aircraft_registration SET validTo = :validTo WHERE id = :id")
+    suspend fun closeRegistration(id: String, validTo: LocalDate)
+
+    @Query("SELECT * FROM aircraft WHERE archived = 0 OR :includeArchived = 1 ORDER BY sortOrder")
+    fun observeAll(includeArchived: Boolean): Flow<List<AircraftEntity>>
+
+    @Transaction
+    @Query("""
+        SELECT aircraft.*, ar.registration AS registration
+        FROM aircraft
+        LEFT JOIN aircraft_registration ar ON ar.aircraftId = aircraft.id AND ar.validTo IS NULL
+        WHERE aircraft.archived = 0 OR :includeArchived = 1
+        ORDER BY aircraft.sortOrder
+    """)
+    fun observeAllWithRegistration(includeArchived: Boolean): Flow<List<AircraftWithRegistration>>
+
+    @Query("UPDATE aircraft SET sortOrder = :sortOrder WHERE id = :id")
+    suspend fun updateSortOrder(id: String, sortOrder: Int)
+
+    @Query("UPDATE aircraft SET archived = :archived WHERE id = :id")
+    suspend fun setArchived(id: String, archived: Boolean)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM work_entry WHERE aircraftId = :aircraftId)")
+    suspend fun hasWorkHistory(aircraftId: String): Boolean
+
+    @Query("DELETE FROM aircraft WHERE id = :id")
+    suspend fun delete(id: String)
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) FROM aircraft")
+    suspend fun maxSortOrder(): Int
 }
 
 @Dao

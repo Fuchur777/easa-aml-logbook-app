@@ -21,6 +21,16 @@ sealed interface Destination {
         override val route = "aircraft/new"
     }
 
+    /** Edits an existing aircraft. [aircraftId] builds the concrete route; [ROUTE_PATTERN] registers it with NavHost. */
+    data class AircraftEdit(val aircraftId: String) : Destination {
+        override val route = "aircraft/edit/$aircraftId"
+
+        companion object {
+            const val ARG_AIRCRAFT_ID = "aircraftId"
+            const val ROUTE_PATTERN = "aircraft/edit/{$ARG_AIRCRAFT_ID}"
+        }
+    }
+
     data object Recency : Destination {
         override val route = "recency"
     }
@@ -28,5 +38,10 @@ sealed interface Destination {
     /** Reached from the top bar on any bottom-nav screen — edits the existing profile. */
     data object Profile : Destination {
         override val route = "profile"
+    }
+
+    /** Reached from the top bar on any bottom-nav screen. */
+    data object Settings : Destination {
+        override val route = "settings"
     }
 }

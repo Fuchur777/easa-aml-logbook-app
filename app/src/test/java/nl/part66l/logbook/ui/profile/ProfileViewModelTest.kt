@@ -1,5 +1,6 @@
 package nl.part66l.logbook.ui.profile
 
+import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -83,5 +84,84 @@ class ProfileViewModelTest {
 
         assertEquals("Existing Pilot", viewModel.state.value.name)
         assertTrue(viewModel.state.value.holdsL2)
+    }
+
+    @Test
+    fun `saved reduction authority always mirrors the licence issuing authority, never asked separately`() {
+        val repository = FakeProfileRepository()
+        val viewModel = ProfileViewModel(repository)
+        viewModel.onNameChange("F. Example")
+        viewModel.onSubcategoryToggle(Subcategory.L1, true)
+        viewModel.onIssuingAuthorityChange("ILT")
+        viewModel.onRecencyReductionGrantedChange(true)
+        viewModel.onRecencyReductionReferenceChange("REF-123")
+
+        viewModel.save()
+
+        val stored = runBlocking { repository.get() }
+        assertEquals("ILT", stored?.recencyReductionAuthority)
+    }
+
+    @Test
+    fun `isDirty is false until a field changes, and false again after saving`() {
+        val viewModel = ProfileViewModel(FakeProfileRepository())
+        assertFalse(viewModel.isDirty())
+
+        viewModel.onNameChange("F. Example")
+        assertTrue(viewModel.isDirty())
+
+        viewModel.onSubcategoryToggle(Subcategory.L1, true)
+        viewModel.save()
+        assertFalse(viewModel.isDirty())
+    }
+
+    @Test
+    fun `isDirty compares against the loaded profile, not a blank form`() {
+        val existing = ProfileEntity(
+            name = "Existing Pilot", licenceNumber = "NL.66.99999",
+            issuingAuthority = "ILT", licenceExpiry = null, holdsL2 = true,
+        )
+        val viewModel = ProfileViewModel(FakeProfileRepository(existing))
+
+        assertFalse(viewModel.isDirty())
+
+        viewModel.onNameChange("Existing Pilot") // re-typing the same value
+        assertFalse(viewModel.isDirty())
+
+        viewModel.onNameChange("Changed Name")
+        assertTrue(viewModel.isDirty())
+    }
+
+    @Test
+    fun `canSave is false when valid-from is after valid-till`() {
+        val viewModel = ProfileViewModel(FakeProfileRepository())
+        viewModel.onNameChange("F. Example")
+        viewModel.onSubcategoryToggle(Subcategory.L1, true)
+
+        viewModel.onLicenceValidFromChange(LocalDate.of(2026, 12, 31))
+        viewModel.onLicenceExpiryChange(LocalDate.of(2026, 1, 1))
+
+        assertFalse(viewModel.state.value.canSave)
+        assertEquals("Valid from must not be after valid till", viewModel.state.value.licenceDatesError)
+    }
+
+    @Test
+    fun `save persists phone, email and licence dates`() {
+        val repository = FakeProfileRepository()
+        val viewModel = ProfileViewModel(repository)
+        viewModel.onNameChange("F. Example")
+        viewModel.onSubcategoryToggle(Subcategory.L1, true)
+        viewModel.onPhoneNumberChange("+31 6 12345678")
+        viewModel.onEmailChange("frank@example.com")
+        viewModel.onLicenceValidFromChange(LocalDate.of(2026, 1, 1))
+        viewModel.onLicenceExpiryChange(LocalDate.of(2031, 1, 1))
+
+        viewModel.save()
+
+        val stored = runBlocking { repository.get() }
+        assertEquals("+31 6 12345678", stored?.phoneNumber)
+        assertEquals("frank@example.com", stored?.email)
+        assertEquals(LocalDate.of(2026, 1, 1), stored?.licenceValidFrom)
+        assertEquals(LocalDate.of(2031, 1, 1), stored?.licenceExpiry)
     }
 }

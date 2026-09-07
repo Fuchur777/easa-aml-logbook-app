@@ -61,7 +61,7 @@ class RecencyRepositoryImpl @Inject constructor(
         )
 
         val windowStart = today.minusMonths(windowMonths)
-        val aircraftSubcategory = aircraftDao.all().first().associate { aircraft ->
+        val aircraftSubcategory = aircraftDao.observeAll(includeArchived = true).first().associate { aircraft ->
             aircraft.id to (aircraft.subcategoryOverride
                 ?: SubcategoryResolver.resolve(aircraft.propulsion, aircraft.structure))
         }

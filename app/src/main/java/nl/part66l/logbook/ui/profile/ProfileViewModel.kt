@@ -24,18 +24,30 @@ class ProfileViewModel @Inject constructor(
     private val _state = MutableStateFlow(ProfileFormState())
     val state: StateFlow<ProfileFormState> = _state.asStateFlow()
 
+    /** Baseline to detect unsaved changes against — updated to match [_state] right after load and right after every save. */
+    private var initialState: ProfileFormState = _state.value
+
     private val _saved = MutableSharedFlow<Unit>()
     val saved: SharedFlow<Unit> = _saved.asSharedFlow()
 
     init {
         viewModelScope.launch {
-            profileRepository.get()?.let { existing -> _state.value = existing.toFormState() }
+            profileRepository.get()?.let { existing ->
+                _state.value = existing.toFormState()
+                initialState = _state.value
+            }
         }
     }
 
+    /** Whether the form differs from what's saved — gates the unsaved-changes prompt on close/back. */
+    fun isDirty(): Boolean = _state.value.copy(saving = false) != initialState.copy(saving = false)
+
     fun onNameChange(value: String) = _state.update { it.copy(name = value) }
+    fun onPhoneNumberChange(value: String) = _state.update { it.copy(phoneNumber = value) }
+    fun onEmailChange(value: String) = _state.update { it.copy(email = value) }
     fun onLicenceNumberChange(value: String) = _state.update { it.copy(licenceNumber = value) }
     fun onIssuingAuthorityChange(value: String) = _state.update { it.copy(issuingAuthority = value) }
+    fun onLicenceValidFromChange(value: LocalDate?) = _state.update { it.copy(licenceValidFrom = value) }
     fun onLicenceExpiryChange(value: LocalDate?) = _state.update { it.copy(licenceExpiry = value) }
 
     fun onSubcategoryToggle(subcategory: Subcategory, checked: Boolean) = _state.update {
@@ -48,7 +60,6 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun onRecencyReductionGrantedChange(value: Boolean) = _state.update { it.copy(recencyReductionGranted = value) }
-    fun onRecencyReductionAuthorityChange(value: String) = _state.update { it.copy(recencyReductionAuthority = value) }
     fun onRecencyReductionReferenceChange(value: String) = _state.update { it.copy(recencyReductionReference = value) }
 
     fun save() {
@@ -58,6 +69,7 @@ class ProfileViewModel @Inject constructor(
             _state.update { it.copy(saving = true) }
             profileRepository.upsert(current.toEntity())
             _state.update { it.copy(saving = false) }
+            initialState = _state.value
             _saved.emit(Unit)
         }
     }

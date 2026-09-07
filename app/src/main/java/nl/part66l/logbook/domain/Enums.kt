@@ -17,7 +17,7 @@ enum class Subcategory { L1, L1C, L2, L2C }
  */
 enum class Propulsion { UNPOWERED, POWERED_SAILPLANE, ELA1 }
 
-enum class Structure { WOOD_AND_FABRIC, METAL_TUBE_AND_FABRIC, COMPOSITE, METAL, MIXED }
+enum class Structure { COMPOSITE, METAL, WOOD_AND_FABRIC, MIXED }
 
 /**
  * Activities considered relevant for maintenance experience, enumerated in

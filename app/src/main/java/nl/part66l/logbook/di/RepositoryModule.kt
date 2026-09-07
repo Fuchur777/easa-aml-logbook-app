@@ -12,6 +12,8 @@ import nl.part66l.logbook.data.ProfileRepository
 import nl.part66l.logbook.data.ProfileRepositoryImpl
 import nl.part66l.logbook.data.RecencyRepository
 import nl.part66l.logbook.data.RecencyRepositoryImpl
+import nl.part66l.logbook.data.SettingsRepository
+import nl.part66l.logbook.data.SettingsRepositoryImpl
 import nl.part66l.logbook.data.WorkEntryRepository
 import nl.part66l.logbook.data.WorkEntryRepositoryImpl
 
@@ -33,4 +35,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindWorkEntryRepository(impl: WorkEntryRepositoryImpl): WorkEntryRepository
+
+    @Binds
+    abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
 }

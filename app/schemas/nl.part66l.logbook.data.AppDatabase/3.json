@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 1,
-    "identityHash": "7e7950bc0303ab08589c6fe8586f0ac2",
+    "version": 3,
+    "identityHash": "7ca38afc85cc1061506fd2eeea9bcf0f",
     "entities": [
       {
         "tableName": "aircraft",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `manufacturer` TEXT NOT NULL, `type` TEXT NOT NULL, `serialNumber` TEXT NOT NULL, `propulsion` TEXT NOT NULL, `structure` TEXT NOT NULL, `subcategoryOverride` TEXT, `ownershipRelation` TEXT NOT NULL, `notes` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `manufacturer` TEXT NOT NULL, `type` TEXT NOT NULL, `serialNumber` TEXT NOT NULL, `propulsion` TEXT NOT NULL, `structure` TEXT NOT NULL, `subcategoryOverride` TEXT, `ownershipRelation` TEXT NOT NULL, `notes` TEXT, `archived` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -59,6 +59,18 @@
             "fieldPath": "notes",
             "columnName": "notes",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "archived",
+            "columnName": "archived",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -1392,7 +1404,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7e7950bc0303ab08589c6fe8586f0ac2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7ca38afc85cc1061506fd2eeea9bcf0f')"
     ]
   }
 }

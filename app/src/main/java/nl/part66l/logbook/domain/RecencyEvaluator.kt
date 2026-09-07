@@ -288,7 +288,6 @@ object SubcategoryResolver {
         return when (structure) {
             Structure.COMPOSITE -> if (powered) Subcategory.L2C else Subcategory.L1C
             Structure.WOOD_AND_FABRIC,
-            Structure.METAL_TUBE_AND_FABRIC,
             Structure.METAL -> if (powered) Subcategory.L2 else Subcategory.L1
             Structure.MIXED -> null
         }

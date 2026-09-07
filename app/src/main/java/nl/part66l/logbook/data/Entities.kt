@@ -30,6 +30,9 @@ data class AircraftEntity(
     val subcategoryOverride: Subcategory? = null,
     val ownershipRelation: OwnershipRelation = OwnershipRelation.NONE,
     val notes: String? = null,
+    val archived: Boolean = false,
+    /** Manual display order in the aircraft list — lower shows first. Renumbered as a whole on every drag reorder. */
+    val sortOrder: Int = 0,
 )
 
 /** Registration is a dated attribute, so an old CRS still prints what it said at the time. */
@@ -51,6 +54,12 @@ data class AircraftRegistrationEntity(
     val registrationNormalised: String,
     val validFrom: LocalDate,
     val validTo: LocalDate?,
+)
+
+/** An aircraft plus its current (validTo IS NULL) registration, if any — what the list screen actually needs to render a row. */
+data class AircraftWithRegistration(
+    @Embedded val aircraft: AircraftEntity,
+    val registration: String?,
 )
 
 // ---------------------------------------------------------------------------
@@ -355,8 +364,11 @@ data class TaskCompletionEntity(
 data class ProfileEntity(
     @PrimaryKey val id: String = "self",
     val name: String,
+    val phoneNumber: String? = null,
+    val email: String? = null,
     val licenceNumber: String?,
     val issuingAuthority: String?,
+    val licenceValidFrom: LocalDate? = null,
     val licenceExpiry: LocalDate?,
     val holdsL1: Boolean = false,
     val holdsL1C: Boolean = false,
