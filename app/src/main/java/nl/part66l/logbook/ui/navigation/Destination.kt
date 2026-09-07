@@ -17,6 +17,10 @@ sealed interface Destination {
         override val route = "aircraft"
     }
 
+    data object AircraftForm : Destination {
+        override val route = "aircraft/new"
+    }
+
     data object Recency : Destination {
         override val route = "recency"
     }

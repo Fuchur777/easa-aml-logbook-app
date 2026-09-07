@@ -17,6 +17,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import nl.part66l.logbook.ui.aircraft.AircraftFormScreen
+import nl.part66l.logbook.ui.aircraft.AircraftListScreen
 import nl.part66l.logbook.ui.navigation.Destination
 import nl.part66l.logbook.ui.profile.ProfileFormScreen
 
@@ -43,7 +45,8 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination
-    val showBottomBar = currentRoute?.hierarchy?.none { it.route == Destination.ProfileSetup.route } ?: false
+    val noBottomBarRoutes = setOf(Destination.ProfileSetup.route, Destination.AircraftForm.route)
+    val showBottomBar = currentRoute?.hierarchy?.none { it.route in noBottomBarRoutes } ?: false
 
     Scaffold(
         bottomBar = {
@@ -77,7 +80,15 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
             }
             val onProfileClick = { navController.navigate(Destination.Profile.route) }
             composable(Destination.WorkEntries.route) { PlaceholderScreen("Work entries", onProfileClick) }
-            composable(Destination.Aircraft.route) { PlaceholderScreen("Aircraft", onProfileClick) }
+            composable(Destination.Aircraft.route) {
+                AircraftListScreen(
+                    onProfileClick = onProfileClick,
+                    onAddAircraft = { navController.navigate(Destination.AircraftForm.route) },
+                )
+            }
+            composable(Destination.AircraftForm.route) {
+                AircraftFormScreen(onSaved = { navController.popBackStack() })
+            }
             composable(Destination.Recency.route) { PlaceholderScreen("Recency", onProfileClick) }
             composable(Destination.Profile.route) {
                 ProfileFormScreen(onSaved = { navController.popBackStack() })
