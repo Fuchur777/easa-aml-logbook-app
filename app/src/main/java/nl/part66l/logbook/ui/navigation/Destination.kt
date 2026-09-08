@@ -17,6 +17,16 @@ sealed interface Destination {
         override val route = "work-entries/new"
     }
 
+    /** Edits an existing work entry. [entryId] builds the concrete route; [ROUTE_PATTERN] registers it with NavHost. */
+    data class WorkEntryEdit(val entryId: String) : Destination {
+        override val route = "work-entries/edit/$entryId"
+
+        companion object {
+            const val ARG_ENTRY_ID = "entryId"
+            const val ROUTE_PATTERN = "work-entries/edit/{$ARG_ENTRY_ID}"
+        }
+    }
+
     data object Aircraft : Destination {
         override val route = "aircraft"
     }

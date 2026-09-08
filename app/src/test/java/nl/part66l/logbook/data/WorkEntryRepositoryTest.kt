@@ -40,7 +40,7 @@ class WorkEntryRepositoryTest {
             .allowMainThreadQueries()
             .build()
         repository = WorkEntryRepositoryImpl(
-            db.workEntries(), db.workSessions(), db.entryHelpers(), PersonRepositoryImpl(db.people()),
+            db.workEntries(), db.workSessions(), db.entryHelpers(), PersonRepositoryImpl(db.people()), db.people(),
             db.catalogue(), db.taskCompletions(), db.documentationRefs(), db.partsUsed(),
         )
     }
@@ -188,6 +188,124 @@ class WorkEntryRepositoryTest {
         val people = db.people().all().first()
         assertEquals(1, people.size)
         assertEquals("Piet Bakker", people.first().name) // but the name is now in the directory for reuse
+    }
+
+    @Test
+    fun `forEdit reassembles everything create wrote, including child rows`() = runBlocking {
+        val id = repository.create(
+            aircraftId = null,
+            description = "Annual inspection",
+            activityTypes = setOf(ActivityType.INSPECTION, ActivityType.SERVICING),
+            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
+            supervisedAnother = true,
+            sessionDate = LocalDate.of(2026, 1, 15),
+            helperNames = listOf("Jan de Vries"),
+            workorderIssuerName = "Piet Bakker",
+            workorderReference = "WO-2026-001",
+            annualInspection = true,
+            concurrentWithArc = true,
+            documentationRefs = listOf(DocumentationRefInput("AMM 12-34", "Rev 5")),
+            partsUsed = listOf(PartUsedInput("PN-001", batchOrSerial = "SN-9")),
+        )
+
+        val edit = repository.forEdit(id)!!
+        assertEquals("Annual inspection", edit.description)
+        assertEquals(setOf(ActivityType.INSPECTION, ActivityType.SERVICING), edit.activityTypes)
+        assertTrue(edit.supervisedAnother)
+        assertEquals(LocalDate.of(2026, 1, 15), edit.sessionDate)
+        assertEquals(listOf("Jan de Vries"), edit.helperNames)
+        assertEquals("Piet Bakker", edit.workorderIssuerName)
+        assertEquals("WO-2026-001", edit.workorderReference)
+        assertTrue(edit.annualInspection)
+        assertTrue(edit.concurrentWithArc)
+        assertEquals(listOf(DocumentationRefInput("AMM 12-34", "Rev 5")), edit.documentationRefs)
+        assertEquals(listOf(PartUsedInput("PN-001", batchOrSerial = "SN-9")), edit.partsUsed)
+    }
+
+    @Test
+    fun `forEdit returns null for an unknown id`() = runBlocking {
+        assertEquals(null, repository.forEdit("does-not-exist"))
+    }
+
+    @Test
+    fun `update replaces the entry's fields, session date, and every child row`() = runBlocking {
+        val id = repository.create(
+            aircraftId = null,
+            description = "Bench work",
+            activityTypes = setOf(ActivityType.SERVICING),
+            role = EntryRole.NO_RELEASE,
+            supervisedAnother = false,
+            sessionDate = LocalDate.of(2026, 1, 15),
+            helperNames = listOf("Jan de Vries"),
+            documentationRefs = listOf(DocumentationRefInput("Old doc")),
+            partsUsed = listOf(PartUsedInput("OLD-PN")),
+        )
+
+        repository.update(
+            id = id,
+            aircraftId = null,
+            description = "Bench work, corrected",
+            activityTypes = setOf(ActivityType.REPAIRING),
+            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
+            supervisedAnother = false,
+            sessionDate = LocalDate.of(2026, 2, 1),
+            helperNames = emptyList(),
+            documentationRefs = listOf(DocumentationRefInput("New doc")),
+            partsUsed = listOf(PartUsedInput("NEW-PN")),
+        )
+
+        val entry = db.workEntries().byId(id)!!
+        assertEquals("Bench work, corrected", entry.description)
+        assertEquals(EntryRole.CERTIFIED_BY_ME_IN_APP, entry.role)
+
+        val sessions = db.workSessions().forEntry(id)
+        assertEquals(1, sessions.size) // replaced, not appended
+        assertEquals(LocalDate.of(2026, 2, 1), sessions.first().date)
+
+        assertEquals(setOf(ActivityType.REPAIRING), db.workEntries().activityTypesForEntry(id).map { it.activityType }.toSet())
+        assertTrue(db.entryHelpers().forEntry(id).isEmpty())
+
+        val docs = db.documentationRefs().forEntry(id)
+        assertEquals(1, docs.size)
+        assertEquals("New doc", docs.first().reference)
+
+        val parts = db.partsUsed().forEntry(id)
+        assertEquals(1, parts.size)
+        assertEquals("NEW-PN", parts.first().partNumber)
+    }
+
+    @Test
+    fun `update is a no-op for an unknown id`() = runBlocking {
+        repository.update(
+            id = "does-not-exist",
+            aircraftId = null,
+            description = "Should not be stored",
+            activityTypes = setOf(ActivityType.SERVICING),
+            role = EntryRole.NO_RELEASE,
+            supervisedAnother = false,
+            sessionDate = LocalDate.of(2026, 1, 1),
+        )
+
+        assertEquals(null, db.workEntries().byId("does-not-exist"))
+    }
+
+    @Test
+    fun `delete removes the entry and cascades to its child rows`() = runBlocking {
+        val id = repository.create(
+            aircraftId = null,
+            description = "Bench work",
+            activityTypes = setOf(ActivityType.SERVICING),
+            role = EntryRole.NO_RELEASE,
+            supervisedAnother = false,
+            sessionDate = LocalDate.of(2026, 1, 15),
+            helperNames = listOf("Jan de Vries"),
+        )
+
+        repository.delete(id)
+
+        assertEquals(null, db.workEntries().byId(id))
+        assertTrue(db.workSessions().forEntry(id).isEmpty())
+        assertTrue(db.entryHelpers().forEntry(id).isEmpty())
     }
 
     @Test

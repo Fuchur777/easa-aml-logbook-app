@@ -65,6 +65,7 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
         Destination.Profile.route,
         Destination.Settings.route,
         Destination.WorkEntryForm.route,
+        Destination.WorkEntryEdit.ROUTE_PATTERN,
         Destination.Documents.route,
         Destination.DocumentForm.route,
         Destination.DocumentEdit.ROUTE_PATTERN,
@@ -125,11 +126,25 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                 })
             }
             composable(Destination.WorkEntries.route) {
-                WorkEntryListScreen(onAddEntry = { navController.navigate(Destination.WorkEntryForm.route) })
+                WorkEntryListScreen(
+                    onAddEntry = { navController.navigate(Destination.WorkEntryForm.route) },
+                    onEditEntry = { id -> navController.navigate(Destination.WorkEntryEdit(id).route) },
+                )
             }
             composable(Destination.WorkEntryForm.route) {
                 WorkEntryFormScreen(
                     onSaved = { navController.popBackStack() },
+                    onDeleted = { navController.popBackStack() },
+                    onClose = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = Destination.WorkEntryEdit.ROUTE_PATTERN,
+                arguments = listOf(navArgument(Destination.WorkEntryEdit.ARG_ENTRY_ID) { type = NavType.StringType }),
+            ) {
+                WorkEntryFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onDeleted = { navController.popBackStack() },
                     onClose = { navController.popBackStack() },
                 )
             }

@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.util.UUID
 import nl.part66l.logbook.data.DocumentationRefInput
 import nl.part66l.logbook.data.PartUsedInput
+import nl.part66l.logbook.data.WorkEntryEditData
 import nl.part66l.logbook.data.WorkEntryEntity
 import nl.part66l.logbook.data.WorkEntryListRow
 import nl.part66l.logbook.data.WorkEntryRepository
@@ -16,6 +17,7 @@ import nl.part66l.logbook.domain.Provenance
 data class CreatedWorkEntry(
     val entry: WorkEntryEntity,
     val activityTypes: Set<ActivityType>,
+    val sessionDate: LocalDate,
     val helperNames: List<String>,
     val completedTaskIds: Set<String>,
     val documentationRefs: List<DocumentationRefInput>,
@@ -31,7 +33,16 @@ data class CreatedWorkEntry(
  * covered against real Room in WorkEntryRepositoryTest instead).
  */
 class FakeWorkEntryRepository : WorkEntryRepository {
+    /** Every create() call, in order — kept even after a later update()/delete() touches the same id. */
     val created = mutableListOf<CreatedWorkEntry>()
+
+    /** Every update() call, in order. */
+    val updated = mutableListOf<CreatedWorkEntry>()
+
+    val deletedIds = mutableListOf<String>()
+
+    /** Current state per entry — what [forEdit] reads from. Seed directly for a test that starts already-editing. */
+    val entries = mutableMapOf<String, CreatedWorkEntry>()
 
     override fun pagedAll(): PagingSource<Int, WorkEntryEntity> =
         throw UnsupportedOperationException("not faked — no ViewModel test needs this")
@@ -48,6 +59,30 @@ class FakeWorkEntryRepository : WorkEntryRepository {
 
     override fun pagedAllWithDetails(): PagingSource<Int, WorkEntryListRow> =
         throw UnsupportedOperationException("not faked — no ViewModel test needs this")
+
+    override suspend fun forEdit(id: String): WorkEntryEditData? {
+        val e = entries[id] ?: return null
+        return WorkEntryEditData(
+            aircraftId = e.entry.aircraftId,
+            description = e.entry.description,
+            activityTypes = e.activityTypes,
+            role = e.entry.role,
+            supervisedAnother = e.entry.supervisedAnother,
+            sessionDate = e.sessionDate,
+            helperNames = e.helperNames,
+            completedTaskIds = e.completedTaskIds,
+            airframeHoursAtWork = e.entry.airframeHoursAtWork,
+            launchesAtWork = e.entry.launchesAtWork,
+            workorderIssuerName = e.entry.workorderIssuerName,
+            workorderDate = e.entry.workorderDate,
+            workorderRequestedWork = e.entry.workorderRequestedWork,
+            workorderReference = e.entry.workorderReference,
+            annualInspection = e.entry.annualInspection,
+            concurrentWithArc = e.entry.concurrentWithArc,
+            documentationRefs = e.documentationRefs,
+            partsUsed = e.partsUsed,
+        )
+    }
 
     override suspend fun create(
         aircraftId: String?,
@@ -70,7 +105,7 @@ class FakeWorkEntryRepository : WorkEntryRepository {
         partsUsed: List<PartUsedInput>,
     ): String {
         val id = UUID.randomUUID().toString()
-        created += CreatedWorkEntry(
+        val entry = CreatedWorkEntry(
             entry = WorkEntryEntity(
                 id = id, aircraftId = aircraftId, description = description, role = role,
                 supervisedAnother = supervisedAnother,
@@ -81,11 +116,60 @@ class FakeWorkEntryRepository : WorkEntryRepository {
                 createdAt = Instant.now(), updatedAt = Instant.now(),
             ),
             activityTypes = activityTypes,
+            sessionDate = sessionDate,
             helperNames = helperNames,
             completedTaskIds = completedTaskIds,
             documentationRefs = documentationRefs,
             partsUsed = partsUsed,
         )
+        created += entry
+        entries[id] = entry
         return id
+    }
+
+    override suspend fun update(
+        id: String,
+        aircraftId: String?,
+        description: String,
+        activityTypes: Set<ActivityType>,
+        role: EntryRole,
+        supervisedAnother: Boolean,
+        sessionDate: LocalDate,
+        helperNames: List<String>,
+        completedTaskIds: Set<String>,
+        airframeHoursAtWork: Double?,
+        launchesAtWork: Int?,
+        workorderIssuerName: String?,
+        workorderDate: LocalDate?,
+        workorderRequestedWork: String?,
+        workorderReference: String?,
+        annualInspection: Boolean,
+        concurrentWithArc: Boolean,
+        documentationRefs: List<DocumentationRefInput>,
+        partsUsed: List<PartUsedInput>,
+    ) {
+        val existing = entries[id] ?: return
+        val updatedEntry = existing.copy(
+            entry = existing.entry.copy(
+                aircraftId = aircraftId, description = description, role = role, supervisedAnother = supervisedAnother,
+                airframeHoursAtWork = airframeHoursAtWork, launchesAtWork = launchesAtWork,
+                workorderIssuerName = workorderIssuerName, workorderDate = workorderDate,
+                workorderRequestedWork = workorderRequestedWork, workorderReference = workorderReference,
+                annualInspection = annualInspection, concurrentWithArc = concurrentWithArc,
+            ),
+            activityTypes = activityTypes,
+            sessionDate = sessionDate,
+            helperNames = helperNames,
+            completedTaskIds = completedTaskIds,
+            documentationRefs = documentationRefs,
+            partsUsed = partsUsed,
+        )
+        updated += updatedEntry
+        entries[id] = updatedEntry
+    }
+
+    override suspend fun delete(id: String) {
+        deletedIds += id
+        entries.remove(id)
     }
 }

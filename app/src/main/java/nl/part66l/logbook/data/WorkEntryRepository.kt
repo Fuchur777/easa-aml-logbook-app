@@ -23,6 +23,28 @@ data class PartUsedInput(
     val quantity: String? = null,
 )
 
+/** Everything the edit form needs to repopulate itself — the mirror image of [WorkEntryRepository.create]'s parameters. */
+data class WorkEntryEditData(
+    val aircraftId: String?,
+    val description: String,
+    val activityTypes: Set<ActivityType>,
+    val role: EntryRole,
+    val supervisedAnother: Boolean,
+    val sessionDate: LocalDate,
+    val helperNames: List<String>,
+    val completedTaskIds: Set<String>,
+    val airframeHoursAtWork: Double?,
+    val launchesAtWork: Int?,
+    val workorderIssuerName: String?,
+    val workorderDate: LocalDate?,
+    val workorderRequestedWork: String?,
+    val workorderReference: String?,
+    val annualInspection: Boolean,
+    val concurrentWithArc: Boolean,
+    val documentationRefs: List<DocumentationRefInput>,
+    val partsUsed: List<PartUsedInput>,
+)
+
 interface WorkEntryRepository {
     fun pagedAll(): PagingSource<Int, WorkEntryEntity>
 
@@ -37,6 +59,9 @@ interface WorkEntryRepository {
 
     /** What the list screen renders — each entry with its latest session date, current aircraft registration, and activity types. */
     fun pagedAllWithDetails(): PagingSource<Int, WorkEntryListRow>
+
+    /** Reassembles an entry and its child rows for the edit form. Null if the entry no longer exists. */
+    suspend fun forEdit(id: String): WorkEntryEditData?
 
     /**
      * Creates an entry and its first work session together — a session-less entry can
@@ -69,6 +94,37 @@ interface WorkEntryRepository {
         documentationRefs: List<DocumentationRefInput> = emptyList(),
         partsUsed: List<PartUsedInput> = emptyList(),
     ): String
+
+    /**
+     * Replaces the entry's own fields and every child row (session, activity types, helpers,
+     * task completions, documentation, parts) with what's given — a full-form save, not a
+     * diff. A removed task completion is genuinely gone (the user is saying it wasn't done
+     * after all); a kept one is re-snapshotted as of the edit, same as a fresh completion.
+     */
+    suspend fun update(
+        id: String,
+        aircraftId: String?,
+        description: String,
+        activityTypes: Set<ActivityType>,
+        role: EntryRole,
+        supervisedAnother: Boolean,
+        sessionDate: LocalDate,
+        helperNames: List<String> = emptyList(),
+        completedTaskIds: Set<String> = emptySet(),
+        airframeHoursAtWork: Double? = null,
+        launchesAtWork: Int? = null,
+        workorderIssuerName: String? = null,
+        workorderDate: LocalDate? = null,
+        workorderRequestedWork: String? = null,
+        workorderReference: String? = null,
+        annualInspection: Boolean = false,
+        concurrentWithArc: Boolean = false,
+        documentationRefs: List<DocumentationRefInput> = emptyList(),
+        partsUsed: List<PartUsedInput> = emptyList(),
+    )
+
+    /** Cascades to every child row. The database itself refuses this once a CRS has been signed against the entry (FK RESTRICT) — there's no UI path to that state yet. */
+    suspend fun delete(id: String)
 }
 
 @Singleton
@@ -77,6 +133,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
     private val workSessionDao: WorkSessionDao,
     private val entryHelperDao: EntryHelperDao,
     private val personRepository: PersonRepository,
+    private val personDao: PersonDao,
     private val catalogueDao: CatalogueDao,
     private val taskCompletionDao: TaskCompletionDao,
     private val documentationRefDao: DocumentationRefDao,
@@ -96,6 +153,38 @@ class WorkEntryRepositoryImpl @Inject constructor(
         workEntryDao.filtered(aircraftId, role, annualOnly, provenance, from, to)
 
     override fun pagedAllWithDetails(): PagingSource<Int, WorkEntryListRow> = workEntryDao.pagedAllWithDetails()
+
+    override suspend fun forEdit(id: String): WorkEntryEditData? {
+        val entry = workEntryDao.byId(id) ?: return null
+        val activityTypes = workEntryDao.activityTypesForEntry(id).map { it.activityType }.toSet()
+        val session = workSessionDao.forEntry(id).firstOrNull()
+        val helperNames = entryHelperDao.forEntry(id).mapNotNull { personDao.byId(it.personId)?.name }
+        val completedTaskIds = taskCompletionDao.forEntry(id).map { it.taskId }.toSet()
+        val documentationRefs = documentationRefDao.forEntry(id).map { DocumentationRefInput(it.reference, it.revision) }
+        val partsUsed = partUsedDao.forEntry(id).map {
+            PartUsedInput(it.partNumber, it.description, it.batchOrSerial, it.formOneRef, it.quantity)
+        }
+        return WorkEntryEditData(
+            aircraftId = entry.aircraftId,
+            description = entry.description,
+            activityTypes = activityTypes,
+            role = entry.role,
+            supervisedAnother = entry.supervisedAnother,
+            sessionDate = session?.date ?: LocalDate.now(),
+            helperNames = helperNames,
+            completedTaskIds = completedTaskIds,
+            airframeHoursAtWork = entry.airframeHoursAtWork,
+            launchesAtWork = entry.launchesAtWork,
+            workorderIssuerName = entry.workorderIssuerName,
+            workorderDate = entry.workorderDate,
+            workorderRequestedWork = entry.workorderRequestedWork,
+            workorderReference = entry.workorderReference,
+            annualInspection = entry.annualInspection,
+            concurrentWithArc = entry.concurrentWithArc,
+            documentationRefs = documentationRefs,
+            partsUsed = partsUsed,
+        )
+    }
 
     override suspend fun create(
         aircraftId: String?,
@@ -139,10 +228,77 @@ class WorkEntryRepositoryImpl @Inject constructor(
                 updatedAt = now,
             ),
         )
-        workEntryDao.insertActivityTypes(activityTypes.map { WorkEntryActivityTypeEntity(entryId, it) })
         workSessionDao.insert(
             WorkSessionEntity(id = UUID.randomUUID().toString(), entryId = entryId, date = sessionDate),
         )
+        insertChildren(entryId, activityTypes, helperNames, workorderIssuerName, completedTaskIds, documentationRefs, partsUsed)
+        return entryId
+    }
+
+    override suspend fun update(
+        id: String,
+        aircraftId: String?,
+        description: String,
+        activityTypes: Set<ActivityType>,
+        role: EntryRole,
+        supervisedAnother: Boolean,
+        sessionDate: LocalDate,
+        helperNames: List<String>,
+        completedTaskIds: Set<String>,
+        airframeHoursAtWork: Double?,
+        launchesAtWork: Int?,
+        workorderIssuerName: String?,
+        workorderDate: LocalDate?,
+        workorderRequestedWork: String?,
+        workorderReference: String?,
+        annualInspection: Boolean,
+        concurrentWithArc: Boolean,
+        documentationRefs: List<DocumentationRefInput>,
+        partsUsed: List<PartUsedInput>,
+    ) {
+        val existing = workEntryDao.byId(id) ?: return
+        workEntryDao.update(
+            existing.copy(
+                aircraftId = aircraftId,
+                description = description,
+                role = role,
+                supervisedAnother = supervisedAnother,
+                airframeHoursAtWork = airframeHoursAtWork,
+                launchesAtWork = launchesAtWork,
+                workorderIssuerName = workorderIssuerName,
+                workorderDate = workorderDate,
+                workorderRequestedWork = workorderRequestedWork,
+                workorderReference = workorderReference,
+                workorderReferenceNormalised = workorderReference?.let { Identifiers.normalise(it) },
+                annualInspection = annualInspection,
+                concurrentWithArc = concurrentWithArc,
+                updatedAt = Instant.now(),
+            ),
+        )
+
+        workSessionDao.deleteForEntry(id)
+        workSessionDao.insert(WorkSessionEntity(id = UUID.randomUUID().toString(), entryId = id, date = sessionDate))
+
+        workEntryDao.deleteActivityTypesForEntry(id)
+        entryHelperDao.deleteForEntry(id)
+        taskCompletionDao.deleteForEntry(id)
+        documentationRefDao.deleteForEntry(id)
+        partUsedDao.deleteForEntry(id)
+        insertChildren(id, activityTypes, helperNames, workorderIssuerName, completedTaskIds, documentationRefs, partsUsed)
+    }
+
+    override suspend fun delete(id: String) = workEntryDao.delete(id)
+
+    private suspend fun insertChildren(
+        entryId: String,
+        activityTypes: Set<ActivityType>,
+        helperNames: List<String>,
+        workorderIssuerName: String?,
+        completedTaskIds: Set<String>,
+        documentationRefs: List<DocumentationRefInput>,
+        partsUsed: List<PartUsedInput>,
+    ) {
+        workEntryDao.insertActivityTypes(activityTypes.map { WorkEntryActivityTypeEntity(entryId, it) })
         helperNames.map { it.trim() }.filter { it.isNotEmpty() }.distinct().forEach { name ->
             val personId = personRepository.findOrCreate(name)
             entryHelperDao.insert(EntryHelperEntity(entryId = entryId, personId = personId, role = HelperRole.ASSISTED))
@@ -185,6 +341,5 @@ class WorkEntryRepositoryImpl @Inject constructor(
                 ),
             )
         }
-        return entryId
     }
 }

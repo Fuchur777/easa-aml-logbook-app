@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
@@ -57,6 +59,7 @@ import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 @Composable
 fun WorkEntryFormScreen(
     onSaved: () -> Unit,
+    onDeleted: () -> Unit,
     onClose: () -> Unit,
     viewModel: WorkEntryFormViewModel = hiltViewModel(),
 ) {
@@ -68,11 +71,15 @@ fun WorkEntryFormScreen(
     val collapsedCatalogueSections by viewModel.collapsedCatalogueSections.collectAsStateWithLifecycle()
     val documentOptions by viewModel.documentOptions.collectAsStateWithLifecycle()
     var showUnsavedDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     var showTaskPicker by remember { mutableStateOf(false) }
     var workorderExpanded by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         viewModel.saved.collect { onSaved() }
+    }
+    LaunchedEffect(Unit) {
+        viewModel.deleted.collect { onDeleted() }
     }
 
     BackHandler(enabled = viewModel.isDirty()) { showUnsavedDialog = true }
@@ -80,7 +87,7 @@ fun WorkEntryFormScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add work entry") },
+                title = { Text(if (state.isEditing) "Edit work entry" else "Add work entry") },
                 navigationIcon = {
                     IconButton(onClick = { if (viewModel.isDirty()) showUnsavedDialog = true else onClose() }) {
                         Text("✕")
@@ -90,6 +97,13 @@ fun WorkEntryFormScreen(
             )
         },
     ) { padding ->
+        if (state.loading) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) { CircularProgressIndicator(modifier = Modifier.padding(top = 32.dp)) }
+            return@Scaffold
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -315,7 +329,35 @@ fun WorkEntryFormScreen(
             ) {
                 Text(if (state.saving) "Saving…" else "Save")
             }
+
+            if (state.isEditing) {
+                OutlinedButton(
+                    onClick = { showDeleteConfirm = true },
+                    enabled = state.canDelete,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (state.deleting) "Deleting…" else "Delete")
+                }
+            }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete this work entry?") },
+            text = { Text("This permanently removes the entry and everything on it — helpers, documentation, parts, task completions. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    viewModel.delete()
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            },
+        )
     }
 
     if (showUnsavedDialog) {

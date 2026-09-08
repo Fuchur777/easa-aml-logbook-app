@@ -1,6 +1,7 @@
 package nl.part66l.logbook.ui.workentry
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +34,7 @@ private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM 
 @Composable
 fun WorkEntryListScreen(
     onAddEntry: () -> Unit,
+    onEditEntry: (String) -> Unit,
     viewModel: WorkEntryListViewModel = hiltViewModel(),
 ) {
     val entries = viewModel.entries.collectAsLazyPagingItems()
@@ -65,6 +67,7 @@ fun WorkEntryListScreen(
                                 } else {
                                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                                 },
+                                onClick = { onEditEntry(row.entry.id) },
                             )
                             HorizontalDivider()
                         }
@@ -76,11 +79,12 @@ fun WorkEntryListScreen(
 }
 
 @Composable
-private fun WorkEntryRow(row: WorkEntryListRow, backgroundColor: Color) {
+private fun WorkEntryRow(row: WorkEntryListRow, backgroundColor: Color, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(backgroundColor)
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Text(

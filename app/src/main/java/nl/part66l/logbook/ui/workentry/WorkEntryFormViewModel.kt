@@ -1,5 +1,6 @@
 package nl.part66l.logbook.ui.workentry
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,9 +31,11 @@ import nl.part66l.logbook.data.WorkEntryRepository
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.DocumentCategory
 import nl.part66l.logbook.domain.EntryRole
+import nl.part66l.logbook.ui.navigation.Destination
 
 @HiltViewModel
 class WorkEntryFormViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val workEntryRepository: WorkEntryRepository,
     aircraftRepository: AircraftRepository,
     personRepository: PersonRepository,
@@ -41,7 +44,9 @@ class WorkEntryFormViewModel @Inject constructor(
     private val documentRepository: DocumentRepository,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(WorkEntryFormState())
+    private val entryId: String? = savedStateHandle[Destination.WorkEntryEdit.ARG_ENTRY_ID]
+
+    private val _state = MutableStateFlow(WorkEntryFormState(entryId = entryId, loading = entryId != null))
     val state: StateFlow<WorkEntryFormState> = _state.asStateFlow()
 
     /** Baseline to detect unsaved changes against — updated right after every save. */
@@ -73,9 +78,46 @@ class WorkEntryFormViewModel @Inject constructor(
     private val _saved = MutableSharedFlow<Unit>()
     val saved: SharedFlow<Unit> = _saved.asSharedFlow()
 
+    private val _deleted = MutableSharedFlow<Unit>()
+    val deleted: SharedFlow<Unit> = _deleted.asSharedFlow()
+
     init {
         viewModelScope.launch {
             _availableTasks.value = catalogueRepository.applicableTasksForProfile()
+        }
+        entryId?.let { id ->
+            viewModelScope.launch {
+                val edit = workEntryRepository.forEdit(id)
+                if (edit != null) {
+                    _state.update {
+                        it.copy(
+                            aircraftSelection = edit.aircraftId?.let { aircraftId -> AircraftSelection.Specific(aircraftId) }
+                                ?: AircraftSelection.Bench,
+                            description = edit.description,
+                            activityTypes = edit.activityTypes,
+                            role = edit.role,
+                            supervisedAnother = edit.supervisedAnother,
+                            sessionDate = edit.sessionDate,
+                            helperNames = edit.helperNames,
+                            completedTaskIds = edit.completedTaskIds,
+                            workorderIssuerName = edit.workorderIssuerName.orEmpty(),
+                            workorderDate = edit.workorderDate,
+                            workorderRequestedWork = edit.workorderRequestedWork.orEmpty(),
+                            workorderReference = edit.workorderReference.orEmpty(),
+                            airframeHours = edit.airframeHoursAtWork?.toString().orEmpty(),
+                            launches = edit.launchesAtWork?.toString().orEmpty(),
+                            annualInspection = edit.annualInspection,
+                            concurrentWithArc = edit.concurrentWithArc,
+                            documentationRefs = edit.documentationRefs,
+                            partsUsed = edit.partsUsed,
+                            loading = false,
+                        )
+                    }
+                } else {
+                    _state.update { it.copy(loading = false) }
+                }
+                initialState = _state.value
+            }
         }
     }
 
@@ -140,37 +182,77 @@ class WorkEntryFormViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setCatalogueSectionCollapsed(section, collapsed) }
     }
 
-    /** Whether the form differs from its last-saved state — gates the unsaved-changes prompt on close/back. */
-    fun isDirty(): Boolean = _state.value.copy(saving = false) != initialState.copy(saving = false)
+    /** Whether the form differs from its last-saved state — gates the unsaved-changes prompt on close/back. Loading/saving/deleting are metadata, not pending edits. */
+    fun isDirty(): Boolean {
+        fun WorkEntryFormState.normalized() = copy(loading = false, saving = false, deleting = false)
+        return _state.value.normalized() != initialState.normalized()
+    }
 
     fun save() {
         val current = _state.value
         if (!current.canSave) return
         viewModelScope.launch {
             _state.update { it.copy(saving = true) }
-            workEntryRepository.create(
-                aircraftId = (current.aircraftSelection as? AircraftSelection.Specific)?.aircraftId,
-                description = current.description.trim(),
-                activityTypes = current.activityTypes,
-                role = current.role,
-                supervisedAnother = current.supervisedAnother,
-                sessionDate = current.sessionDate,
-                helperNames = current.helperNames,
-                completedTaskIds = current.completedTaskIds,
-                airframeHoursAtWork = current.airframeHours.toDoubleOrNull(),
-                launchesAtWork = current.launches.toIntOrNull(),
-                workorderIssuerName = current.workorderIssuerName.trim().ifBlank { null },
-                workorderDate = current.workorderDate,
-                workorderRequestedWork = current.workorderRequestedWork.trim().ifBlank { null },
-                workorderReference = current.workorderReference.trim().ifBlank { null },
-                annualInspection = current.annualInspection,
-                concurrentWithArc = current.concurrentWithArc,
-                documentationRefs = current.documentationRefs,
-                partsUsed = current.partsUsed,
-            )
+            val id = current.entryId
+            if (id == null) {
+                workEntryRepository.create(
+                    aircraftId = (current.aircraftSelection as? AircraftSelection.Specific)?.aircraftId,
+                    description = current.description.trim(),
+                    activityTypes = current.activityTypes,
+                    role = current.role,
+                    supervisedAnother = current.supervisedAnother,
+                    sessionDate = current.sessionDate,
+                    helperNames = current.helperNames,
+                    completedTaskIds = current.completedTaskIds,
+                    airframeHoursAtWork = current.airframeHours.toDoubleOrNull(),
+                    launchesAtWork = current.launches.toIntOrNull(),
+                    workorderIssuerName = current.workorderIssuerName.trim().ifBlank { null },
+                    workorderDate = current.workorderDate,
+                    workorderRequestedWork = current.workorderRequestedWork.trim().ifBlank { null },
+                    workorderReference = current.workorderReference.trim().ifBlank { null },
+                    annualInspection = current.annualInspection,
+                    concurrentWithArc = current.concurrentWithArc,
+                    documentationRefs = current.documentationRefs,
+                    partsUsed = current.partsUsed,
+                )
+            } else {
+                workEntryRepository.update(
+                    id = id,
+                    aircraftId = (current.aircraftSelection as? AircraftSelection.Specific)?.aircraftId,
+                    description = current.description.trim(),
+                    activityTypes = current.activityTypes,
+                    role = current.role,
+                    supervisedAnother = current.supervisedAnother,
+                    sessionDate = current.sessionDate,
+                    helperNames = current.helperNames,
+                    completedTaskIds = current.completedTaskIds,
+                    airframeHoursAtWork = current.airframeHours.toDoubleOrNull(),
+                    launchesAtWork = current.launches.toIntOrNull(),
+                    workorderIssuerName = current.workorderIssuerName.trim().ifBlank { null },
+                    workorderDate = current.workorderDate,
+                    workorderRequestedWork = current.workorderRequestedWork.trim().ifBlank { null },
+                    workorderReference = current.workorderReference.trim().ifBlank { null },
+                    annualInspection = current.annualInspection,
+                    concurrentWithArc = current.concurrentWithArc,
+                    documentationRefs = current.documentationRefs,
+                    partsUsed = current.partsUsed,
+                )
+            }
             _state.update { it.copy(saving = false) }
             initialState = _state.value
             _saved.emit(Unit)
+        }
+    }
+
+    fun delete() {
+        val current = _state.value
+        if (!current.canDelete) return
+        val id = current.entryId ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(deleting = true) }
+            workEntryRepository.delete(id)
+            _state.update { it.copy(deleting = false) }
+            _deleted.emit(Unit)
         }
     }
 }

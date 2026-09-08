@@ -19,6 +19,8 @@ sealed interface AircraftSelection {
 
 /** Same validation pattern as the other forms: raw fields, computed errors, canSave gates Save. */
 data class WorkEntryFormState(
+    /** Null while adding a new entry; set once an existing one has been loaded for editing. */
+    val entryId: String? = null,
     val aircraftSelection: AircraftSelection = AircraftSelection.Unselected,
     val description: String = "",
     val activityTypes: Set<ActivityType> = emptySet(),
@@ -50,8 +52,12 @@ data class WorkEntryFormState(
     val documentationRefs: List<DocumentationRefInput> = emptyList(),
     val partsUsed: List<PartUsedInput> = emptyList(),
 
+    val loading: Boolean = false,
     val saving: Boolean = false,
+    val deleting: Boolean = false,
 ) {
+    val isEditing: Boolean get() = entryId != null
+
     val descriptionError: String? get() = if (description.isBlank()) "Description of work done is required" else null
     val activityTypesError: String? get() = if (activityTypes.isEmpty()) "Select at least one activity" else null
     val aircraftSelectionError: String?
@@ -60,6 +66,9 @@ data class WorkEntryFormState(
     val launchesError: String? get() = if (launches.isNotBlank() && launches.toIntOrNull() == null) "Enter a whole number" else null
 
     val canSave: Boolean
-        get() = !saving && descriptionError == null && activityTypesError == null && aircraftSelectionError == null &&
+        get() = !saving && !loading && descriptionError == null && activityTypesError == null && aircraftSelectionError == null &&
             airframeHoursError == null && launchesError == null
+
+    /** No `hasWorkHistory`-style guard here — a signed CRS blocks the delete via FK RESTRICT instead, and there's no UI path to a signed CRS yet. */
+    val canDelete: Boolean get() = isEditing && !saving && !deleting
 }

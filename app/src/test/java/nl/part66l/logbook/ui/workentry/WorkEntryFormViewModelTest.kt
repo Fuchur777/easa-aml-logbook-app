@@ -1,5 +1,6 @@
 package nl.part66l.logbook.ui.workentry
 
+import androidx.lifecycle.SavedStateHandle
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -22,6 +23,7 @@ import nl.part66l.logbook.fakes.FakeDocumentRepository
 import nl.part66l.logbook.fakes.FakePersonRepository
 import nl.part66l.logbook.fakes.FakeSettingsRepository
 import nl.part66l.logbook.fakes.FakeWorkEntryRepository
+import nl.part66l.logbook.ui.navigation.Destination
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -42,14 +44,22 @@ class WorkEntryFormViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private fun newState(entryId: String? = null) = SavedStateHandle(
+        entryId?.let { mapOf(Destination.WorkEntryEdit.ARG_ENTRY_ID to it) } ?: emptyMap(),
+    )
+
     private fun viewModel(
+        savedStateHandle: SavedStateHandle = newState(),
         workEntryRepository: FakeWorkEntryRepository = FakeWorkEntryRepository(),
         aircraftRepository: FakeAircraftRepository = FakeAircraftRepository(),
         personRepository: FakePersonRepository = FakePersonRepository(),
         catalogueRepository: FakeCatalogueRepository = FakeCatalogueRepository(),
         settingsRepository: FakeSettingsRepository = FakeSettingsRepository(),
         documentRepository: FakeDocumentRepository = FakeDocumentRepository(),
-    ) = WorkEntryFormViewModel(workEntryRepository, aircraftRepository, personRepository, catalogueRepository, settingsRepository, documentRepository)
+    ) = WorkEntryFormViewModel(
+        savedStateHandle, workEntryRepository, aircraftRepository, personRepository,
+        catalogueRepository, settingsRepository, documentRepository,
+    )
 
     @Test
     fun `canSave requires a description, an aircraft selection and at least one activity, and defaults to no release claimed`() {
@@ -374,5 +384,98 @@ class WorkEntryFormViewModelTest {
         viewModel.onActivityTypeToggle(ActivityType.TROUBLESHOOTING)
         viewModel.save()
         assertFalse(viewModel.isDirty())
+    }
+
+    @Test
+    fun `canDelete is false for a new entry, true once an existing one has loaded`() {
+        val newViewModel = viewModel()
+        assertFalse(newViewModel.state.value.canDelete)
+
+        val repository = FakeWorkEntryRepository()
+        val id = runBlocking {
+            repository.create(
+                aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
+                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDate = LocalDate.of(2026, 1, 15),
+            )
+        }
+        val editViewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
+        assertTrue(editViewModel.state.value.canDelete)
+    }
+
+    @Test
+    fun `loading an existing entry populates the form from every child row`() {
+        val repository = FakeWorkEntryRepository()
+        val id = runBlocking {
+            repository.create(
+                aircraftId = null,
+                description = "Annual inspection",
+                activityTypes = setOf(ActivityType.INSPECTION, ActivityType.SERVICING),
+                role = EntryRole.CERTIFIED_BY_ME_IN_APP,
+                supervisedAnother = true,
+                sessionDate = LocalDate.of(2026, 1, 15),
+                helperNames = listOf("Jan de Vries"),
+                workorderIssuerName = "Piet Bakker",
+                workorderReference = "WO-2026-001",
+                annualInspection = true,
+                concurrentWithArc = true,
+                documentationRefs = listOf(DocumentationRefInput("AMM 12-34", "Rev 5")),
+                partsUsed = listOf(PartUsedInput("PN-001", batchOrSerial = "SN-9")),
+            )
+        }
+
+        val viewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
+
+        assertFalse(viewModel.state.value.loading)
+        assertEquals("Annual inspection", viewModel.state.value.description)
+        assertEquals(AircraftSelection.Bench, viewModel.state.value.aircraftSelection)
+        assertEquals(setOf(ActivityType.INSPECTION, ActivityType.SERVICING), viewModel.state.value.activityTypes)
+        assertEquals(EntryRole.CERTIFIED_BY_ME_IN_APP, viewModel.state.value.role)
+        assertTrue(viewModel.state.value.supervisedAnother)
+        assertEquals(LocalDate.of(2026, 1, 15), viewModel.state.value.sessionDate)
+        assertEquals(listOf("Jan de Vries"), viewModel.state.value.helperNames)
+        assertEquals("Piet Bakker", viewModel.state.value.workorderIssuerName)
+        assertEquals("WO-2026-001", viewModel.state.value.workorderReference)
+        assertTrue(viewModel.state.value.annualInspection)
+        assertTrue(viewModel.state.value.concurrentWithArc)
+        assertEquals(listOf(DocumentationRefInput("AMM 12-34", "Rev 5")), viewModel.state.value.documentationRefs)
+        assertEquals(listOf(PartUsedInput("PN-001", batchOrSerial = "SN-9")), viewModel.state.value.partsUsed)
+        assertFalse(viewModel.isDirty()) // freshly loaded, nothing edited yet
+    }
+
+    @Test
+    fun `save updates the existing entry, rather than creating a new one, once editing`() {
+        val repository = FakeWorkEntryRepository()
+        val id = runBlocking {
+            repository.create(
+                aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
+                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDate = LocalDate.of(2026, 1, 15),
+            )
+        }
+
+        val viewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
+        viewModel.onDescriptionChange("Bench work, corrected")
+
+        viewModel.save()
+
+        assertEquals(1, repository.created.size) // unchanged — save() didn't create a second entry
+        assertEquals(1, repository.updated.size)
+        assertEquals("Bench work, corrected", repository.updated.first().entry.description)
+        assertFalse(viewModel.isDirty())
+    }
+
+    @Test
+    fun `delete removes the entry via the repository and emits deleted`() {
+        val repository = FakeWorkEntryRepository()
+        val id = runBlocking {
+            repository.create(
+                aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
+                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDate = LocalDate.of(2026, 1, 15),
+            )
+        }
+
+        val viewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
+        viewModel.delete()
+
+        assertEquals(listOf(id), repository.deletedIds)
     }
 }

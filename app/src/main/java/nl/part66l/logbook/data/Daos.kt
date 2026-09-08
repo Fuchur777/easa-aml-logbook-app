@@ -14,6 +14,16 @@ interface WorkEntryDao {
     @Update suspend fun update(entry: WorkEntryEntity)
     @Insert suspend fun insertActivityTypes(rows: List<WorkEntryActivityTypeEntity>)
 
+    @Query("SELECT * FROM work_entry_activity_type WHERE entryId = :entryId")
+    suspend fun activityTypesForEntry(entryId: String): List<WorkEntryActivityTypeEntity>
+
+    @Query("DELETE FROM work_entry_activity_type WHERE entryId = :entryId")
+    suspend fun deleteActivityTypesForEntry(entryId: String)
+
+    /** Cascades to every child table (sessions, helpers, documentation, parts, task completions) via their FKs. */
+    @Query("DELETE FROM work_entry WHERE id = :id")
+    suspend fun delete(id: String)
+
     @Transaction
     @Query("SELECT * FROM work_entry ORDER BY id DESC")
     fun pagedAll(): PagingSource<Int, WorkEntryEntity>
@@ -77,6 +87,9 @@ interface PersonDao {
 
     @Query("SELECT * FROM person WHERE name = :name LIMIT 1")
     suspend fun byName(name: String): PersonEntity?
+
+    @Query("SELECT * FROM person WHERE id = :id")
+    suspend fun byId(id: String): PersonEntity?
 }
 
 /** Document directory (§5.3) — management screen CRUD, plus what the entry form's documentation picker reads from. */
@@ -419,6 +432,9 @@ interface WorkSessionDao {
 
     @Query("SELECT * FROM work_session WHERE entryId = :entryId ORDER BY date")
     suspend fun forEntry(entryId: String): List<WorkSessionEntity>
+
+    @Query("DELETE FROM work_session WHERE entryId = :entryId")
+    suspend fun deleteForEntry(entryId: String)
 }
 
 /** Helpers named on an entry (§5.5). Basis: ML.A.801(d). */
@@ -428,6 +444,9 @@ interface EntryHelperDao {
 
     @Query("SELECT * FROM entry_helper WHERE entryId = :entryId")
     suspend fun forEntry(entryId: String): List<EntryHelperEntity>
+
+    @Query("DELETE FROM entry_helper WHERE entryId = :entryId")
+    suspend fun deleteForEntry(entryId: String)
 }
 
 /** Maintenance data used on an entry (§5.3), reference plus revision status. */
@@ -437,6 +456,9 @@ interface DocumentationRefDao {
 
     @Query("SELECT * FROM documentation_ref WHERE entryId = :entryId")
     suspend fun forEntry(entryId: String): List<DocumentationRefEntity>
+
+    @Query("DELETE FROM documentation_ref WHERE entryId = :entryId")
+    suspend fun deleteForEntry(entryId: String)
 }
 
 /** Parts and materials fitted on an entry (§5.3). */
@@ -446,6 +468,9 @@ interface PartUsedDao {
 
     @Query("SELECT * FROM part_used WHERE entryId = :entryId")
     suspend fun forEntry(entryId: String): List<PartUsedEntity>
+
+    @Query("DELETE FROM part_used WHERE entryId = :entryId")
+    suspend fun deleteForEntry(entryId: String)
 }
 
 /**
@@ -476,4 +501,7 @@ interface TaskCompletionDao {
 
     @Query("SELECT * FROM task_completion WHERE entryId = :entryId")
     suspend fun forEntry(entryId: String): List<TaskCompletionEntity>
+
+    @Query("DELETE FROM task_completion WHERE entryId = :entryId")
+    suspend fun deleteForEntry(entryId: String)
 }
