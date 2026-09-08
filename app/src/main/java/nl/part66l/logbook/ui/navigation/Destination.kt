@@ -87,4 +87,23 @@ sealed interface Destination {
     data object Settings : Destination {
         override val route = "settings"
     }
+
+    /** Reached from Settings — manages the contact directory (helpers, workorder issuers). */
+    data object Contacts : Destination {
+        override val route = "contacts"
+    }
+
+    data object ContactForm : Destination {
+        override val route = "contacts/new"
+    }
+
+    /** Edits an existing contact. [contactId] builds the concrete route; [ROUTE_PATTERN] registers it with NavHost. */
+    data class ContactEdit(val contactId: String) : Destination {
+        override val route = "contacts/edit/$contactId"
+
+        companion object {
+            const val ARG_CONTACT_ID = "contactId"
+            const val ROUTE_PATTERN = "contacts/edit/{$ARG_CONTACT_ID}"
+        }
+    }
 }

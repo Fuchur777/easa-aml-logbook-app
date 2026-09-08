@@ -28,7 +28,10 @@ data class WorkEntryFormState(
     val role: EntryRole = EntryRole.NO_RELEASE,
     /** Independent of [role] — set via its own checkbox, not the role dropdown. */
     val supervisedAnother: Boolean = false,
-    val sessionDate: LocalDate = LocalDate.now(),
+    /** One job can span several days — always at least one date, never empty. */
+    val sessionDates: List<LocalDate> = listOf(LocalDate.now()),
+    /** Overrides the distinct-date count below when set — raw text so an empty field isn't 0. */
+    val daysWorkedOverride: String = "",
     val helperNames: List<String> = emptyList(),
     /** Appendix II catalogue task ids evidenced by this entry — feeds Route B. Entirely optional. */
     val completedTaskIds: Set<String> = emptySet(),
@@ -64,10 +67,12 @@ data class WorkEntryFormState(
         get() = if (aircraftSelection is AircraftSelection.Unselected) "Select an aircraft or bench / component work" else null
     val airframeHoursError: String? get() = if (airframeHours.isNotBlank() && airframeHours.toDoubleOrNull() == null) "Enter a number" else null
     val launchesError: String? get() = if (launches.isNotBlank() && launches.toIntOrNull() == null) "Enter a whole number" else null
+    val daysWorkedOverrideError: String?
+        get() = if (daysWorkedOverride.isNotBlank() && daysWorkedOverride.toIntOrNull() == null) "Enter a whole number" else null
 
     val canSave: Boolean
         get() = !saving && !loading && descriptionError == null && activityTypesError == null && aircraftSelectionError == null &&
-            airframeHoursError == null && launchesError == null
+            airframeHoursError == null && launchesError == null && daysWorkedOverrideError == null && sessionDates.isNotEmpty()
 
     /** No `hasWorkHistory`-style guard here — a signed CRS blocks the delete via FK RESTRICT instead, and there's no UI path to a signed CRS yet. */
     val canDelete: Boolean get() = isEditing && !saving && !deleting

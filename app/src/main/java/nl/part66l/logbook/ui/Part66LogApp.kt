@@ -26,6 +26,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import nl.part66l.logbook.ui.aircraft.AircraftFormScreen
 import nl.part66l.logbook.ui.aircraft.AircraftListScreen
+import nl.part66l.logbook.ui.contacts.ContactFormScreen
+import nl.part66l.logbook.ui.contacts.ContactListScreen
 import nl.part66l.logbook.ui.crs.CrsScreen
 import nl.part66l.logbook.ui.documents.DocumentFormScreen
 import nl.part66l.logbook.ui.documents.DocumentListScreen
@@ -71,6 +73,9 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
         Destination.Documents.route,
         Destination.DocumentForm.route,
         Destination.DocumentEdit.ROUTE_PATTERN,
+        Destination.Contacts.route,
+        Destination.ContactForm.route,
+        Destination.ContactEdit.ROUTE_PATTERN,
     )
     val showBottomBar = currentRoute?.hierarchy?.none { it.route in noBottomBarRoutes } ?: false
 
@@ -208,7 +213,36 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
             composable(Destination.Profile.route) {
                 ProfileFormScreen(onSaved = { navController.popBackStack() }, onClose = { navController.popBackStack() })
             }
-            composable(Destination.Settings.route) { SettingsScreen(onClose = { navController.popBackStack() }) }
+            composable(Destination.Settings.route) {
+                SettingsScreen(
+                    onClose = { navController.popBackStack() },
+                    onContacts = { navController.navigate(Destination.Contacts.route) },
+                )
+            }
+            composable(Destination.Contacts.route) {
+                ContactListScreen(
+                    onAddContact = { navController.navigate(Destination.ContactForm.route) },
+                    onEditContact = { id -> navController.navigate(Destination.ContactEdit(id).route) },
+                    onClose = { navController.popBackStack() },
+                )
+            }
+            composable(Destination.ContactForm.route) {
+                ContactFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onDeleted = { navController.popBackStack() },
+                    onClose = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = Destination.ContactEdit.ROUTE_PATTERN,
+                arguments = listOf(navArgument(Destination.ContactEdit.ARG_CONTACT_ID) { type = NavType.StringType }),
+            ) {
+                ContactFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onDeleted = { navController.popBackStack() },
+                    onClose = { navController.popBackStack() },
+                )
+            }
         }
     }
 }

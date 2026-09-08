@@ -81,15 +81,25 @@ interface WorkEntryDao {
 @Dao
 interface PersonDao {
     @Insert suspend fun insert(person: PersonEntity)
+    @Update suspend fun update(person: PersonEntity)
 
     @Query("SELECT * FROM person ORDER BY name")
     fun all(): Flow<List<PersonEntity>>
+
+    @Query("SELECT * FROM person WHERE archived = 0 OR :includeArchived = 1 ORDER BY name")
+    fun observeAll(includeArchived: Boolean): Flow<List<PersonEntity>>
 
     @Query("SELECT * FROM person WHERE name = :name LIMIT 1")
     suspend fun byName(name: String): PersonEntity?
 
     @Query("SELECT * FROM person WHERE id = :id")
     suspend fun byId(id: String): PersonEntity?
+
+    @Query("UPDATE person SET archived = :archived WHERE id = :id")
+    suspend fun setArchived(id: String, archived: Boolean)
+
+    @Query("DELETE FROM person WHERE id = :id")
+    suspend fun delete(id: String)
 }
 
 /** Document directory (§5.3) — management screen CRUD, plus what the entry form's documentation picker reads from. */

@@ -66,7 +66,7 @@ class Converters {
         ProfileEntity::class,
         DocumentEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

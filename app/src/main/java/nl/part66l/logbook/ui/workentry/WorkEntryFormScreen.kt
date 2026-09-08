@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -40,6 +43,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import nl.part66l.logbook.data.DocumentEntity
 import nl.part66l.logbook.data.DocumentationRefInput
 import nl.part66l.logbook.data.PartUsedInput
@@ -68,6 +73,7 @@ fun WorkEntryFormScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val aircraftOptions by viewModel.aircraftOptions.collectAsStateWithLifecycle()
     val knownHelperNames by viewModel.knownHelperNames.collectAsStateWithLifecycle()
+    val knownHelperLicenceNumbers by viewModel.knownHelperLicenceNumbers.collectAsStateWithLifecycle()
     val availableTasks by viewModel.availableTasks.collectAsStateWithLifecycle()
     val catalogueSectionOrder by viewModel.catalogueSectionOrder.collectAsStateWithLifecycle()
     val collapsedCatalogueSections by viewModel.collapsedCatalogueSections.collectAsStateWithLifecycle()
@@ -217,10 +223,13 @@ fun WorkEntryFormScreen(
                         supportingText = { state.descriptionError?.let { Text(it) } },
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    DatePickerField(
-                        label = "Date",
-                        value = state.sessionDate,
-                        onValueChange = viewModel::onSessionDateChange,
+                    SessionDatesEditor(
+                        dates = state.sessionDates,
+                        onAdd = viewModel::onSessionDateAdd,
+                        onRemove = viewModel::onSessionDateRemove,
+                        daysWorkedOverride = state.daysWorkedOverride,
+                        onDaysWorkedOverrideChange = viewModel::onDaysWorkedOverrideChange,
+                        daysWorkedOverrideError = state.daysWorkedOverrideError,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -309,11 +318,12 @@ fun WorkEntryFormScreen(
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = state.supervisedAnother, onCheckedChange = viewModel::onSupervisedAnotherChange)
-                        Text("Supervised other persons")
+                        Text("Assisted by")
                     }
                     if (state.supervisedAnother) {
                         PersonPickerField(
                             knownNames = knownHelperNames,
+                            knownLicenceNumbers = knownHelperLicenceNumbers,
                             selectedNames = state.helperNames,
                             onAdd = viewModel::onHelperAdd,
                             onRemove = viewModel::onHelperRemove,
@@ -391,6 +401,57 @@ fun WorkEntryFormScreen(
     }
 }
 
+private val SESSION_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy")
+
+/** One job can span several days — each date is its own removable chip, same shape as the documentation/parts editors below. */
+@Composable
+private fun SessionDatesEditor(
+    dates: List<LocalDate>,
+    onAdd: (LocalDate) -> Unit,
+    onRemove: (LocalDate) -> Unit,
+    daysWorkedOverride: String,
+    onDaysWorkedOverrideChange: (String) -> Unit,
+    daysWorkedOverrideError: String?,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Dates worked", style = MaterialTheme.typography.labelLarge)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(dates.sorted()) { date ->
+                InputChip(
+                    selected = false,
+                    onClick = {},
+                    label = { Text(date.format(SESSION_DATE_FORMAT)) },
+                    trailingIcon = if (dates.size > 1) {
+                        { IconButton(onClick = { onRemove(date) }) { Text("✕") } }
+                    } else {
+                        null
+                    },
+                )
+            }
+        }
+        DatePickerField(
+            label = "Add another day",
+            value = null,
+            onValueChange = { it?.let(onAdd) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = daysWorkedOverride,
+            onValueChange = onDaysWorkedOverrideChange,
+            label = { Text("Days worked") },
+            placeholder = { Text("Calculated: ${dates.distinct().size}") },
+            isError = daysWorkedOverrideError != null,
+            supportingText = {
+                Text(daysWorkedOverrideError ?: "Leave blank to use the number of distinct dates above")
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
 /** "Name (Revision) - Category" — display label for the dropdown and the picked-refs list; the CRS itself renders the fields separately. */
 private val DocumentEntity.pickerLabel: String
     get() = "$name${revision?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""} - ${category.displayLabel}"
@@ -404,7 +465,7 @@ private fun DocumentationRefEditor(
     documentOptions: List<DocumentEntity>,
     onAdd: (DocumentationRefInput) -> Unit,
     onRemove: (Int) -> Unit,
-    onCreateDocument: (name: String, category: DocumentCategory, revision: String?, link: String?) -> Unit,
+    onCreateDocument: (name: String, category: DocumentCategory, revision: String?, revisionDate: LocalDate?, link: String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showNewDocument by remember { mutableStateOf(false) }
@@ -445,8 +506,8 @@ private fun DocumentationRefEditor(
         }
         if (showNewDocument) {
             NewDocumentFields(
-                onCreate = { name, category, revision, link ->
-                    onCreateDocument(name, category, revision, link)
+                onCreate = { name, category, revision, revisionDate, link ->
+                    onCreateDocument(name, category, revision, revisionDate, link)
                     showNewDocument = false
                 },
             )
@@ -456,11 +517,12 @@ private fun DocumentationRefEditor(
 
 @Composable
 private fun NewDocumentFields(
-    onCreate: (name: String, category: DocumentCategory, revision: String?, link: String?) -> Unit,
+    onCreate: (name: String, category: DocumentCategory, revision: String?, revisionDate: LocalDate?, link: String?) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
     var category by remember { mutableStateOf(DocumentCategory.MANUAL) }
     var revision by remember { mutableStateOf("") }
+    var revisionDate by remember { mutableStateOf<LocalDate?>(null) }
     var link by remember { mutableStateOf("") }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -486,6 +548,12 @@ private fun NewDocumentFields(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+        DatePickerField(
+            label = "Revision date",
+            value = revisionDate,
+            onValueChange = { revisionDate = it },
+            modifier = Modifier.fillMaxWidth(),
+        )
         OutlinedTextField(
             value = link,
             onValueChange = { link = it },
@@ -496,7 +564,7 @@ private fun NewDocumentFields(
         OutlinedButton(
             onClick = {
                 if (name.isNotBlank()) {
-                    onCreate(name.trim(), category, revision.trim().ifBlank { null }, link.trim().ifBlank { null })
+                    onCreate(name.trim(), category, revision.trim().ifBlank { null }, revisionDate, link.trim().ifBlank { null })
                 }
             },
             enabled = name.isNotBlank(),

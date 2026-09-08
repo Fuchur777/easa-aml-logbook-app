@@ -151,7 +151,7 @@ class CrsRepositoryImpl @Inject constructor(
 
         val completionDate = sessions.maxOfOrNull { it.date } ?: LocalDate.now()
         val workStarted = sessions.minOfOrNull { it.date } ?: completionDate
-        val daysWorked = sessions.map { it.date }.distinct().size
+        val daysWorked = entry.daysWorkedOverride ?: sessions.map { it.date }.distinct().size
 
         // A re-generation for an entry that already has a CRS is a revision of the same
         // certificate, not a new one (crs-field-mapping.md: "a correction is a new row,

@@ -58,7 +58,7 @@ class WorkEntryRepositoryTest {
             activityTypes = setOf(ActivityType.TROUBLESHOOTING, ActivityType.REPAIRING),
             role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = false,
-            sessionDate = LocalDate.of(2026, 1, 15),
+            sessionDates = listOf(LocalDate.of(2026, 1, 15)),
         )
 
         val entry = db.workEntries().byId(id)
@@ -74,6 +74,28 @@ class WorkEntryRepositoryTest {
     }
 
     @Test
+    fun `create inserts one session per date, and daysWorkedOverride round-trips through forEdit`() = runBlocking {
+        val id = repository.create(
+            aircraftId = null,
+            description = "Multi-day annual",
+            activityTypes = setOf(ActivityType.INSPECTION),
+            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
+            supervisedAnother = false,
+            sessionDates = listOf(LocalDate.of(2026, 3, 4), LocalDate.of(2026, 3, 5), LocalDate.of(2026, 3, 4)), // duplicate, deliberately
+            daysWorkedOverride = 3,
+        )
+
+        val sessions = db.workSessions().forEntry(id)
+        assertEquals(2, sessions.size) // the duplicate date collapsed to one row
+        assertEquals(setOf(LocalDate.of(2026, 3, 4), LocalDate.of(2026, 3, 5)), sessions.map { it.date }.toSet())
+        assertEquals(3, db.workEntries().byId(id)!!.daysWorkedOverride)
+
+        val edit = repository.forEdit(id)!!
+        assertEquals(setOf(LocalDate.of(2026, 3, 4), LocalDate.of(2026, 3, 5)), edit.sessionDates.toSet())
+        assertEquals(3, edit.daysWorkedOverride)
+    }
+
+    @Test
     fun `create resolves helper names to the person directory, creating new ones as needed`() = runBlocking {
         val existingPersonId = PersonRepositoryImpl(db.people()).findOrCreate("Jan de Vries")
 
@@ -83,7 +105,7 @@ class WorkEntryRepositoryTest {
             activityTypes = setOf(ActivityType.INSPECTION),
             role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = true,
-            sessionDate = LocalDate.of(2026, 1, 15),
+            sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             helperNames = listOf("Jan de Vries", "Piet Bakker"),
         )
 
@@ -110,7 +132,7 @@ class WorkEntryRepositoryTest {
             activityTypes = setOf(ActivityType.SERVICING),
             role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = false,
-            sessionDate = LocalDate.of(2026, 1, 15),
+            sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             completedTaskIds = setOf("T1"),
         )
 
@@ -129,7 +151,7 @@ class WorkEntryRepositoryTest {
             activityTypes = setOf(ActivityType.INSPECTION),
             role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = false,
-            sessionDate = LocalDate.of(2026, 1, 15),
+            sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             airframeHoursAtWork = 1234.5,
             launchesAtWork = 6789,
             workorderIssuerName = "Piet Bakker",
@@ -178,7 +200,7 @@ class WorkEntryRepositoryTest {
             activityTypes = setOf(ActivityType.SERVICING),
             role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = false,
-            sessionDate = LocalDate.of(2026, 1, 15),
+            sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             workorderIssuerName = "Piet Bakker",
         )
 
@@ -198,7 +220,7 @@ class WorkEntryRepositoryTest {
             activityTypes = setOf(ActivityType.INSPECTION, ActivityType.SERVICING),
             role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = true,
-            sessionDate = LocalDate.of(2026, 1, 15),
+            sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             helperNames = listOf("Jan de Vries"),
             workorderIssuerName = "Piet Bakker",
             workorderReference = "WO-2026-001",
@@ -212,7 +234,7 @@ class WorkEntryRepositoryTest {
         assertEquals("Annual inspection", edit.description)
         assertEquals(setOf(ActivityType.INSPECTION, ActivityType.SERVICING), edit.activityTypes)
         assertTrue(edit.supervisedAnother)
-        assertEquals(LocalDate.of(2026, 1, 15), edit.sessionDate)
+        assertEquals(listOf(LocalDate.of(2026, 1, 15)), edit.sessionDates)
         assertEquals(listOf("Jan de Vries"), edit.helperNames)
         assertEquals("Piet Bakker", edit.workorderIssuerName)
         assertEquals("WO-2026-001", edit.workorderReference)
@@ -235,7 +257,7 @@ class WorkEntryRepositoryTest {
             activityTypes = setOf(ActivityType.SERVICING),
             role = EntryRole.NO_RELEASE,
             supervisedAnother = false,
-            sessionDate = LocalDate.of(2026, 1, 15),
+            sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             helperNames = listOf("Jan de Vries"),
             documentationRefs = listOf(DocumentationRefInput("Old doc")),
             partsUsed = listOf(PartUsedInput("OLD-PN")),
@@ -248,7 +270,7 @@ class WorkEntryRepositoryTest {
             activityTypes = setOf(ActivityType.REPAIRING),
             role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = false,
-            sessionDate = LocalDate.of(2026, 2, 1),
+            sessionDates = listOf(LocalDate.of(2026, 2, 1)),
             helperNames = emptyList(),
             documentationRefs = listOf(DocumentationRefInput("New doc")),
             partsUsed = listOf(PartUsedInput("NEW-PN")),
@@ -283,7 +305,7 @@ class WorkEntryRepositoryTest {
             activityTypes = setOf(ActivityType.SERVICING),
             role = EntryRole.NO_RELEASE,
             supervisedAnother = false,
-            sessionDate = LocalDate.of(2026, 1, 1),
+            sessionDates = listOf(LocalDate.of(2026, 1, 1)),
         )
 
         assertEquals(null, db.workEntries().byId("does-not-exist"))
@@ -297,7 +319,7 @@ class WorkEntryRepositoryTest {
             activityTypes = setOf(ActivityType.SERVICING),
             role = EntryRole.NO_RELEASE,
             supervisedAnother = false,
-            sessionDate = LocalDate.of(2026, 1, 15),
+            sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             helperNames = listOf("Jan de Vries"),
         )
 
@@ -318,11 +340,11 @@ class WorkEntryRepositoryTest {
         )
         repository.create(
             aircraftId = aircraftId, description = "Older entry", activityTypes = setOf(ActivityType.INSPECTION),
-            role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDate = LocalDate.of(2026, 1, 1),
+            role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 1)),
         )
         repository.create(
             aircraftId = null, description = "Newer bench entry", activityTypes = setOf(ActivityType.SERVICING),
-            role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDate = LocalDate.of(2026, 6, 1),
+            role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 6, 1)),
         )
 
         val snapshot = Pager(PagingConfig(pageSize = 20)) { repository.pagedAllWithDetails() }.flow.asSnapshot()

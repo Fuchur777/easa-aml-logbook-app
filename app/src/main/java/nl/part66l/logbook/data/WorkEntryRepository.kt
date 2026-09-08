@@ -36,7 +36,8 @@ data class WorkEntryEditData(
     val activityTypes: Set<ActivityType>,
     val role: EntryRole,
     val supervisedAnother: Boolean,
-    val sessionDate: LocalDate,
+    val sessionDates: List<LocalDate>,
+    val daysWorkedOverride: Int?,
     val helperNames: List<String>,
     val completedTaskIds: Set<String>,
     val airframeHoursAtWork: Double?,
@@ -70,15 +71,18 @@ interface WorkEntryRepository {
     suspend fun forEdit(id: String): WorkEntryEditData?
 
     /**
-     * Creates an entry and its first work session together — a session-less entry can
-     * never feed Route A. [helperNames] are resolved to the person directory by exact
-     * name match, creating a new [PersonEntity] for any name not already on file.
-     * [completedTaskIds] are snapshotted into [TaskCompletionEntity] rows as they read
-     * today — a later catalogue update must never retroactively change what a past
-     * completion said. [documentationRefs] and [partsUsed] become their own child rows,
-     * same as helpers. [workorderIssuerName], if given, is also resolved into the person
-     * directory (same [PersonEntity] table as helpers) so its spelling can be reused —
-     * unlike helpers, the entry stores the plain name, not a person id.
+     * Creates an entry and its work sessions together — a session-less entry can
+     * never feed Route A, so [sessionDates] must be non-empty (one row per date).
+     * [daysWorkedOverride], when given, is what "days worked" reads as everywhere
+     * downstream (e.g. the CRS) instead of the distinct-date count. [helperNames] are
+     * resolved to the person directory by exact name match, creating a new [PersonEntity]
+     * for any name not already on file. [completedTaskIds] are snapshotted into
+     * [TaskCompletionEntity] rows as they read today — a later catalogue update must
+     * never retroactively change what a past completion said. [documentationRefs] and
+     * [partsUsed] become their own child rows, same as helpers. [workorderIssuerName], if
+     * given, is also resolved into the person directory (same [PersonEntity] table as
+     * helpers) so its spelling can be reused — unlike helpers, the entry stores the plain
+     * name, not a person id.
      */
     suspend fun create(
         aircraftId: String?,
@@ -86,7 +90,8 @@ interface WorkEntryRepository {
         activityTypes: Set<ActivityType>,
         role: EntryRole,
         supervisedAnother: Boolean,
-        sessionDate: LocalDate,
+        sessionDates: List<LocalDate>,
+        daysWorkedOverride: Int? = null,
         helperNames: List<String> = emptyList(),
         completedTaskIds: Set<String> = emptySet(),
         airframeHoursAtWork: Double? = null,
@@ -114,7 +119,8 @@ interface WorkEntryRepository {
         activityTypes: Set<ActivityType>,
         role: EntryRole,
         supervisedAnother: Boolean,
-        sessionDate: LocalDate,
+        sessionDates: List<LocalDate>,
+        daysWorkedOverride: Int? = null,
         helperNames: List<String> = emptyList(),
         completedTaskIds: Set<String> = emptySet(),
         airframeHoursAtWork: Double? = null,
@@ -163,7 +169,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
     override suspend fun forEdit(id: String): WorkEntryEditData? {
         val entry = workEntryDao.byId(id) ?: return null
         val activityTypes = workEntryDao.activityTypesForEntry(id).map { it.activityType }.toSet()
-        val session = workSessionDao.forEntry(id).firstOrNull()
+        val sessionDates = workSessionDao.forEntry(id).map { it.date }.ifEmpty { listOf(LocalDate.now()) }
         val helperNames = entryHelperDao.forEntry(id).mapNotNull { personDao.byId(it.personId)?.name }
         val completedTaskIds = taskCompletionDao.forEntry(id).map { it.taskId }.toSet()
         val documentationRefs = documentationRefDao.forEntry(id)
@@ -177,7 +183,8 @@ class WorkEntryRepositoryImpl @Inject constructor(
             activityTypes = activityTypes,
             role = entry.role,
             supervisedAnother = entry.supervisedAnother,
-            sessionDate = session?.date ?: LocalDate.now(),
+            sessionDates = sessionDates,
+            daysWorkedOverride = entry.daysWorkedOverride,
             helperNames = helperNames,
             completedTaskIds = completedTaskIds,
             airframeHoursAtWork = entry.airframeHoursAtWork,
@@ -199,7 +206,8 @@ class WorkEntryRepositoryImpl @Inject constructor(
         activityTypes: Set<ActivityType>,
         role: EntryRole,
         supervisedAnother: Boolean,
-        sessionDate: LocalDate,
+        sessionDates: List<LocalDate>,
+        daysWorkedOverride: Int?,
         helperNames: List<String>,
         completedTaskIds: Set<String>,
         airframeHoursAtWork: Double?,
@@ -213,6 +221,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
         documentationRefs: List<DocumentationRefInput>,
         partsUsed: List<PartUsedInput>,
     ): String {
+        require(sessionDates.isNotEmpty()) { "A work entry needs at least one session date" }
         val entryId = UUID.randomUUID().toString()
         val now = Instant.now()
         workEntryDao.insert(
@@ -231,13 +240,14 @@ class WorkEntryRepositoryImpl @Inject constructor(
                 workorderReferenceNormalised = workorderReference?.let { Identifiers.normalise(it) },
                 annualInspection = annualInspection,
                 concurrentWithArc = concurrentWithArc,
+                daysWorkedOverride = daysWorkedOverride,
                 createdAt = now,
                 updatedAt = now,
             ),
         )
-        workSessionDao.insert(
-            WorkSessionEntity(id = UUID.randomUUID().toString(), entryId = entryId, date = sessionDate),
-        )
+        sessionDates.distinct().forEach { date ->
+            workSessionDao.insert(WorkSessionEntity(id = UUID.randomUUID().toString(), entryId = entryId, date = date))
+        }
         insertChildren(entryId, activityTypes, helperNames, workorderIssuerName, completedTaskIds, documentationRefs, partsUsed)
         return entryId
     }
@@ -249,7 +259,8 @@ class WorkEntryRepositoryImpl @Inject constructor(
         activityTypes: Set<ActivityType>,
         role: EntryRole,
         supervisedAnother: Boolean,
-        sessionDate: LocalDate,
+        sessionDates: List<LocalDate>,
+        daysWorkedOverride: Int?,
         helperNames: List<String>,
         completedTaskIds: Set<String>,
         airframeHoursAtWork: Double?,
@@ -263,6 +274,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
         documentationRefs: List<DocumentationRefInput>,
         partsUsed: List<PartUsedInput>,
     ) {
+        require(sessionDates.isNotEmpty()) { "A work entry needs at least one session date" }
         val existing = workEntryDao.byId(id) ?: return
         workEntryDao.update(
             existing.copy(
@@ -279,12 +291,15 @@ class WorkEntryRepositoryImpl @Inject constructor(
                 workorderReferenceNormalised = workorderReference?.let { Identifiers.normalise(it) },
                 annualInspection = annualInspection,
                 concurrentWithArc = concurrentWithArc,
+                daysWorkedOverride = daysWorkedOverride,
                 updatedAt = Instant.now(),
             ),
         )
 
         workSessionDao.deleteForEntry(id)
-        workSessionDao.insert(WorkSessionEntity(id = UUID.randomUUID().toString(), entryId = id, date = sessionDate))
+        sessionDates.distinct().forEach { date ->
+            workSessionDao.insert(WorkSessionEntity(id = UUID.randomUUID().toString(), entryId = id, date = date))
+        }
 
         workEntryDao.deleteActivityTypesForEntry(id)
         entryHelperDao.deleteForEntry(id)

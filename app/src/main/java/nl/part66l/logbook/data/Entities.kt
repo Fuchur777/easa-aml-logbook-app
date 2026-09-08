@@ -73,6 +73,7 @@ data class PersonEntity(
     val name: String,
     val licenceNumber: String? = null,
     val email: String? = null,
+    val archived: Boolean = false,
 )
 
 // ---------------------------------------------------------------------------
@@ -125,6 +126,8 @@ data class WorkEntryEntity(
 
     val provenance: Provenance = Provenance.NATIVE,
     val externalId: String? = null,
+    /** Overrides the distinct-session-date count when set — e.g. two sessions on one calendar day that should still count as two. Null means "use the calculated value". */
+    val daysWorkedOverride: Int? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
 )

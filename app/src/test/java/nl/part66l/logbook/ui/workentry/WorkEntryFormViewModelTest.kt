@@ -3,6 +3,7 @@ package nl.part66l.logbook.ui.workentry
 import androidx.lifecycle.SavedStateHandle
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -102,7 +103,6 @@ class WorkEntryFormViewModelTest {
         viewModel.onActivityTypeToggle(ActivityType.INSPECTION)
         viewModel.onRoleChange(EntryRole.CERTIFIED_BY_ME_IN_APP)
         viewModel.onSupervisedAnotherChange(true)
-        viewModel.onSessionDateChange(LocalDate.of(2026, 3, 4))
         viewModel.onHelperAdd("Jan de Vries")
 
         viewModel.save()
@@ -166,13 +166,14 @@ class WorkEntryFormViewModelTest {
         val documentRepository = FakeDocumentRepository()
         val viewModel = viewModel(documentRepository = documentRepository)
 
-        viewModel.onCreateDocument("AMM", DocumentCategory.MANUAL, "Rev 1", "https://example.com")
+        viewModel.onCreateDocument("AMM", DocumentCategory.MANUAL, "Rev 1", LocalDate.of(2025, 6, 1), "https://example.com")
 
         assertEquals(1, viewModel.documentOptions.value.size)
         val created = viewModel.documentOptions.value.first()
         assertEquals("AMM", created.name)
         assertEquals(DocumentCategory.MANUAL, created.category)
         assertEquals("Rev 1", created.revision)
+        assertEquals(LocalDate.of(2025, 6, 1), created.revisionDate)
         assertEquals("https://example.com", created.link)
     }
 
@@ -339,6 +340,61 @@ class WorkEntryFormViewModelTest {
     }
 
     @Test
+    fun `helper add with a licence number persists it to the contact directory`() {
+        val personRepository = FakePersonRepository()
+        val viewModel = viewModel(personRepository = personRepository)
+
+        viewModel.onHelperAdd("Jan de Vries", "NL.66.11111")
+
+        assertEquals(listOf("Jan de Vries"), viewModel.state.value.helperNames)
+        val person = runBlocking { personRepository.observeAll(includeArchived = false).first() }.first()
+        assertEquals("Jan de Vries", person.name)
+        assertEquals("NL.66.11111", person.licenceNumber)
+    }
+
+    @Test
+    fun `session dates default to one entry, accumulate, and never drop to zero`() {
+        val viewModel = viewModel()
+
+        assertEquals(1, viewModel.state.value.sessionDates.size)
+
+        viewModel.onSessionDateAdd(LocalDate.of(2026, 3, 5))
+        viewModel.onSessionDateAdd(LocalDate.of(2026, 3, 6))
+        assertEquals(3, viewModel.state.value.sessionDates.size)
+
+        viewModel.onSessionDateAdd(LocalDate.of(2026, 3, 5)) // duplicate — no-op
+        assertEquals(3, viewModel.state.value.sessionDates.size)
+
+        viewModel.onSessionDateRemove(LocalDate.of(2026, 3, 5))
+        viewModel.onSessionDateRemove(LocalDate.of(2026, 3, 6))
+        assertEquals(1, viewModel.state.value.sessionDates.size)
+
+        viewModel.onSessionDateRemove(viewModel.state.value.sessionDates.first())
+        assertEquals(1, viewModel.state.value.sessionDates.size) // the last date can't be removed
+    }
+
+    @Test
+    fun `days worked override must parse as a whole number when entered, and is passed through on save`() {
+        val repository = FakeWorkEntryRepository()
+        val viewModel = viewModel(workEntryRepository = repository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Multi-day annual")
+        viewModel.onActivityTypeToggle(ActivityType.INSPECTION)
+        assertTrue(viewModel.state.value.canSave) // blank override is fine
+
+        viewModel.onDaysWorkedOverrideChange("not a number")
+        assertFalse(viewModel.state.value.canSave)
+        assertEquals("Enter a whole number", viewModel.state.value.daysWorkedOverrideError)
+
+        viewModel.onDaysWorkedOverrideChange("5")
+        assertTrue(viewModel.state.value.canSave)
+
+        viewModel.save()
+
+        assertEquals(5, repository.created.first().entry.daysWorkedOverride)
+    }
+
+    @Test
     fun `aircraftOptions reflects the aircraft repository, excluding archived by default`() {
         val aircraftRepository = FakeAircraftRepository()
         val visibleId = runBlocking {
@@ -395,7 +451,7 @@ class WorkEntryFormViewModelTest {
         val id = runBlocking {
             repository.create(
                 aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
-                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDate = LocalDate.of(2026, 1, 15),
+                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             )
         }
         val editViewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
@@ -412,7 +468,7 @@ class WorkEntryFormViewModelTest {
                 activityTypes = setOf(ActivityType.INSPECTION, ActivityType.SERVICING),
                 role = EntryRole.CERTIFIED_BY_ME_IN_APP,
                 supervisedAnother = true,
-                sessionDate = LocalDate.of(2026, 1, 15),
+                sessionDates = listOf(LocalDate.of(2026, 1, 15)),
                 helperNames = listOf("Jan de Vries"),
                 workorderIssuerName = "Piet Bakker",
                 workorderReference = "WO-2026-001",
@@ -431,7 +487,7 @@ class WorkEntryFormViewModelTest {
         assertEquals(setOf(ActivityType.INSPECTION, ActivityType.SERVICING), viewModel.state.value.activityTypes)
         assertEquals(EntryRole.CERTIFIED_BY_ME_IN_APP, viewModel.state.value.role)
         assertTrue(viewModel.state.value.supervisedAnother)
-        assertEquals(LocalDate.of(2026, 1, 15), viewModel.state.value.sessionDate)
+        assertEquals(listOf(LocalDate.of(2026, 1, 15)), viewModel.state.value.sessionDates)
         assertEquals(listOf("Jan de Vries"), viewModel.state.value.helperNames)
         assertEquals("Piet Bakker", viewModel.state.value.workorderIssuerName)
         assertEquals("WO-2026-001", viewModel.state.value.workorderReference)
@@ -448,7 +504,7 @@ class WorkEntryFormViewModelTest {
         val id = runBlocking {
             repository.create(
                 aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
-                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDate = LocalDate.of(2026, 1, 15),
+                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             )
         }
 
@@ -469,7 +525,7 @@ class WorkEntryFormViewModelTest {
         val id = runBlocking {
             repository.create(
                 aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
-                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDate = LocalDate.of(2026, 1, 15),
+                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             )
         }
 

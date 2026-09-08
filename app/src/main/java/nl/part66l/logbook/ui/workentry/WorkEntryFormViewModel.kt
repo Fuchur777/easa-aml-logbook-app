@@ -25,6 +25,7 @@ import nl.part66l.logbook.data.DocumentEntity
 import nl.part66l.logbook.data.DocumentRepository
 import nl.part66l.logbook.data.DocumentationRefInput
 import nl.part66l.logbook.data.PartUsedInput
+import nl.part66l.logbook.data.PersonEntity
 import nl.part66l.logbook.data.PersonRepository
 import nl.part66l.logbook.data.SettingsRepository
 import nl.part66l.logbook.data.WorkEntryRepository
@@ -38,7 +39,7 @@ class WorkEntryFormViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val workEntryRepository: WorkEntryRepository,
     aircraftRepository: AircraftRepository,
-    personRepository: PersonRepository,
+    private val personRepository: PersonRepository,
     private val catalogueRepository: CatalogueRepository,
     private val settingsRepository: SettingsRepository,
     private val documentRepository: DocumentRepository,
@@ -56,10 +57,18 @@ class WorkEntryFormViewModel @Inject constructor(
     val aircraftOptions: StateFlow<List<AircraftWithRegistration>> = aircraftRepository.observeAllWithRegistration(includeArchived = false)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    /** Backs the helper picker's search-as-you-type suggestions. */
-    val knownHelperNames: StateFlow<List<String>> = personRepository.all()
+    /** Non-archived contacts — backs the helper picker's search-as-you-type suggestions. */
+    private val knownHelperContacts: StateFlow<List<PersonEntity>> = personRepository.observeAll(includeArchived = false)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val knownHelperNames: StateFlow<List<String>> = knownHelperContacts
         .map { people -> people.map { it.name } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** So the picker can show a matched contact's licence number alongside their name. */
+    val knownHelperLicenceNumbers: StateFlow<Map<String, String?>> = knownHelperContacts
+        .map { people -> people.associate { it.name to it.licenceNumber } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     /** Catalogue tasks applicable to the profile's held subcategories — backs the task-completion picker. Loaded once; the catalogue doesn't change mid-session. */
     private val _availableTasks = MutableStateFlow<List<CatalogueTaskEntity>>(emptyList())
@@ -97,7 +106,8 @@ class WorkEntryFormViewModel @Inject constructor(
                             activityTypes = edit.activityTypes,
                             role = edit.role,
                             supervisedAnother = edit.supervisedAnother,
-                            sessionDate = edit.sessionDate,
+                            sessionDates = edit.sessionDates,
+                            daysWorkedOverride = edit.daysWorkedOverride?.toString().orEmpty(),
                             helperNames = edit.helperNames,
                             completedTaskIds = edit.completedTaskIds,
                             workorderIssuerName = edit.workorderIssuerName.orEmpty(),
@@ -134,10 +144,30 @@ class WorkEntryFormViewModel @Inject constructor(
     fun onSupervisedAnotherChange(value: Boolean) = _state.update {
         it.copy(supervisedAnother = value, helperNames = if (value) it.helperNames else emptyList())
     }
-    fun onSessionDateChange(value: LocalDate?) = _state.update { it.copy(sessionDate = value ?: it.sessionDate) }
+    /** One day spans several sessions — this adds another rather than replacing the current one. Duplicate dates are harmless but pointless, so skipped. */
+    fun onSessionDateAdd(date: LocalDate) = _state.update {
+        if (date in it.sessionDates) it else it.copy(sessionDates = it.sessionDates + date)
+    }
 
-    fun onHelperAdd(name: String) = _state.update {
-        if (name.isBlank() || name in it.helperNames) it else it.copy(helperNames = it.helperNames + name)
+    /** At least one session is required, so a lone date can't be removed — the form has nothing sensible to fall back to. */
+    fun onSessionDateRemove(date: LocalDate) = _state.update {
+        if (it.sessionDates.size <= 1) it else it.copy(sessionDates = it.sessionDates - date)
+    }
+
+    fun onDaysWorkedOverrideChange(value: String) = _state.update { it.copy(daysWorkedOverride = value) }
+
+    /**
+     * [licenceNumber] is only ever non-null when the picker's inline "add new" flow captured
+     * one — persisted straight to the contact directory, same as [onCreateDocument], so it's
+     * remembered next time this person is picked rather than only living on this one entry.
+     */
+    fun onHelperAdd(name: String, licenceNumber: String? = null) {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return
+        _state.update { if (trimmed in it.helperNames) it else it.copy(helperNames = it.helperNames + trimmed) }
+        licenceNumber?.trim()?.takeIf { it.isNotBlank() }?.let { licence ->
+            viewModelScope.launch { personRepository.findOrCreate(trimmed, licence) }
+        }
     }
 
     fun onHelperRemove(name: String) = _state.update { it.copy(helperNames = it.helperNames - name) }
@@ -165,8 +195,10 @@ class WorkEntryFormViewModel @Inject constructor(
     fun onPartUsedRemove(index: Int) = _state.update { it.copy(partsUsed = it.partsUsed.filterIndexed { i, _ -> i != index }) }
 
     /** Adds straight to the directory — [documentOptions] picks it up reactively, no round trip needed here. */
-    fun onCreateDocument(name: String, category: DocumentCategory, revision: String?, link: String?) {
-        viewModelScope.launch { documentRepository.create(name = name, category = category, revision = revision, link = link) }
+    fun onCreateDocument(name: String, category: DocumentCategory, revision: String?, revisionDate: LocalDate?, link: String?) {
+        viewModelScope.launch {
+            documentRepository.create(name = name, category = category, revision = revision, revisionDate = revisionDate, link = link)
+        }
     }
 
     fun onTaskCompletionToggle(taskId: String) = _state.update {
@@ -201,7 +233,8 @@ class WorkEntryFormViewModel @Inject constructor(
                     activityTypes = current.activityTypes,
                     role = current.role,
                     supervisedAnother = current.supervisedAnother,
-                    sessionDate = current.sessionDate,
+                    sessionDates = current.sessionDates,
+                    daysWorkedOverride = current.daysWorkedOverride.toIntOrNull(),
                     helperNames = current.helperNames,
                     completedTaskIds = current.completedTaskIds,
                     airframeHoursAtWork = current.airframeHours.toDoubleOrNull(),
@@ -223,7 +256,8 @@ class WorkEntryFormViewModel @Inject constructor(
                     activityTypes = current.activityTypes,
                     role = current.role,
                     supervisedAnother = current.supervisedAnother,
-                    sessionDate = current.sessionDate,
+                    sessionDates = current.sessionDates,
+                    daysWorkedOverride = current.daysWorkedOverride.toIntOrNull(),
                     helperNames = current.helperNames,
                     completedTaskIds = current.completedTaskIds,
                     airframeHoursAtWork = current.airframeHours.toDoubleOrNull(),

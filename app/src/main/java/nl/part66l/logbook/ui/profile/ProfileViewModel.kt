@@ -47,7 +47,18 @@ class ProfileViewModel @Inject constructor(
     fun onEmailChange(value: String) = _state.update { it.copy(email = value) }
     fun onLicenceNumberChange(value: String) = _state.update { it.copy(licenceNumber = value) }
     fun onIssuingAuthorityChange(value: String) = _state.update { it.copy(issuingAuthority = value) }
-    fun onLicenceValidFromChange(value: LocalDate?) = _state.update { it.copy(licenceValidFrom = value) }
+    /**
+     * Setting the licence's start date also prefills two dates that are normally the same
+     * or a fixed distance from it — but only while they're still empty, so this never
+     * silently overwrites something the user already entered themselves.
+     */
+    fun onLicenceValidFromChange(value: LocalDate?) = _state.update {
+        it.copy(
+            licenceValidFrom = value,
+            initialCertificationDate = it.initialCertificationDate ?: value,
+            licenceExpiry = it.licenceExpiry ?: value?.plusYears(5),
+        )
+    }
     fun onLicenceExpiryChange(value: LocalDate?) = _state.update { it.copy(licenceExpiry = value) }
     fun onInitialCertificationDateChange(value: LocalDate?) = _state.update { it.copy(initialCertificationDate = value) }
 

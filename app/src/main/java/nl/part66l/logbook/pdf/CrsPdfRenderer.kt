@@ -55,18 +55,26 @@ class CrsPdfRenderer {
         w.fields(data.period)
 
         w.heading("Maintenance data used")
-        w.rows(
-            listOf("Reference", "Category", "Revision", "Date"),
-            data.documentation.map { listOf(it.reference, it.category, it.revision, it.date) },
-            listOf(55f, 25f, 40f, 40f),
-        )
+        if (data.documentation.isEmpty()) {
+            w.para("None.")
+        } else {
+            w.rows(
+                listOf("Reference", "Category", "Revision", "Date"),
+                data.documentation.map { listOf(it.reference, it.category, it.revision, it.date) },
+                listOf(55f, 25f, 40f, 40f),
+            )
+        }
 
         w.heading("Parts and materials installed")
-        w.rows(
-            listOf("Part number", "Description", "Batch / serial", "Release document"),
-            data.parts.map { listOf(it.partNumber, it.description, it.batchOrSerial, it.releaseDocument) },
-            listOf(40f, 55f, 35f, 35f),
-        )
+        if (data.parts.isEmpty()) {
+            w.para("None.")
+        } else {
+            w.rows(
+                listOf("Part number", "Description", "Batch / serial", "Release document"),
+                data.parts.map { listOf(it.partNumber, it.description, it.batchOrSerial, it.releaseDocument) },
+                listOf(40f, 55f, 35f, 35f),
+            )
+        }
 
         w.heading("Limitations to airworthiness or operations")
         w.para(data.limitations)

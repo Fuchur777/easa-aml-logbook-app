@@ -23,6 +23,7 @@ class CrsPdfRendererTest {
 
     private fun sampleData(
         documentation: List<DocRow> = defaultDocumentation,
+        parts: List<PartRow> = defaultParts,
         workOrders: List<WorkOrderRow> = defaultWorkOrders,
         activities: List<String> = defaultActivities,
         completedTasks: List<String> = defaultCompletedTasks,
@@ -42,7 +43,7 @@ class CrsPdfRendererTest {
             "Days worked" to "3",
         ),
         documentation = documentation,
-        parts = listOf(PartRow("6204-2RS", "Wheel bearing", "B-77412", "EASA Form 1 ref. 55120")),
+        parts = parts,
         workOrders = workOrders,
         limitations = "None.",
         statement = "certifies that the work specified, except as otherwise specified, was carried " +
@@ -121,6 +122,19 @@ class CrsPdfRendererTest {
     }
 
     @Test
+    fun `an empty documentation or parts section prints None rather than an empty table`() {
+        PDDocument().use { document ->
+            val data = sampleData(documentation = emptyList(), parts = emptyList()).copy(limitations = "No limitations apply.")
+            CrsPdfRenderer().render(document, data)
+
+            val text = textOf(document)
+            assertTrue(text.contains("MAINTENANCE DATA USED"))
+            assertTrue(text.contains("PARTS AND MATERIALS INSTALLED"))
+            assertEquals(2, Regex("None\\.").findAll(text).count()) // one for each empty section
+        }
+    }
+
+    @Test
     fun `a work order, when present, is rendered on its own page titled Work Order`() {
         PDDocument().use { document ->
             CrsPdfRenderer().render(document, sampleData())
@@ -170,6 +184,8 @@ private val defaultDocumentation = listOf(
     DocRow("ASK 21 Maintenance Manual, chapter 4", "Manual", "Rev. 7", "12 June 2024"),
     DocRow("TN 826-11", "SD", "Issue 2", "3 February 2021"),
 )
+
+private val defaultParts = listOf(PartRow("6204-2RS", "Wheel bearing", "B-77412", "EASA Form 1 ref. 55120"))
 
 private val defaultWorkOrders = listOf(
     WorkOrderRow("Club maintenance officer", "10 March 2026", "Annual inspection", "WO-2026-014"),

@@ -76,7 +76,15 @@ class CrsRepositoryTest {
         return task.id
     }
 
-    private suspend fun createEntry(withAircraft: Boolean = true, completedTaskIds: Set<String> = emptySet()): String {
+    /** Bumped for each aircraft this helper creates — the aircraft table has a unique (manufacturer, serialNumber) constraint. */
+    private var nextAircraftSerial = 21123
+
+    private suspend fun createEntry(
+        withAircraft: Boolean = true,
+        completedTaskIds: Set<String> = emptySet(),
+        sessionDates: List<LocalDate> = listOf(LocalDate.of(2026, 3, 14)),
+        daysWorkedOverride: Int? = null,
+    ): String {
         db.profile().upsert(
             ProfileEntity(
                 name = "F. Example", licenceNumber = "NL.66.00000", issuingAuthority = "ILT", licenceExpiry = null, holdsL1 = true,
@@ -84,7 +92,7 @@ class CrsRepositoryTest {
         )
         val aircraftId = if (withAircraft) {
             AircraftRepositoryImpl(db.aircraft()).create(
-                manufacturer = "Schleicher", type = "ASK 21", serialNumber = "21123",
+                manufacturer = "Schleicher", type = "ASK 21", serialNumber = (nextAircraftSerial++).toString(),
                 propulsion = Propulsion.UNPOWERED, structure = Structure.WOOD_AND_FABRIC,
                 subcategoryOverride = null, registration = "PH-1234", validFrom = LocalDate.of(2020, 1, 1),
             )
@@ -97,7 +105,8 @@ class CrsRepositoryTest {
             activityTypes = setOf(ActivityType.INSPECTION),
             role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = true,
-            sessionDate = LocalDate.of(2026, 3, 14),
+            sessionDates = sessionDates,
+            daysWorkedOverride = daysWorkedOverride,
             helperNames = listOf("J. de Vries"),
             completedTaskIds = completedTaskIds,
             documentationRefs = listOf(
@@ -162,6 +171,19 @@ class CrsRepositoryTest {
 
         val unticketText = PDDocument.load(File(unticked!!.pdfLocalPath!!)).use { PDFTextStripper().getText(it) }
         assertTrue(!unticketText.contains("Maintenance could not be completed in full."))
+    }
+
+    @Test
+    fun `days worked reflects a manual override instead of the distinct session-date count`() = runBlocking {
+        val entryId = createEntry(
+            sessionDates = listOf(LocalDate.of(2026, 3, 12), LocalDate.of(2026, 3, 14)),
+            daysWorkedOverride = 99, // a value that can't coincidentally appear elsewhere (dates, numbers, sequence) in this fixture
+        )
+
+        val crs = repository.generateUnsigned(entryId, limitations = null, maintenanceIncomplete = false)
+
+        val text = PDDocument.load(File(crs!!.pdfLocalPath!!)).use { PDFTextStripper().getText(it) }
+        assertTrue("expected the override (99) to be printed as the days-worked figure", text.contains("99"))
     }
 
     @Test

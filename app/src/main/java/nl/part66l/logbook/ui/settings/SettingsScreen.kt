@@ -13,6 +13,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -31,6 +32,7 @@ import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 @Composable
 fun SettingsScreen(
     onClose: () -> Unit,
+    onContacts: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val showArchivedAircraft by viewModel.showArchivedAircraft.collectAsStateWithLifecycle()
@@ -60,6 +62,20 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            Card {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Contacts", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Helpers and workorder issuers, with their licence numbers, in one place.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(onClick = onContacts, modifier = Modifier.fillMaxWidth()) {
+                        Text("Manage contacts")
+                    }
+                }
+            }
+
             Card {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Aircraft", style = MaterialTheme.typography.titleMedium)
@@ -130,9 +146,9 @@ fun SettingsScreen(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("CRS numbering", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Placeholders: {PREFIX}, {YYYY} and {SEQ:N} (zero-padded to N digits). " +
-                            "{SEQ:N} is required, used once, and must be last. Issued numbers never change " +
-                            "when this format does.",
+                        "Placeholders: {PREFIX}, {YYYY}, {REG} (registration, or NOREG for bench/component " +
+                            "work) and {SEQ:N} (zero-padded to N digits). {SEQ:N} is required, used once, and " +
+                            "must be last. Issued numbers never change when this format does.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

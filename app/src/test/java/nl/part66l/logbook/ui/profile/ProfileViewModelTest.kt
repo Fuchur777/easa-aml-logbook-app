@@ -156,6 +156,28 @@ class ProfileViewModelTest {
     }
 
     @Test
+    fun `setting valid-from prefills the initial certification date and valid-till, but only while they're empty`() {
+        val viewModel = ProfileViewModel(FakeProfileRepository())
+
+        viewModel.onLicenceValidFromChange(LocalDate.of(2020, 3, 1))
+
+        assertEquals(LocalDate.of(2020, 3, 1), viewModel.state.value.initialCertificationDate)
+        assertEquals(LocalDate.of(2025, 3, 1), viewModel.state.value.licenceExpiry) // +5 years
+    }
+
+    @Test
+    fun `valid-from prefill never overwrites a date the user already entered`() {
+        val viewModel = ProfileViewModel(FakeProfileRepository())
+        viewModel.onInitialCertificationDateChange(LocalDate.of(2018, 1, 1))
+        viewModel.onLicenceExpiryChange(LocalDate.of(2028, 1, 1))
+
+        viewModel.onLicenceValidFromChange(LocalDate.of(2020, 3, 1))
+
+        assertEquals(LocalDate.of(2018, 1, 1), viewModel.state.value.initialCertificationDate)
+        assertEquals(LocalDate.of(2028, 1, 1), viewModel.state.value.licenceExpiry)
+    }
+
+    @Test
     fun `save persists phone, email and licence dates`() {
         val repository = FakeProfileRepository()
         val viewModel = ProfileViewModel(repository)
