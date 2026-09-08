@@ -23,9 +23,13 @@ data class ProfileFormState(
     val holdsL1C: Boolean = false,
     val holdsL2: Boolean = false,
     val holdsL2C: Boolean = false,
+    // Edited on the Settings screen (SettingsViewModel), not here — carried through
+    // load/save unedited so this screen's Save never clobbers what Settings wrote.
     val recencyReductionGranted: Boolean = false,
     val recencyReductionReference: String = "",
     val recencyReductionDate: LocalDate? = null,
+    val researchCountsTowardRecency: Boolean = false,
+
     val saving: Boolean = false,
 ) {
     val nameError: String? get() = if (name.isBlank()) "Name is required" else null
@@ -40,7 +44,11 @@ data class ProfileFormState(
             null
         }
 
-    val canSave: Boolean get() = !saving && nameError == null && subcategoryError == null && licenceDatesError == null
+    val initialCertificationDateError: String? get() = if (initialCertificationDate == null) "Initial certification date is required" else null
+
+    val canSave: Boolean
+        get() = !saving && nameError == null && subcategoryError == null && licenceDatesError == null &&
+            initialCertificationDateError == null
 }
 
 fun ProfileEntity.toFormState() = ProfileFormState(
@@ -59,6 +67,7 @@ fun ProfileEntity.toFormState() = ProfileFormState(
     recencyReductionGranted = recencyReductionGranted,
     recencyReductionReference = recencyReductionReference.orEmpty(),
     recencyReductionDate = recencyReductionDate,
+    researchCountsTowardRecency = researchCountsTowardRecency,
 )
 
 /**
@@ -83,4 +92,5 @@ fun ProfileFormState.toEntity() = ProfileEntity(
     recencyReductionAuthority = issuingAuthority.trim().ifBlank { null },
     recencyReductionReference = recencyReductionReference.trim().ifBlank { null },
     recencyReductionDate = recencyReductionDate,
+    researchCountsTowardRecency = researchCountsTowardRecency,
 )

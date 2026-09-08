@@ -14,6 +14,7 @@ val ActivityType.displayLabel: String
         ActivityType.CHANGING_COMPONENT -> "Changing a component"
         ActivityType.SUPERVISING -> "Supervising"
         ActivityType.RELEASING_TO_SERVICE -> "Releasing to service"
+        ActivityType.RESEARCH_AND_PAPERWORK -> "Research & paperwork"
     }
 
 val EntryRole.displayLabel: String

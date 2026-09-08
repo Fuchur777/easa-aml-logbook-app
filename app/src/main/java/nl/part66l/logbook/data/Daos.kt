@@ -79,6 +79,25 @@ interface PersonDao {
     suspend fun byName(name: String): PersonEntity?
 }
 
+/** Document directory (§5.3) — management screen CRUD, plus what the entry form's documentation picker reads from. */
+@Dao
+interface DocumentDao {
+    @Insert suspend fun insert(document: DocumentEntity)
+    @Update suspend fun update(document: DocumentEntity)
+
+    @Query("SELECT * FROM document WHERE id = :id")
+    suspend fun byId(id: String): DocumentEntity?
+
+    @Query("SELECT * FROM document WHERE archived = 0 OR :includeArchived = 1 ORDER BY category, name")
+    fun observeAll(includeArchived: Boolean): Flow<List<DocumentEntity>>
+
+    @Query("UPDATE document SET archived = :archived WHERE id = :id")
+    suspend fun setArchived(id: String, archived: Boolean)
+
+    @Query("DELETE FROM document WHERE id = :id")
+    suspend fun delete(id: String)
+}
+
 @Dao
 interface RecencyDao {
 
@@ -170,14 +189,26 @@ interface RecencyDao {
      * [distinctDays] and [daysInWindow] answer "how many/which days", not "for
      * which subcategory", so they can't build [nl.part66l.logbook.domain.RecencyEvaluator]'s
      * per-subcategory input on their own.
+     *
+     * [includeResearchOnlyDays] excludes (when false) sessions on an entry whose activity
+     * types are exactly `{RESEARCH_AND_PAPERWORK}` — see [ProfileEntity.researchCountsTowardRecency].
+     * An entry that combines research with a real regulatory activity always counts regardless.
      */
     @Query("""
         SELECT DISTINCT s.date AS date, e.aircraftId AS aircraftId
         FROM work_session s
         JOIN work_entry e ON e.id = s.entryId
         WHERE s.date >= :windowStart
+          AND (
+            :includeResearchOnlyDays = 1
+            OR (SELECT COUNT(*) FROM work_entry_activity_type wat WHERE wat.entryId = e.id) != 1
+            OR NOT EXISTS (
+                SELECT 1 FROM work_entry_activity_type wat2
+                WHERE wat2.entryId = e.id AND wat2.activityType = 'RESEARCH_AND_PAPERWORK'
+            )
+          )
     """)
-    suspend fun sessionsInWindow(windowStart: LocalDate): List<SessionAircraftRow>
+    suspend fun sessionsInWindow(windowStart: LocalDate, includeResearchOnlyDays: Boolean): List<SessionAircraftRow>
 
     /** As [sessionsInWindow], restricted to annual-inspection entries, for Route C. */
     @Query("""

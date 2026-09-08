@@ -39,6 +39,25 @@ sealed interface Destination {
         override val route = "recency"
     }
 
+    /** Reached from the top bar on any bottom-nav screen — manages the document directory (§5.3). */
+    data object Documents : Destination {
+        override val route = "documents"
+    }
+
+    data object DocumentForm : Destination {
+        override val route = "documents/new"
+    }
+
+    /** Edits an existing document. [documentId] builds the concrete route; [ROUTE_PATTERN] registers it with NavHost. */
+    data class DocumentEdit(val documentId: String) : Destination {
+        override val route = "documents/edit/$documentId"
+
+        companion object {
+            const val ARG_DOCUMENT_ID = "documentId"
+            const val ROUTE_PATTERN = "documents/edit/{$ARG_DOCUMENT_ID}"
+        }
+    }
+
     /** Reached from the top bar on any bottom-nav screen — edits the existing profile. */
     data object Profile : Destination {
         override val route = "profile"

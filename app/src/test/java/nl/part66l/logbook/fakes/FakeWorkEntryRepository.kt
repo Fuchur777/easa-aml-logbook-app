@@ -4,6 +4,8 @@ import androidx.paging.PagingSource
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import nl.part66l.logbook.data.DocumentationRefInput
+import nl.part66l.logbook.data.PartUsedInput
 import nl.part66l.logbook.data.WorkEntryEntity
 import nl.part66l.logbook.data.WorkEntryListRow
 import nl.part66l.logbook.data.WorkEntryRepository
@@ -16,6 +18,8 @@ data class CreatedWorkEntry(
     val activityTypes: Set<ActivityType>,
     val helperNames: List<String>,
     val completedTaskIds: Set<String>,
+    val documentationRefs: List<DocumentationRefInput>,
+    val partsUsed: List<PartUsedInput>,
 )
 
 /**
@@ -53,19 +57,34 @@ class FakeWorkEntryRepository : WorkEntryRepository {
         supervisedAnother: Boolean,
         sessionDate: LocalDate,
         helperNames: List<String>,
-        researchAndPaperwork: Boolean,
         completedTaskIds: Set<String>,
+        airframeHoursAtWork: Double?,
+        launchesAtWork: Int?,
+        workorderIssuerName: String?,
+        workorderDate: LocalDate?,
+        workorderRequestedWork: String?,
+        workorderReference: String?,
+        annualInspection: Boolean,
+        concurrentWithArc: Boolean,
+        documentationRefs: List<DocumentationRefInput>,
+        partsUsed: List<PartUsedInput>,
     ): String {
         val id = UUID.randomUUID().toString()
         created += CreatedWorkEntry(
             entry = WorkEntryEntity(
                 id = id, aircraftId = aircraftId, description = description, role = role,
-                supervisedAnother = supervisedAnother, researchAndPaperwork = researchAndPaperwork,
+                supervisedAnother = supervisedAnother,
+                airframeHoursAtWork = airframeHoursAtWork, launchesAtWork = launchesAtWork,
+                workorderIssuerName = workorderIssuerName, workorderDate = workorderDate,
+                workorderRequestedWork = workorderRequestedWork, workorderReference = workorderReference,
+                annualInspection = annualInspection, concurrentWithArc = concurrentWithArc,
                 createdAt = Instant.now(), updatedAt = Instant.now(),
             ),
             activityTypes = activityTypes,
             helperNames = helperNames,
             completedTaskIds = completedTaskIds,
+            documentationRefs = documentationRefs,
+            partsUsed = partsUsed,
         )
         return id
     }

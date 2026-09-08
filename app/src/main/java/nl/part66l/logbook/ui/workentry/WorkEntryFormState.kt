@@ -1,6 +1,8 @@
 package nl.part66l.logbook.ui.workentry
 
 import java.time.LocalDate
+import nl.part66l.logbook.data.DocumentationRefInput
+import nl.part66l.logbook.data.PartUsedInput
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.EntryRole
 
@@ -26,17 +28,38 @@ data class WorkEntryFormState(
     val supervisedAnother: Boolean = false,
     val sessionDate: LocalDate = LocalDate.now(),
     val helperNames: List<String> = emptyList(),
-    /** Personal time-tracking only, kept out of the regulatory [ActivityType] set — see there for why. */
-    val researchAndPaperwork: Boolean = false,
     /** Appendix II catalogue task ids evidenced by this entry — feeds Route B. Entirely optional. */
     val completedTaskIds: Set<String> = emptySet(),
+
+    // Workorder value object (§5.4) — all optional free text; the scanned-attachment
+    // part needs the document-scanner flow and isn't captured here yet.
+    val workorderIssuerName: String = "",
+    val workorderDate: LocalDate? = null,
+    val workorderRequestedWork: String = "",
+    val workorderReference: String = "",
+
+    // Readings at the time of work, not counters — raw text so an empty field isn't 0.
+    val airframeHours: String = "",
+    val launches: String = "",
+
+    /** Entry metadata, never printed on the CRS — see WorkEntryEntity.annualInspection. */
+    val annualInspection: Boolean = false,
+    /** Only meaningful while [annualInspection] is set — cleared when it's unchecked. */
+    val concurrentWithArc: Boolean = false,
+
+    val documentationRefs: List<DocumentationRefInput> = emptyList(),
+    val partsUsed: List<PartUsedInput> = emptyList(),
+
     val saving: Boolean = false,
 ) {
     val descriptionError: String? get() = if (description.isBlank()) "Description of work done is required" else null
     val activityTypesError: String? get() = if (activityTypes.isEmpty()) "Select at least one activity" else null
     val aircraftSelectionError: String?
         get() = if (aircraftSelection is AircraftSelection.Unselected) "Select an aircraft or bench / component work" else null
+    val airframeHoursError: String? get() = if (airframeHours.isNotBlank() && airframeHours.toDoubleOrNull() == null) "Enter a number" else null
+    val launchesError: String? get() = if (launches.isNotBlank() && launches.toIntOrNull() == null) "Enter a whole number" else null
 
     val canSave: Boolean
-        get() = !saving && descriptionError == null && activityTypesError == null && aircraftSelectionError == null
+        get() = !saving && descriptionError == null && activityTypesError == null && aircraftSelectionError == null &&
+            airframeHoursError == null && launchesError == null
 }

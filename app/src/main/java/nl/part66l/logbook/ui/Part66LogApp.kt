@@ -26,6 +26,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import nl.part66l.logbook.ui.aircraft.AircraftFormScreen
 import nl.part66l.logbook.ui.aircraft.AircraftListScreen
+import nl.part66l.logbook.ui.documents.DocumentFormScreen
+import nl.part66l.logbook.ui.documents.DocumentListScreen
 import nl.part66l.logbook.ui.navigation.Destination
 import nl.part66l.logbook.ui.profile.ProfileFormScreen
 import nl.part66l.logbook.ui.recency.RecencyDashboardScreen
@@ -63,6 +65,9 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
         Destination.Profile.route,
         Destination.Settings.route,
         Destination.WorkEntryForm.route,
+        Destination.Documents.route,
+        Destination.DocumentForm.route,
+        Destination.DocumentEdit.ROUTE_PATTERN,
     )
     val showBottomBar = currentRoute?.hierarchy?.none { it.route in noBottomBarRoutes } ?: false
 
@@ -93,6 +98,10 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                                 DropdownMenuItem(
                                     text = { Text("Settings") },
                                     onClick = { menuExpanded = false; navController.navigate(Destination.Settings.route) },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Documents") },
+                                    onClick = { menuExpanded = false; navController.navigate(Destination.Documents.route) },
                                 )
                             }
                         },
@@ -148,6 +157,30 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                 )
             }
             composable(Destination.Recency.route) { RecencyDashboardScreen() }
+            composable(Destination.Documents.route) {
+                DocumentListScreen(
+                    onAddDocument = { navController.navigate(Destination.DocumentForm.route) },
+                    onEditDocument = { id -> navController.navigate(Destination.DocumentEdit(id).route) },
+                    onClose = { navController.popBackStack() },
+                )
+            }
+            composable(Destination.DocumentForm.route) {
+                DocumentFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onDeleted = { navController.popBackStack() },
+                    onClose = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = Destination.DocumentEdit.ROUTE_PATTERN,
+                arguments = listOf(navArgument(Destination.DocumentEdit.ARG_DOCUMENT_ID) { type = NavType.StringType }),
+            ) {
+                DocumentFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onDeleted = { navController.popBackStack() },
+                    onClose = { navController.popBackStack() },
+                )
+            }
             composable(Destination.Profile.route) {
                 ProfileFormScreen(onSaved = { navController.popBackStack() }, onClose = { navController.popBackStack() })
             }

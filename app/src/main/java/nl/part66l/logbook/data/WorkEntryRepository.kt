@@ -11,6 +11,18 @@ import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.HelperRole
 import nl.part66l.logbook.domain.Provenance
 
+/** One row of the "Documentation used" list (§5.3) — reference plus revision status. */
+data class DocumentationRefInput(val reference: String, val revision: String? = null)
+
+/** One row of the "Parts and materials" list (§5.3). */
+data class PartUsedInput(
+    val partNumber: String,
+    val description: String? = null,
+    val batchOrSerial: String? = null,
+    val formOneRef: String? = null,
+    val quantity: String? = null,
+)
+
 interface WorkEntryRepository {
     fun pagedAll(): PagingSource<Int, WorkEntryEntity>
 
@@ -32,7 +44,10 @@ interface WorkEntryRepository {
      * name match, creating a new [PersonEntity] for any name not already on file.
      * [completedTaskIds] are snapshotted into [TaskCompletionEntity] rows as they read
      * today — a later catalogue update must never retroactively change what a past
-     * completion said.
+     * completion said. [documentationRefs] and [partsUsed] become their own child rows,
+     * same as helpers. [workorderIssuerName], if given, is also resolved into the person
+     * directory (same [PersonEntity] table as helpers) so its spelling can be reused —
+     * unlike helpers, the entry stores the plain name, not a person id.
      */
     suspend fun create(
         aircraftId: String?,
@@ -42,8 +57,17 @@ interface WorkEntryRepository {
         supervisedAnother: Boolean,
         sessionDate: LocalDate,
         helperNames: List<String> = emptyList(),
-        researchAndPaperwork: Boolean = false,
         completedTaskIds: Set<String> = emptySet(),
+        airframeHoursAtWork: Double? = null,
+        launchesAtWork: Int? = null,
+        workorderIssuerName: String? = null,
+        workorderDate: LocalDate? = null,
+        workorderRequestedWork: String? = null,
+        workorderReference: String? = null,
+        annualInspection: Boolean = false,
+        concurrentWithArc: Boolean = false,
+        documentationRefs: List<DocumentationRefInput> = emptyList(),
+        partsUsed: List<PartUsedInput> = emptyList(),
     ): String
 }
 
@@ -55,6 +79,8 @@ class WorkEntryRepositoryImpl @Inject constructor(
     private val personRepository: PersonRepository,
     private val catalogueDao: CatalogueDao,
     private val taskCompletionDao: TaskCompletionDao,
+    private val documentationRefDao: DocumentationRefDao,
+    private val partUsedDao: PartUsedDao,
 ) : WorkEntryRepository {
 
     override fun pagedAll(): PagingSource<Int, WorkEntryEntity> = workEntryDao.pagedAll()
@@ -79,8 +105,17 @@ class WorkEntryRepositoryImpl @Inject constructor(
         supervisedAnother: Boolean,
         sessionDate: LocalDate,
         helperNames: List<String>,
-        researchAndPaperwork: Boolean,
         completedTaskIds: Set<String>,
+        airframeHoursAtWork: Double?,
+        launchesAtWork: Int?,
+        workorderIssuerName: String?,
+        workorderDate: LocalDate?,
+        workorderRequestedWork: String?,
+        workorderReference: String?,
+        annualInspection: Boolean,
+        concurrentWithArc: Boolean,
+        documentationRefs: List<DocumentationRefInput>,
+        partsUsed: List<PartUsedInput>,
     ): String {
         val entryId = UUID.randomUUID().toString()
         val now = Instant.now()
@@ -91,7 +126,15 @@ class WorkEntryRepositoryImpl @Inject constructor(
                 description = description,
                 role = role,
                 supervisedAnother = supervisedAnother,
-                researchAndPaperwork = researchAndPaperwork,
+                airframeHoursAtWork = airframeHoursAtWork,
+                launchesAtWork = launchesAtWork,
+                workorderIssuerName = workorderIssuerName,
+                workorderDate = workorderDate,
+                workorderRequestedWork = workorderRequestedWork,
+                workorderReference = workorderReference,
+                workorderReferenceNormalised = workorderReference?.let { Identifiers.normalise(it) },
+                annualInspection = annualInspection,
+                concurrentWithArc = concurrentWithArc,
                 createdAt = now,
                 updatedAt = now,
             ),
@@ -104,6 +147,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
             val personId = personRepository.findOrCreate(name)
             entryHelperDao.insert(EntryHelperEntity(entryId = entryId, personId = personId, role = HelperRole.ASSISTED))
         }
+        workorderIssuerName?.trim()?.takeIf { it.isNotEmpty() }?.let { personRepository.findOrCreate(it) }
         catalogueDao.byIds(completedTaskIds.toList()).forEach { task ->
             taskCompletionDao.insert(
                 TaskCompletionEntity(
@@ -112,6 +156,32 @@ class WorkEntryRepositoryImpl @Inject constructor(
                     taskId = task.id,
                     catalogueVersion = task.catalogueVersion,
                     taskTextSnapshot = task.text,
+                ),
+            )
+        }
+        documentationRefs.forEach { ref ->
+            documentationRefDao.insert(
+                DocumentationRefEntity(
+                    id = UUID.randomUUID().toString(),
+                    entryId = entryId,
+                    reference = ref.reference,
+                    referenceNormalised = Identifiers.normalise(ref.reference),
+                    revision = ref.revision,
+                    revisionDate = null,
+                ),
+            )
+        }
+        partsUsed.forEach { part ->
+            partUsedDao.insert(
+                PartUsedEntity(
+                    id = UUID.randomUUID().toString(),
+                    entryId = entryId,
+                    description = part.description,
+                    partNumber = part.partNumber,
+                    partNumberNormalised = Identifiers.normalise(part.partNumber),
+                    batchOrSerial = part.batchOrSerial,
+                    formOneRef = part.formOneRef,
+                    quantity = part.quantity,
                 ),
             )
         }

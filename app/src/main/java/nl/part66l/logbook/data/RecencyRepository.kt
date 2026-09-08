@@ -78,7 +78,7 @@ class RecencyRepositoryImpl @Inject constructor(
                 ?: SubcategoryResolver.resolve(aircraft.propulsion, aircraft.structure))
         }
 
-        val days = recencyDao.sessionsInWindow(windowStart).flatMap { row ->
+        val days = recencyDao.sessionsInWindow(windowStart, profileEntity.researchCountsTowardRecency).flatMap { row ->
             subcategoriesFor(row.aircraftId, aircraftSubcategory, heldSubcategories)
                 .map { sub -> RecencyEvaluator.ExperienceDay(row.date, sub) }
         }

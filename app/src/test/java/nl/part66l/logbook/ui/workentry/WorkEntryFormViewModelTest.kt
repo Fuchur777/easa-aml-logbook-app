@@ -7,13 +7,18 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import nl.part66l.logbook.data.CatalogueTaskEntity
+import nl.part66l.logbook.data.DocumentEntity
+import nl.part66l.logbook.data.DocumentationRefInput
+import nl.part66l.logbook.data.PartUsedInput
 import nl.part66l.logbook.data.PersonEntity
 import nl.part66l.logbook.domain.ActivityType
+import nl.part66l.logbook.domain.DocumentCategory
 import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.Structure
 import nl.part66l.logbook.fakes.FakeAircraftRepository
 import nl.part66l.logbook.fakes.FakeCatalogueRepository
+import nl.part66l.logbook.fakes.FakeDocumentRepository
 import nl.part66l.logbook.fakes.FakePersonRepository
 import nl.part66l.logbook.fakes.FakeSettingsRepository
 import nl.part66l.logbook.fakes.FakeWorkEntryRepository
@@ -43,7 +48,8 @@ class WorkEntryFormViewModelTest {
         personRepository: FakePersonRepository = FakePersonRepository(),
         catalogueRepository: FakeCatalogueRepository = FakeCatalogueRepository(),
         settingsRepository: FakeSettingsRepository = FakeSettingsRepository(),
-    ) = WorkEntryFormViewModel(workEntryRepository, aircraftRepository, personRepository, catalogueRepository, settingsRepository)
+        documentRepository: FakeDocumentRepository = FakeDocumentRepository(),
+    ) = WorkEntryFormViewModel(workEntryRepository, aircraftRepository, personRepository, catalogueRepository, settingsRepository, documentRepository)
 
     @Test
     fun `canSave requires a description, an aircraft selection and at least one activity, and defaults to no release claimed`() {
@@ -123,19 +129,41 @@ class WorkEntryFormViewModelTest {
     }
 
     @Test
-    fun `researchAndPaperwork is independent of the regulatory activity set and does not itself satisfy canSave`() {
+    fun `research and paperwork is a regular activity type, chosen and saved the same as any other`() {
         val repository = FakeWorkEntryRepository()
         val viewModel = viewModel(workEntryRepository = repository)
         viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
         viewModel.onDescriptionChange("Read the new AD")
-        viewModel.onResearchAndPaperworkChange(true)
+        viewModel.onActivityTypeToggle(ActivityType.RESEARCH_AND_PAPERWORK)
 
-        assertFalse(viewModel.state.value.canSave) // still no regulatory activity type chosen
+        assertTrue(viewModel.state.value.canSave) // it alone satisfies "at least one activity", same as any other type
 
-        viewModel.onActivityTypeToggle(ActivityType.SERVICING)
         viewModel.save()
 
-        assertTrue(repository.created.first().entry.researchAndPaperwork)
+        assertEquals(setOf(ActivityType.RESEARCH_AND_PAPERWORK), repository.created.first().activityTypes)
+    }
+
+    @Test
+    fun `documentOptions reflects the document repository`() {
+        val document = DocumentEntity(id = "d1", name = "AMM", category = DocumentCategory.MANUAL)
+        val viewModel = viewModel(documentRepository = FakeDocumentRepository(initial = listOf(document)))
+
+        assertEquals(listOf(document), viewModel.documentOptions.value)
+    }
+
+    @Test
+    fun `onCreateDocument adds straight to the document directory, picked up by documentOptions`() {
+        val documentRepository = FakeDocumentRepository()
+        val viewModel = viewModel(documentRepository = documentRepository)
+
+        viewModel.onCreateDocument("AMM", DocumentCategory.MANUAL, "Rev 1", "https://example.com")
+
+        assertEquals(1, viewModel.documentOptions.value.size)
+        val created = viewModel.documentOptions.value.first()
+        assertEquals("AMM", created.name)
+        assertEquals(DocumentCategory.MANUAL, created.category)
+        assertEquals("Rev 1", created.revision)
+        assertEquals("https://example.com", created.link)
     }
 
     @Test
@@ -201,6 +229,92 @@ class WorkEntryFormViewModelTest {
 
         viewModel.onCatalogueSectionFoldToggle("General activities")
         assertEquals(emptySet<String>(), viewModel.collapsedCatalogueSections.value)
+    }
+
+    @Test
+    fun `airframe hours and launches are optional but must parse when entered`() {
+        val viewModel = viewModel()
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Bench work")
+        viewModel.onActivityTypeToggle(ActivityType.SERVICING)
+        assertTrue(viewModel.state.value.canSave) // both blank — fine
+
+        viewModel.onAirframeHoursChange("not a number")
+        assertFalse(viewModel.state.value.canSave)
+        assertEquals("Enter a number", viewModel.state.value.airframeHoursError)
+
+        viewModel.onAirframeHoursChange("1234.5")
+        assertNull(viewModel.state.value.airframeHoursError)
+        assertTrue(viewModel.state.value.canSave)
+
+        viewModel.onLaunchesChange("not a number")
+        assertFalse(viewModel.state.value.canSave)
+        assertEquals("Enter a whole number", viewModel.state.value.launchesError)
+
+        viewModel.onLaunchesChange("42")
+        assertTrue(viewModel.state.value.canSave)
+    }
+
+    @Test
+    fun `annual inspection toggle clears concurrent-with-ARC when unchecked`() {
+        val viewModel = viewModel()
+
+        viewModel.onAnnualInspectionChange(true)
+        viewModel.onConcurrentWithArcChange(true)
+        assertTrue(viewModel.state.value.concurrentWithArc)
+
+        viewModel.onAnnualInspectionChange(false)
+        assertFalse(viewModel.state.value.annualInspection)
+        assertFalse(viewModel.state.value.concurrentWithArc)
+    }
+
+    @Test
+    fun `documentation refs and parts used can be added and removed, and are passed through on save`() {
+        val repository = FakeWorkEntryRepository()
+        val viewModel = viewModel(workEntryRepository = repository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Panel inspection")
+        viewModel.onActivityTypeToggle(ActivityType.INSPECTION)
+
+        viewModel.onDocumentationRefAdd(DocumentationRefInput("AMM 12-34", "Rev 5"))
+        viewModel.onDocumentationRefAdd(DocumentationRefInput("SB 99-01"))
+        viewModel.onPartUsedAdd(PartUsedInput("PN-001", batchOrSerial = "SN-9"))
+        assertEquals(2, viewModel.state.value.documentationRefs.size)
+        assertEquals(1, viewModel.state.value.partsUsed.size)
+
+        viewModel.onDocumentationRefRemove(0)
+        assertEquals(listOf(DocumentationRefInput("SB 99-01")), viewModel.state.value.documentationRefs)
+
+        viewModel.save()
+
+        val created = repository.created.first()
+        assertEquals(listOf(DocumentationRefInput("SB 99-01")), created.documentationRefs)
+        assertEquals(listOf(PartUsedInput("PN-001", batchOrSerial = "SN-9")), created.partsUsed)
+    }
+
+    @Test
+    fun `save passes through workorder fields and the annual inspection flag`() {
+        val repository = FakeWorkEntryRepository()
+        val viewModel = viewModel(workEntryRepository = repository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Annual inspection")
+        viewModel.onActivityTypeToggle(ActivityType.INSPECTION)
+        viewModel.onWorkorderIssuerNameChange("Piet Bakker")
+        viewModel.onWorkorderDateChange(LocalDate.of(2026, 1, 10))
+        viewModel.onWorkorderRequestedWorkChange("Annual inspection per programme")
+        viewModel.onWorkorderReferenceChange("WO-2026-001")
+        viewModel.onAnnualInspectionChange(true)
+        viewModel.onConcurrentWithArcChange(true)
+
+        viewModel.save()
+
+        val created = repository.created.first().entry
+        assertEquals("Piet Bakker", created.workorderIssuerName)
+        assertEquals(LocalDate.of(2026, 1, 10), created.workorderDate)
+        assertEquals("Annual inspection per programme", created.workorderRequestedWork)
+        assertEquals("WO-2026-001", created.workorderReference)
+        assertTrue(created.annualInspection)
+        assertTrue(created.concurrentWithArc)
     }
 
     @Test

@@ -34,6 +34,8 @@ class Converters {
     @TypeConverter fun fromOwnership(v: OwnershipRelation?) = v?.name
     @TypeConverter fun toRuleStatus(v: String?) = v?.let(RuleStatus::valueOf)
     @TypeConverter fun fromRuleStatus(v: RuleStatus?) = v?.name
+    @TypeConverter fun toDocumentCategory(v: String?) = v?.let(DocumentCategory::valueOf)
+    @TypeConverter fun fromDocumentCategory(v: DocumentCategory?) = v?.name
 }
 
 /**
@@ -62,8 +64,9 @@ class Converters {
         CatalogueTaskEntity::class,
         TaskCompletionEntity::class,
         ProfileEntity::class,
+        DocumentEntity::class,
     ],
-    version = 6,
+    version = 8,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -83,4 +86,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun taskCompletions(): TaskCompletionDao
     abstract fun profile(): ProfileDao
     abstract fun people(): PersonDao
+    abstract fun documents(): DocumentDao
 }

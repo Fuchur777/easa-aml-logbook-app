@@ -41,7 +41,7 @@ class WorkEntryRepositoryTest {
             .build()
         repository = WorkEntryRepositoryImpl(
             db.workEntries(), db.workSessions(), db.entryHelpers(), PersonRepositoryImpl(db.people()),
-            db.catalogue(), db.taskCompletions(),
+            db.catalogue(), db.taskCompletions(), db.documentationRefs(), db.partsUsed(),
         )
     }
 
@@ -119,6 +119,75 @@ class WorkEntryRepositoryTest {
         assertEquals("T1", completions.first().taskId)
         assertEquals("2026.1", completions.first().catalogueVersion)
         assertEquals("Task text as seeded", completions.first().taskTextSnapshot)
+    }
+
+    @Test
+    fun `create stores workorder, airframe reading, annual inspection flag, documentation and parts`() = runBlocking {
+        val id = repository.create(
+            aircraftId = null,
+            description = "Annual inspection",
+            activityTypes = setOf(ActivityType.INSPECTION),
+            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
+            supervisedAnother = false,
+            sessionDate = LocalDate.of(2026, 1, 15),
+            airframeHoursAtWork = 1234.5,
+            launchesAtWork = 6789,
+            workorderIssuerName = "Piet Bakker",
+            workorderDate = LocalDate.of(2026, 1, 10),
+            workorderRequestedWork = "Annual inspection per maintenance programme",
+            workorderReference = "WO-2026-001",
+            annualInspection = true,
+            concurrentWithArc = true,
+            documentationRefs = listOf(DocumentationRefInput("AMM 12-34", "Rev 5")),
+            partsUsed = listOf(
+                PartUsedInput("PN-001", description = "Altimeter", batchOrSerial = "SN-9", formOneRef = "F1-77", quantity = "2"),
+            ),
+        )
+
+        val entry = db.workEntries().byId(id)
+        assertNotNull(entry)
+        assertEquals(1234.5, entry!!.airframeHoursAtWork)
+        assertEquals(6789, entry.launchesAtWork)
+        assertEquals("Piet Bakker", entry.workorderIssuerName)
+        assertEquals(LocalDate.of(2026, 1, 10), entry.workorderDate)
+        assertEquals("Annual inspection per maintenance programme", entry.workorderRequestedWork)
+        assertEquals("WO-2026-001", entry.workorderReference)
+        assertEquals("WO2026001", entry.workorderReferenceNormalised)
+        assertTrue(entry.annualInspection)
+        assertTrue(entry.concurrentWithArc)
+
+        val docs = db.documentationRefs().forEntry(id)
+        assertEquals(1, docs.size)
+        assertEquals("AMM 12-34", docs.first().reference)
+        assertEquals("Rev 5", docs.first().revision)
+
+        val parts = db.partsUsed().forEntry(id)
+        assertEquals(1, parts.size)
+        assertEquals("PN-001", parts.first().partNumber)
+        assertEquals("Altimeter", parts.first().description)
+        assertEquals("SN-9", parts.first().batchOrSerial)
+        assertEquals("F1-77", parts.first().formOneRef)
+        assertEquals("2", parts.first().quantity)
+    }
+
+    @Test
+    fun `create resolves the workorder issuer name into the person directory, same as helpers`() = runBlocking {
+        val id = repository.create(
+            aircraftId = null,
+            description = "Bench work",
+            activityTypes = setOf(ActivityType.SERVICING),
+            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
+            supervisedAnother = false,
+            sessionDate = LocalDate.of(2026, 1, 15),
+            workorderIssuerName = "Piet Bakker",
+        )
+
+        val entry = db.workEntries().byId(id)
+        assertEquals("Piet Bakker", entry!!.workorderIssuerName) // stored as plain text, not a person id
+
+        val people = db.people().all().first()
+        assertEquals(1, people.size)
+        assertEquals("Piet Bakker", people.first().name) // but the name is now in the directory for reuse
     }
 
     @Test

@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
+import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.RecencyRoute
@@ -47,7 +48,12 @@ class RecencyRepositoryTest {
         db.close()
     }
 
-    private fun profile(holdsL1: Boolean = false, holdsL2: Boolean = false, initialCertificationDate: LocalDate? = null) = ProfileEntity(
+    private fun profile(
+        holdsL1: Boolean = false,
+        holdsL2: Boolean = false,
+        initialCertificationDate: LocalDate? = null,
+        researchCountsTowardRecency: Boolean = false,
+    ) = ProfileEntity(
         name = "Test Pilot",
         licenceNumber = "L-123",
         issuingAuthority = "ILT",
@@ -55,6 +61,7 @@ class RecencyRepositoryTest {
         initialCertificationDate = initialCertificationDate,
         holdsL1 = holdsL1,
         holdsL2 = holdsL2,
+        researchCountsTowardRecency = researchCountsTowardRecency,
     )
 
     private fun aircraft(id: String, propulsion: Propulsion, structure: Structure) = AircraftEntity(
@@ -170,5 +177,37 @@ class RecencyRepositoryTest {
         db.profile().upsert(profile(holdsL1 = true))
 
         assertTrue(repository.evaluateCurrent(today).isEmpty())
+    }
+
+    @Test
+    fun `a day whose only activity is research and paperwork is excluded from Route A unless the profile setting allows it`() = runBlocking {
+        db.profile().upsert(profile(holdsL1 = true))
+        db.workEntries().insert(entry("e1", aircraftId = null))
+        db.workEntries().insertActivityTypes(listOf(WorkEntryActivityTypeEntity("e1", ActivityType.RESEARCH_AND_PAPERWORK)))
+        db.workSessions().insert(session("s1", "e1", LocalDate.of(2025, 1, 1)))
+
+        val excluded = repository.evaluate(today, catalogueVersion = "none")
+        assertEquals(0, excluded.first { it.subcategory == Subcategory.L1 }.routes.first { it.route == RecencyRoute.DAYS }.have)
+
+        db.profile().upsert(profile(holdsL1 = true, researchCountsTowardRecency = true))
+        val included = repository.evaluate(today, catalogueVersion = "none")
+        assertEquals(1, included.first { it.subcategory == Subcategory.L1 }.routes.first { it.route == RecencyRoute.DAYS }.have)
+    }
+
+    @Test
+    fun `an entry combining research and paperwork with a real activity always counts, regardless of the profile setting`() = runBlocking {
+        db.profile().upsert(profile(holdsL1 = true))
+        db.workEntries().insert(entry("e1", aircraftId = null))
+        db.workEntries().insertActivityTypes(
+            listOf(
+                WorkEntryActivityTypeEntity("e1", ActivityType.RESEARCH_AND_PAPERWORK),
+                WorkEntryActivityTypeEntity("e1", ActivityType.INSPECTION),
+            ),
+        )
+        db.workSessions().insert(session("s1", "e1", LocalDate.of(2025, 1, 1)))
+
+        val results = repository.evaluate(today, catalogueVersion = "none")
+
+        assertEquals(1, results.first { it.subcategory == Subcategory.L1 }.routes.first { it.route == RecencyRoute.DAYS }.have)
     }
 }

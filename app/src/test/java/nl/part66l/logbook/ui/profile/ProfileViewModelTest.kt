@@ -35,7 +35,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `canSave is false until a name and at least one subcategory are set`() {
+    fun `canSave is false until a name, at least one subcategory and an initial certification date are set`() {
         val viewModel = ProfileViewModel(FakeProfileRepository())
 
         assertFalse(viewModel.state.value.canSave)
@@ -44,6 +44,9 @@ class ProfileViewModelTest {
         assertFalse(viewModel.state.value.canSave) // no subcategory yet
 
         viewModel.onSubcategoryToggle(Subcategory.L1, true)
+        assertFalse(viewModel.state.value.canSave) // no initial certification date yet
+
+        viewModel.onInitialCertificationDateChange(LocalDate.of(2020, 1, 1))
         assertTrue(viewModel.state.value.canSave)
     }
 
@@ -54,6 +57,7 @@ class ProfileViewModelTest {
 
         viewModel.onNameChange("F. Example")
         viewModel.onSubcategoryToggle(Subcategory.L1, true)
+        viewModel.onInitialCertificationDateChange(LocalDate.of(2020, 1, 1))
         viewModel.onLicenceNumberChange("NL.66.00000")
         viewModel.save()
 
@@ -87,19 +91,24 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `saved reduction authority always mirrors the licence issuing authority, never asked separately`() {
-        val repository = FakeProfileRepository()
+    fun `saving from the Profile screen never resets recency reduction or research-counts-toward-recency, set on the Settings screen instead`() {
+        val existing = ProfileEntity(
+            name = "Existing Pilot", licenceNumber = "NL.66.99999",
+            issuingAuthority = "ILT", licenceExpiry = null, holdsL1 = true,
+            initialCertificationDate = LocalDate.of(2020, 1, 1),
+            recencyReductionGranted = true, recencyReductionAuthority = "ILT",
+            recencyReductionReference = "REF-123", researchCountsTowardRecency = true,
+        )
+        val repository = FakeProfileRepository(existing)
         val viewModel = ProfileViewModel(repository)
-        viewModel.onNameChange("F. Example")
-        viewModel.onSubcategoryToggle(Subcategory.L1, true)
-        viewModel.onIssuingAuthorityChange("ILT")
-        viewModel.onRecencyReductionGrantedChange(true)
-        viewModel.onRecencyReductionReferenceChange("REF-123")
 
+        viewModel.onPhoneNumberChange("+31 6 12345678") // an edit this screen does own
         viewModel.save()
 
         val stored = runBlocking { repository.get() }
-        assertEquals("ILT", stored?.recencyReductionAuthority)
+        assertTrue(stored?.recencyReductionGranted == true)
+        assertEquals("REF-123", stored?.recencyReductionReference)
+        assertTrue(stored?.researchCountsTowardRecency == true)
     }
 
     @Test
@@ -111,6 +120,7 @@ class ProfileViewModelTest {
         assertTrue(viewModel.isDirty())
 
         viewModel.onSubcategoryToggle(Subcategory.L1, true)
+        viewModel.onInitialCertificationDateChange(LocalDate.of(2020, 1, 1))
         viewModel.save()
         assertFalse(viewModel.isDirty())
     }

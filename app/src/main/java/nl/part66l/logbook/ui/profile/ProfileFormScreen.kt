@@ -155,13 +155,9 @@ fun ProfileFormScreen(
                         label = "Initial certification date",
                         value = state.initialCertificationDate,
                         onValueChange = viewModel::onInitialCertificationDateChange,
+                        isError = state.initialCertificationDateError != null,
+                        supportingText = state.initialCertificationDateError,
                         modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(
-                        "Optional. Starts a 24-month recency grace period — you're shown as current without " +
-                            "logging anything until this date passes, after which recency depends on the routes below.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
 
                     Text("Held subcategories", style = MaterialTheme.typography.labelLarge)
@@ -171,28 +167,6 @@ fun ProfileFormScreen(
                     SubcategoryCheckbox("L2C", state.holdsL2C) { viewModel.onSubcategoryToggle(Subcategory.L2C, it) }
                     state.subcategoryError?.let {
                         Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-
-            Card {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text("Recency reduction", style = MaterialTheme.typography.titleMedium)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = state.recencyReductionGranted, onCheckedChange = viewModel::onRecencyReductionGrantedChange)
-                        Text("50% recency reduction granted by my competent authority")
-                    }
-                    if (state.recencyReductionGranted) {
-                        OutlinedTextField(
-                            value = state.recencyReductionReference,
-                            onValueChange = viewModel::onRecencyReductionReferenceChange,
-                            label = { Text("Reference") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
                     }
                 }
             }

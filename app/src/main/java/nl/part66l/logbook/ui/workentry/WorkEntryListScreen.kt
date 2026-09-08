@@ -88,9 +88,7 @@ private fun WorkEntryRow(row: WorkEntryListRow, backgroundColor: Color) {
             style = MaterialTheme.typography.titleMedium,
         )
         Text(row.entry.description, style = MaterialTheme.typography.bodyMedium)
-        val activity = row.activityTypes.joinToString(", ") { it.displayLabel }
-            .ifEmpty { "No activity recorded" }
-            .let { if (row.entry.researchAndPaperwork) "$it + research & paperwork" else it }
+        val activity = row.activityTypes.joinToString(", ") { it.displayLabel }.ifEmpty { "No activity recorded" }
         val role = row.entry.role.displayLabel + if (row.entry.supervisedAnother) " + supervised another" else ""
         Text(
             "$activity · $role",

@@ -21,8 +21,10 @@ enum class Structure { COMPOSITE, METAL, WOOD_AND_FABRIC, MIXED }
 
 /**
  * Activities considered relevant for maintenance experience, enumerated in
- * AMC 66.A.20(b)(2) paragraph 2. This is a closed vocabulary — do not extend it
- * without a regulatory basis.
+ * AMC 66.A.20(b)(2) paragraph 2, plus [RESEARCH_AND_PAPERWORK] — a non-regulatory
+ * addition for personal time-tracking. Because it has no basis in the AMC list,
+ * an entry whose *only* activity is [RESEARCH_AND_PAPERWORK] does not, by default,
+ * feed Route A — see [ProfileEntity.researchCountsTowardRecency].
  */
 enum class ActivityType {
     SERVICING,
@@ -34,6 +36,7 @@ enum class ActivityType {
     CHANGING_COMPONENT,
     SUPERVISING,
     RELEASING_TO_SERVICE,
+    RESEARCH_AND_PAPERWORK,
 }
 
 /**
@@ -90,3 +93,6 @@ enum class RuleStatus { IN_FORCE, PROPOSED, SUPERSEDED }
  * corresponding ED Decision is published.
  */
 enum class RecencyRoute { DAYS, TASKS, ANNUAL_INSPECTIONS, INITIAL_CERTIFICATION_GRACE_PERIOD }
+
+/** Categories in the document directory (§5.3's "documentation used"). */
+enum class DocumentCategory { MANUAL, TCDS, AD, SD, REGULATION }

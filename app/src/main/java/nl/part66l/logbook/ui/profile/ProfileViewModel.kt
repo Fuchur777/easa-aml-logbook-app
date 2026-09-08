@@ -60,9 +60,6 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    fun onRecencyReductionGrantedChange(value: Boolean) = _state.update { it.copy(recencyReductionGranted = value) }
-    fun onRecencyReductionReferenceChange(value: String) = _state.update { it.copy(recencyReductionReference = value) }
-
     fun save() {
         val current = _state.value
         if (!current.canSave) return

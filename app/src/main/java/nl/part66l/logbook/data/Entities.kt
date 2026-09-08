@@ -100,11 +100,6 @@ data class WorkEntryEntity(
     val role: EntryRole,
     /** Independent of [role] — you can certify/release AND have supervised someone else on the same entry. */
     val supervisedAnother: Boolean = false,
-    /**
-     * Personal time-tracking only — deliberately NOT one of [ActivityType]'s values,
-     * which is a closed vocabulary matching AMC 66.A.20(b)(2) paragraph 2 exactly.
-     */
-    val researchAndPaperwork: Boolean = false,
 
     // Readings at the time of work — not counters.
     val airframeHoursAtWork: Double? = null,
@@ -228,9 +223,32 @@ data class PartUsedEntity(
     val entryId: String,
     val partNumber: String,
     val partNumberNormalised: String,
+    val description: String? = null,
     val batchOrSerial: String? = null,
     val formOneRef: String? = null,
     val quantity: String? = null,
+)
+
+/**
+ * Master directory of documentation (§5.3's "documentation used") — a Manual, TCDS, AD,
+ * SD or Regulation the user refers to repeatedly, so its reference and revision don't need
+ * retyping on every entry. Picking one on an entry snapshots its name/revision at that
+ * moment into [DocumentationRefEntity], same as [CatalogueTaskEntity] snapshots into
+ * [TaskCompletionEntity] — archiving or editing a document here never rewrites a past entry.
+ */
+@Entity(tableName = "document")
+data class DocumentEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val category: DocumentCategory,
+    val revision: String? = null,
+    /** Optional link to the document itself (a cloud file, manufacturer page, etc.). */
+    val link: String? = null,
+    /** Absolute path of a PDF copied into app-private storage. PDF only, for now. */
+    val pdfPath: String? = null,
+    /** Original filename, for display — [pdfPath] itself is a generated UUID name. */
+    val pdfFileName: String? = null,
+    val archived: Boolean = false,
 )
 
 // ---------------------------------------------------------------------------
@@ -422,4 +440,11 @@ data class ProfileEntity(
     val recencyReductionAuthority: String? = null,
     val recencyReductionReference: String? = null,
     val recencyReductionDate: LocalDate? = null,
+
+    /**
+     * An entry whose only [ActivityType] is [ActivityType.RESEARCH_AND_PAPERWORK] has no
+     * basis in AMC 66.A.20(b)(2)'s activity list, so by default its session dates don't
+     * feed Route A. Default false, never inferred — same posture as [recencyReductionGranted].
+     */
+    val researchCountsTowardRecency: Boolean = false,
 )

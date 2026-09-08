@@ -14,6 +14,7 @@ import nl.part66l.logbook.data.AttachmentDao
 import nl.part66l.logbook.data.CatalogueDao
 import nl.part66l.logbook.data.CrsDao
 import nl.part66l.logbook.data.DeferredItemDao
+import nl.part66l.logbook.data.DocumentDao
 import nl.part66l.logbook.data.DocumentationRefDao
 import nl.part66l.logbook.data.EntryHelperDao
 import nl.part66l.logbook.data.PartUsedDao
@@ -56,4 +57,5 @@ object DatabaseModule {
     @Provides fun provideTaskCompletionDao(db: AppDatabase): TaskCompletionDao = db.taskCompletions()
     @Provides fun provideProfileDao(db: AppDatabase): ProfileDao = db.profile()
     @Provides fun providePersonDao(db: AppDatabase): PersonDao = db.people()
+    @Provides fun provideDocumentDao(db: AppDatabase): DocumentDao = db.documents()
 }
