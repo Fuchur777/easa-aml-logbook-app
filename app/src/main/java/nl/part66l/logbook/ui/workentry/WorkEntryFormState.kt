@@ -55,6 +55,9 @@ data class WorkEntryFormState(
     val documentationRefs: List<DocumentationRefInput> = emptyList(),
     val partsUsed: List<PartUsedInput> = emptyList(),
 
+    /** Optional — closes a note in the engineer's own record (§5.7), never a statement about the aircraft. Always starts unselected, even when editing. */
+    val closesDeferredItemId: String? = null,
+
     val loading: Boolean = false,
     val saving: Boolean = false,
     val deleting: Boolean = false,

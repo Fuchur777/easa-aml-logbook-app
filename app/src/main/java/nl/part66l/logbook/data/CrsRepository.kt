@@ -40,11 +40,17 @@ interface CrsRepository {
      * time so an abandoned attempt leaves no gap), renders the unsigned
      * print-and-wet-sign PDF (matches [CrsPdfRenderer]'s current layout — no
      * cryptographic signature yet), and records it. Null if the entry no longer exists.
+     *
+     * [deferredItemDescriptions], when [maintenanceIncomplete] is set, are woven into the
+     * printed limitations text as a numbered list (§9.1(f)) — the caller is still responsible
+     * for raising them as their own [DeferredItemEntity] rows afterward, against this call's
+     * result id, so they're individually closeable later; this only controls what's printed.
      */
     suspend fun generateUnsigned(
         entryId: String,
         limitations: String?,
         maintenanceIncomplete: Boolean,
+        deferredItemDescriptions: List<String> = emptyList(),
     ): CrsEntity?
 
     /** Attaches (or clears, with a null [path]) a photo of the hand-signed paper copy — the print-and-wet-sign path's only record of the actual signature. */
@@ -137,6 +143,7 @@ class CrsRepositoryImpl @Inject constructor(
         entryId: String,
         limitations: String?,
         maintenanceIncomplete: Boolean,
+        deferredItemDescriptions: List<String>,
     ): CrsEntity? {
         val entry = workEntryDao.byId(entryId) ?: return null
         val profile = profileDao.get()
@@ -205,11 +212,20 @@ class CrsRepositoryImpl @Inject constructor(
         // §9.1(f): where maintenance could not be completed, the CRS says so, inside the
         // limitations block rather than as a separate field (crs-field-mapping.md) — so the
         // checkbox has to actually change what's printed, not just sit on the record unseen.
+        // Deferred items raised alongside it are numbered into the same paragraph — each one
+        // is also its own DeferredItemEntity (raised by the caller against this call's result),
+        // so the printed list and the closeable record always agree.
         val limitationsText = buildString {
-            if (maintenanceIncomplete) append("Maintenance could not be completed in full.")
-            limitations?.trim()?.takeIf { it.isNotBlank() }?.let {
+            limitations?.trim()?.takeIf { it.isNotBlank() }?.let { append(it) }
+            if (maintenanceIncomplete) {
                 if (isNotEmpty()) append(" ")
-                append(it)
+                append("Maintenance could not be completed in full.")
+            }
+            if (deferredItemDescriptions.isNotEmpty()) {
+                if (isNotEmpty()) append(" ")
+                append("The following items remain outstanding and are deferred: ")
+                append(deferredItemDescriptions.mapIndexed { i, item -> "(${i + 1}) $item" }.joinToString("; "))
+                append(".")
             }
         }.ifBlank { "None." }
 

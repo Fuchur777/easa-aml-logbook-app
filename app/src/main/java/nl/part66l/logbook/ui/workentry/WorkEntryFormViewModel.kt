@@ -21,6 +21,8 @@ import nl.part66l.logbook.data.AircraftRepository
 import nl.part66l.logbook.data.AircraftWithRegistration
 import nl.part66l.logbook.data.CatalogueRepository
 import nl.part66l.logbook.data.CatalogueTaskEntity
+import nl.part66l.logbook.data.DeferredItemEntity
+import nl.part66l.logbook.data.DeferredItemRepository
 import nl.part66l.logbook.data.DocumentEntity
 import nl.part66l.logbook.data.DocumentRepository
 import nl.part66l.logbook.data.DocumentationRefInput
@@ -43,6 +45,7 @@ class WorkEntryFormViewModel @Inject constructor(
     private val catalogueRepository: CatalogueRepository,
     private val settingsRepository: SettingsRepository,
     private val documentRepository: DocumentRepository,
+    private val deferredItemRepository: DeferredItemRepository,
 ) : ViewModel() {
 
     private val entryId: String? = savedStateHandle[Destination.WorkEntryEdit.ARG_ENTRY_ID]
@@ -82,6 +85,10 @@ class WorkEntryFormViewModel @Inject constructor(
 
     /** Non-archived documents from the directory — backs the "Documentation used" picker. */
     val documentOptions: StateFlow<List<DocumentEntity>> = documentRepository.observeAll(includeArchived = false)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Still-open notes from past incomplete-maintenance CRSs — backs the "Closes deferred item" picker. */
+    val openDeferredItems: StateFlow<List<DeferredItemEntity>> = deferredItemRepository.open()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _saved = MutableSharedFlow<Unit>()
@@ -194,6 +201,8 @@ class WorkEntryFormViewModel @Inject constructor(
     fun onPartUsedAdd(part: PartUsedInput) = _state.update { it.copy(partsUsed = it.partsUsed + part) }
     fun onPartUsedRemove(index: Int) = _state.update { it.copy(partsUsed = it.partsUsed.filterIndexed { i, _ -> i != index }) }
 
+    fun onClosesDeferredItemChange(id: String?) = _state.update { it.copy(closesDeferredItemId = id) }
+
     /** Adds straight to the directory — [documentOptions] picks it up reactively, no round trip needed here. */
     fun onCreateDocument(name: String, category: DocumentCategory, revision: String?, revisionDate: LocalDate?, link: String?) {
         viewModelScope.launch {
@@ -226,7 +235,7 @@ class WorkEntryFormViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(saving = true) }
             val id = current.entryId
-            if (id == null) {
+            val savedEntryId = if (id == null) {
                 workEntryRepository.create(
                     aircraftId = (current.aircraftSelection as? AircraftSelection.Specific)?.aircraftId,
                     description = current.description.trim(),
@@ -271,6 +280,12 @@ class WorkEntryFormViewModel @Inject constructor(
                     documentationRefs = current.documentationRefs,
                     partsUsed = current.partsUsed,
                 )
+                id
+            }
+            // The work that resolved it happened by the entry's own last session date, not today —
+            // matches how the CRS derives its own "completed" date from the same sessions.
+            current.closesDeferredItemId?.let { itemId ->
+                deferredItemRepository.close(itemId, savedEntryId, current.sessionDates.max())
             }
             _state.update { it.copy(saving = false) }
             initialState = _state.value

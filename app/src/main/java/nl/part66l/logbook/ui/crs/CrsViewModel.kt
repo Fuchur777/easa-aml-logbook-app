@@ -14,12 +14,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import nl.part66l.logbook.data.CrsEntity
 import nl.part66l.logbook.data.CrsRepository
+import nl.part66l.logbook.data.DeferredItemRepository
 import nl.part66l.logbook.ui.navigation.Destination
 
 @HiltViewModel
 class CrsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val crsRepository: CrsRepository,
+    private val deferredItemRepository: DeferredItemRepository,
 ) : ViewModel() {
 
     private val entryId: String = savedStateHandle[Destination.Crs.ARG_ENTRY_ID]
@@ -33,7 +35,21 @@ class CrsViewModel @Inject constructor(
     val state: StateFlow<CrsFormState> = _state.asStateFlow()
 
     fun onLimitationsChange(value: String) = _state.update { it.copy(limitations = value) }
-    fun onMaintenanceIncompleteChange(value: Boolean) = _state.update { it.copy(maintenanceIncomplete = value) }
+
+    /** Unchecking clears any queued deferred items — they only mean something while this is checked. */
+    fun onMaintenanceIncompleteChange(value: Boolean) = _state.update {
+        it.copy(maintenanceIncomplete = value, deferredItemDescriptions = if (value) it.deferredItemDescriptions else emptyList())
+    }
+
+    fun onDeferredItemAdd(description: String) {
+        val trimmed = description.trim()
+        if (trimmed.isBlank()) return
+        _state.update { it.copy(deferredItemDescriptions = it.deferredItemDescriptions + trimmed) }
+    }
+
+    fun onDeferredItemRemove(index: Int) = _state.update {
+        it.copy(deferredItemDescriptions = it.deferredItemDescriptions.filterIndexed { i, _ -> i != index })
+    }
 
     /** Adds straight to the record — [issued] picks it up reactively, no round trip needed here. */
     fun onPhotoAttached(crsId: String, path: String) {
@@ -50,11 +66,14 @@ class CrsViewModel @Inject constructor(
         if (current.generating) return
         viewModelScope.launch {
             _state.update { it.copy(generating = true) }
-            crsRepository.generateUnsigned(
+            val crs = crsRepository.generateUnsigned(
                 entryId = entryId,
                 limitations = current.limitations.trim().ifBlank { null },
                 maintenanceIncomplete = current.maintenanceIncomplete,
+                deferredItemDescriptions = current.deferredItemDescriptions,
             )
+            // Raised against the number just allocated — a deferred item always cites a real, issued CRS.
+            crs?.let { issued -> current.deferredItemDescriptions.forEach { deferredItemRepository.raise(issued.id, it) } }
             _state.value = CrsFormState() // reset for the next one, now that generating is done
         }
     }

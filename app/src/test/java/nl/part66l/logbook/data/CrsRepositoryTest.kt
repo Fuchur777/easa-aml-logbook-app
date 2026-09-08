@@ -174,6 +174,30 @@ class CrsRepositoryTest {
     }
 
     @Test
+    fun `deferred items raised alongside an incomplete-maintenance CRS are itemized in the limitations block`() = runBlocking {
+        val entryId = createEntry()
+
+        val crs = repository.generateUnsigned(
+            entryId,
+            limitations = "Released subject to these limitations.",
+            maintenanceIncomplete = true,
+            deferredItemDescriptions = listOf(
+                "the transponder altitude encoder is due for recalibration within 30 days",
+                "the right wing tip wheel bearing is worn but within limits",
+            ),
+        )
+
+        // The paragraph wraps across several lines at this length — collapse whitespace/newlines
+        // so a wrap point landing mid-phrase doesn't break a plain substring check.
+        val text = PDDocument.load(File(crs!!.pdfLocalPath!!)).use { PDFTextStripper().getText(it) }.replace(Regex("\\s+"), " ")
+        assertTrue(text.contains("Maintenance could not be completed in full."))
+        assertTrue(text.contains("Released subject to these limitations."))
+        assertTrue(text.contains("The following items remain outstanding and are deferred:"))
+        assertTrue(text.contains("(1) the transponder altitude encoder is due for recalibration within 30 days"))
+        assertTrue(text.contains("(2) the right wing tip wheel bearing is worn but within limits"))
+    }
+
+    @Test
     fun `days worked reflects a manual override instead of the distinct session-date count`() = runBlocking {
         val entryId = createEntry(
             sessionDates = listOf(LocalDate.of(2026, 3, 12), LocalDate.of(2026, 3, 14)),

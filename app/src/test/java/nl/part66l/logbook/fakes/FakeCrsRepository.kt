@@ -10,7 +10,12 @@ import nl.part66l.logbook.data.CrsRepository
 import nl.part66l.logbook.domain.CertificationBasis
 import nl.part66l.logbook.domain.SignatureState
 
-data class GenerateCrsCall(val entryId: String, val limitations: String?, val maintenanceIncomplete: Boolean)
+data class GenerateCrsCall(
+    val entryId: String,
+    val limitations: String?,
+    val maintenanceIncomplete: Boolean,
+    val deferredItemDescriptions: List<String> = emptyList(),
+)
 
 class FakeCrsRepository(initial: List<CrsEntity> = emptyList()) : CrsRepository {
     private val entries = MutableStateFlow(initial)
@@ -19,8 +24,13 @@ class FakeCrsRepository(initial: List<CrsEntity> = emptyList()) : CrsRepository 
     override fun forEntry(entryId: String): Flow<List<CrsEntity>> =
         entries.map { list -> list.filter { it.entryId == entryId } }
 
-    override suspend fun generateUnsigned(entryId: String, limitations: String?, maintenanceIncomplete: Boolean): CrsEntity? {
-        generateCalls += GenerateCrsCall(entryId, limitations, maintenanceIncomplete)
+    override suspend fun generateUnsigned(
+        entryId: String,
+        limitations: String?,
+        maintenanceIncomplete: Boolean,
+        deferredItemDescriptions: List<String>,
+    ): CrsEntity? {
+        generateCalls += GenerateCrsCall(entryId, limitations, maintenanceIncomplete, deferredItemDescriptions)
         val sequence = entries.value.count { it.entryId == entryId } + 1
         val crs = CrsEntity(
             id = UUID.randomUUID().toString(),

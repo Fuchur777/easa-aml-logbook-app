@@ -12,6 +12,8 @@ import nl.part66l.logbook.data.CrsNumberingRepository
 import nl.part66l.logbook.data.CrsNumberingRepositoryImpl
 import nl.part66l.logbook.data.CrsRepository
 import nl.part66l.logbook.data.CrsRepositoryImpl
+import nl.part66l.logbook.data.DeferredItemRepository
+import nl.part66l.logbook.data.DeferredItemRepositoryImpl
 import nl.part66l.logbook.data.DocumentRepository
 import nl.part66l.logbook.data.DocumentRepositoryImpl
 import nl.part66l.logbook.data.PersonRepository
@@ -58,4 +60,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindCrsRepository(impl: CrsRepositoryImpl): CrsRepository
+
+    @Binds
+    abstract fun bindDeferredItemRepository(impl: DeferredItemRepositoryImpl): DeferredItemRepository
 }

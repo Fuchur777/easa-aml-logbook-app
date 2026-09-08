@@ -45,6 +45,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import nl.part66l.logbook.data.DeferredItemEntity
 import nl.part66l.logbook.data.DocumentEntity
 import nl.part66l.logbook.data.DocumentationRefInput
 import nl.part66l.logbook.data.PartUsedInput
@@ -78,6 +79,7 @@ fun WorkEntryFormScreen(
     val catalogueSectionOrder by viewModel.catalogueSectionOrder.collectAsStateWithLifecycle()
     val collapsedCatalogueSections by viewModel.collapsedCatalogueSections.collectAsStateWithLifecycle()
     val documentOptions by viewModel.documentOptions.collectAsStateWithLifecycle()
+    val openDeferredItems by viewModel.openDeferredItems.collectAsStateWithLifecycle()
     var showUnsavedDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showTaskPicker by remember { mutableStateOf(false) }
@@ -272,6 +274,22 @@ fun WorkEntryFormScreen(
                         onRemove = viewModel::onPartUsedRemove,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                }
+            }
+
+            if (openDeferredItems.isNotEmpty()) {
+                Card {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Deferred items", style = MaterialTheme.typography.titleMedium)
+                        DropdownField(
+                            label = "Closes deferred item (optional)",
+                            value = openDeferredItems.find { it.id == state.closesDeferredItemId },
+                            options = listOf<DeferredItemEntity?>(null) + openDeferredItems,
+                            optionLabel = { it?.description ?: "None" },
+                            onValueChange = { viewModel.onClosesDeferredItemChange(it?.id) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
 

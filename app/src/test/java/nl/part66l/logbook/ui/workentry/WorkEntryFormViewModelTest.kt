@@ -20,6 +20,7 @@ import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.Structure
 import nl.part66l.logbook.fakes.FakeAircraftRepository
 import nl.part66l.logbook.fakes.FakeCatalogueRepository
+import nl.part66l.logbook.fakes.FakeDeferredItemRepository
 import nl.part66l.logbook.fakes.FakeDocumentRepository
 import nl.part66l.logbook.fakes.FakePersonRepository
 import nl.part66l.logbook.fakes.FakeSettingsRepository
@@ -57,9 +58,10 @@ class WorkEntryFormViewModelTest {
         catalogueRepository: FakeCatalogueRepository = FakeCatalogueRepository(),
         settingsRepository: FakeSettingsRepository = FakeSettingsRepository(),
         documentRepository: FakeDocumentRepository = FakeDocumentRepository(),
+        deferredItemRepository: FakeDeferredItemRepository = FakeDeferredItemRepository(),
     ) = WorkEntryFormViewModel(
         savedStateHandle, workEntryRepository, aircraftRepository, personRepository,
-        catalogueRepository, settingsRepository, documentRepository,
+        catalogueRepository, settingsRepository, documentRepository, deferredItemRepository,
     )
 
     @Test
@@ -517,6 +519,48 @@ class WorkEntryFormViewModelTest {
         assertEquals(1, repository.updated.size)
         assertEquals("Bench work, corrected", repository.updated.first().entry.description)
         assertFalse(viewModel.isDirty())
+    }
+
+    @Test
+    fun `openDeferredItems reflects the deferred item repository`() {
+        val deferredItemRepository = FakeDeferredItemRepository()
+        val itemId = runBlocking { deferredItemRepository.raise("crs-1", "Transponder recal outstanding") }
+
+        val viewModel = viewModel(deferredItemRepository = deferredItemRepository)
+
+        assertEquals(listOf(itemId), viewModel.openDeferredItems.value.map { it.id })
+    }
+
+    @Test
+    fun `selecting a deferred item closes it on save, dated to the entry's own last session`() {
+        val workEntryRepository = FakeWorkEntryRepository()
+        val deferredItemRepository = FakeDeferredItemRepository()
+        val itemId = runBlocking { deferredItemRepository.raise("crs-1", "Transponder recal outstanding") }
+        val viewModel = viewModel(workEntryRepository = workEntryRepository, deferredItemRepository = deferredItemRepository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Recalibrated transponder")
+        viewModel.onActivityTypeToggle(ActivityType.REPAIRING)
+        viewModel.onSessionDateAdd(LocalDate.of(2026, 4, 2))
+        viewModel.onClosesDeferredItemChange(itemId)
+
+        viewModel.save()
+
+        assertEquals(emptyList<String>(), viewModel.openDeferredItems.value.map { it.id })
+    }
+
+    @Test
+    fun `no deferred item is closed when none was selected`() {
+        val workEntryRepository = FakeWorkEntryRepository()
+        val deferredItemRepository = FakeDeferredItemRepository()
+        runBlocking { deferredItemRepository.raise("crs-1", "Transponder recal outstanding") }
+        val viewModel = viewModel(workEntryRepository = workEntryRepository, deferredItemRepository = deferredItemRepository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Unrelated work")
+        viewModel.onActivityTypeToggle(ActivityType.SERVICING)
+
+        viewModel.save()
+
+        assertEquals(1, viewModel.openDeferredItems.value.size)
     }
 
     @Test

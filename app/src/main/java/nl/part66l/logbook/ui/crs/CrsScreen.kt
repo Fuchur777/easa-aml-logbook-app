@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -19,6 +21,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -106,6 +109,13 @@ fun CrsScreen(
                         Checkbox(checked = state.maintenanceIncomplete, onCheckedChange = viewModel::onMaintenanceIncompleteChange)
                         Text("Maintenance could not be completed")
                     }
+                    if (state.maintenanceIncomplete) {
+                        DeferredItemEditor(
+                            descriptions = state.deferredItemDescriptions,
+                            onAdd = viewModel::onDeferredItemAdd,
+                            onRemove = viewModel::onDeferredItemRemove,
+                        )
+                    }
                     Button(
                         onClick = viewModel::generate,
                         enabled = !state.generating,
@@ -179,5 +189,45 @@ private fun CrsRow(crs: CrsEntity, onClick: () -> Unit, onPhotoAttached: (String
                 TextButton(onClick = { showRemovePhotoConfirm = false }) { Text("Cancel") }
             },
         )
+    }
+}
+
+/** Queued up here, raised against the certificate's own id once it's actually issued (§5.7) — a deferred item always cites a real CRS. */
+@Composable
+private fun DeferredItemEditor(
+    descriptions: List<String>,
+    onAdd: (String) -> Unit,
+    onRemove: (Int) -> Unit,
+) {
+    var description by remember { mutableStateOf("") }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Deferred items", style = MaterialTheme.typography.labelLarge)
+        if (descriptions.isNotEmpty()) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(descriptions.size) { index ->
+                    InputChip(
+                        selected = false,
+                        onClick = {},
+                        label = { Text(descriptions[index]) },
+                        trailingIcon = {
+                            IconButton(onClick = { onRemove(index) }) { Text("✕") }
+                        },
+                    )
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Add a deferred item") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = { onAdd(description); description = "" }, enabled = description.isNotBlank()) {
+                Text("Add")
+            }
+        }
     }
 }
