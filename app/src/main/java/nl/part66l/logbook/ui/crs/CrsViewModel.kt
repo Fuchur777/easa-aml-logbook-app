@@ -35,6 +35,16 @@ class CrsViewModel @Inject constructor(
     fun onLimitationsChange(value: String) = _state.update { it.copy(limitations = value) }
     fun onMaintenanceIncompleteChange(value: Boolean) = _state.update { it.copy(maintenanceIncomplete = value) }
 
+    /** Adds straight to the record — [issued] picks it up reactively, no round trip needed here. */
+    fun onPhotoAttached(crsId: String, path: String) {
+        viewModelScope.launch { crsRepository.setSignedPhoto(crsId, path) }
+    }
+
+    /** Clears a wrongly attached photo — the slot goes back to "tap to attach", same as if none had been picked. */
+    fun onPhotoRemoved(crsId: String) {
+        viewModelScope.launch { crsRepository.setSignedPhoto(crsId, null) }
+    }
+
     fun generate() {
         val current = _state.value
         if (current.generating) return

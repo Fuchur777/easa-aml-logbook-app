@@ -42,4 +42,8 @@ class FakeCrsRepository(initial: List<CrsEntity> = emptyList()) : CrsRepository 
         entries.value = entries.value + crs
         return crs
     }
+
+    override suspend fun setSignedPhoto(id: String, path: String?) {
+        entries.value = entries.value.map { if (it.id == id) it.copy(signedPhotoLocalPath = path) else it }
+    }
 }

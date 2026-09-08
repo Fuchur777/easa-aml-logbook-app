@@ -352,6 +352,10 @@ interface CrsDao {
     @Query("UPDATE crs SET signatureState = :state, voidReason = :reason WHERE id = :id AND signatureState IN ('DRAFT','TIMESTAMP_PENDING')")
     suspend fun transitionUnsigned(id: String, state: SignatureState, reason: String?): Int
 
+    /** The hand-signed photo is metadata about the print-and-wet-sign record, not certified content — settable any time, unlike the fields above. */
+    @Query("UPDATE crs SET signedPhotoLocalPath = :path WHERE id = :id")
+    suspend fun setSignedPhoto(id: String, path: String?)
+
     @Query("SELECT * FROM crs ORDER BY number DESC")
     fun all(): Flow<List<CrsEntity>>
 

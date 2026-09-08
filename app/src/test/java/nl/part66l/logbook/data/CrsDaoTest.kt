@@ -17,10 +17,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * CLAUDE.md invariant 1: a signed CRS is immutable. `transitionUnsigned` is the
- * only UPDATE the DAO layer exposes on `crs`, and it must be a no-op once the row
- * has left DRAFT/TIMESTAMP_PENDING — enforced here at the query level, not just by
- * the absence of any other update method.
+ * CLAUDE.md invariant 1: a signed CRS's certified content is immutable.
+ * `transitionUnsigned` is the only UPDATE the DAO layer exposes on the certified
+ * fields, and it must be a no-op once the row has left DRAFT/TIMESTAMP_PENDING —
+ * enforced here at the query level, not just by the absence of any other update
+ * method. `setSignedPhoto` is the one deliberate exception: the hand-signed photo
+ * is metadata about the print-and-wet-sign record, not certified content, so it's
+ * settable regardless of signature state.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -96,5 +99,17 @@ class CrsDaoTest {
         db.crs().insert(crs("c2", "CRS-2026-0002", 2, SignatureState.SIGNED_LOCAL))
 
         assertEquals("CRS-2026-0002", db.crs().highestNumber("CRS-2026-%"))
+    }
+
+    @Test
+    fun `setSignedPhoto attaches or clears the photo path regardless of signature state`() = runBlocking {
+        seedEntry()
+        db.crs().insert(crs("c1", "CRS-2026-0001", 1, SignatureState.SIGNED_LOCAL))
+
+        db.crs().setSignedPhoto("c1", "/data/crs/signed-copy.jpg")
+        assertEquals("/data/crs/signed-copy.jpg", db.crs().byId("c1")!!.signedPhotoLocalPath)
+
+        db.crs().setSignedPhoto("c1", null)
+        assertEquals(null, db.crs().byId("c1")!!.signedPhotoLocalPath)
     }
 }

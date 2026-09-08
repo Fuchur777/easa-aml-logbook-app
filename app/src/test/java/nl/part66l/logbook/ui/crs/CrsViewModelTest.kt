@@ -73,4 +73,27 @@ class CrsViewModelTest {
 
         assertEquals(null, repository.generateCalls.first().limitations)
     }
+
+    @Test
+    fun `onPhotoAttached persists the path to the repository, picked up reactively by issued`() {
+        val existing = crs(entryId = "e1", number = "CRS-1")
+        val repository = FakeCrsRepository(initial = listOf(existing))
+        val viewModel = CrsViewModel(newState("e1"), repository)
+
+        viewModel.onPhotoAttached(existing.id, "/fake/signed-copy.jpg")
+
+        assertEquals("/fake/signed-copy.jpg", viewModel.issued.value.first().signedPhotoLocalPath)
+    }
+
+    @Test
+    fun `onPhotoRemoved clears a wrongly attached photo`() {
+        val existing = crs(entryId = "e1", number = "CRS-1")
+        val repository = FakeCrsRepository(initial = listOf(existing))
+        val viewModel = CrsViewModel(newState("e1"), repository)
+        viewModel.onPhotoAttached(existing.id, "/fake/signed-copy.jpg")
+
+        viewModel.onPhotoRemoved(existing.id)
+
+        assertEquals(null, viewModel.issued.value.first().signedPhotoLocalPath)
+    }
 }

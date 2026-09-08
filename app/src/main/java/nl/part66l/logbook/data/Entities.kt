@@ -342,6 +342,9 @@ data class CrsEntity(
     val pdfLocalPath: String? = null,
     val pdfSha256: String? = null,
     val driveFileId: String? = null,
+
+    /** A photo of the hand-signed paper copy, for the print-and-wet-sign path — not part of the certified PDF content itself. */
+    val signedPhotoLocalPath: String? = null,
 )
 
 /**

@@ -46,6 +46,9 @@ interface CrsRepository {
         limitations: String?,
         maintenanceIncomplete: Boolean,
     ): CrsEntity?
+
+    /** Attaches (or clears, with a null [path]) a photo of the hand-signed paper copy — the print-and-wet-sign path's only record of the actual signature. */
+    suspend fun setSignedPhoto(id: String, path: String?)
 }
 
 @Serializable
@@ -309,4 +312,6 @@ class CrsRepositoryImpl @Inject constructor(
         crsDao.insert(crs)
         return crs
     }
+
+    override suspend fun setSignedPhoto(id: String, path: String?) = crsDao.setSignedPhoto(id, path)
 }

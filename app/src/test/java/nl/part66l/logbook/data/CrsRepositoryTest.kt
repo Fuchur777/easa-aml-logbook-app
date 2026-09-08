@@ -201,6 +201,17 @@ class CrsRepositoryTest {
     }
 
     @Test
+    fun `setSignedPhoto attaches a photo path to an already-issued certificate`() = runBlocking {
+        val entryId = createEntry()
+        val crs = repository.generateUnsigned(entryId, limitations = null, maintenanceIncomplete = false)!!
+
+        repository.setSignedPhoto(crs.id, "/data/crs/signed-copy.jpg")
+
+        val updated = repository.forEntry(entryId).first().first { it.id == crs.id }
+        assertEquals("/data/crs/signed-copy.jpg", updated.signedPhotoLocalPath)
+    }
+
+    @Test
     fun `a second generation for the same entry is a revision of the same base number, not a new one`() = runBlocking {
         val entryId = createEntry()
 
