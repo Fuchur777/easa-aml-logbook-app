@@ -7,12 +7,18 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import nl.part66l.logbook.domain.ActivityType
+import nl.part66l.logbook.domain.DocumentCategory
 import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.HelperRole
 import nl.part66l.logbook.domain.Provenance
 
-/** One row of the "Documentation used" list (§5.3) — reference plus revision status. */
-data class DocumentationRefInput(val reference: String, val revision: String? = null)
+/** One row of the "Documentation used" list (§5.3) — reference plus revision status, snapshotted from the Document directory at pick time. */
+data class DocumentationRefInput(
+    val reference: String,
+    val revision: String? = null,
+    val revisionDate: LocalDate? = null,
+    val category: DocumentCategory? = null,
+)
 
 /** One row of the "Parts and materials" list (§5.3). */
 data class PartUsedInput(
@@ -160,7 +166,8 @@ class WorkEntryRepositoryImpl @Inject constructor(
         val session = workSessionDao.forEntry(id).firstOrNull()
         val helperNames = entryHelperDao.forEntry(id).mapNotNull { personDao.byId(it.personId)?.name }
         val completedTaskIds = taskCompletionDao.forEntry(id).map { it.taskId }.toSet()
-        val documentationRefs = documentationRefDao.forEntry(id).map { DocumentationRefInput(it.reference, it.revision) }
+        val documentationRefs = documentationRefDao.forEntry(id)
+            .map { DocumentationRefInput(it.reference, it.revision, it.revisionDate, it.category) }
         val partsUsed = partUsedDao.forEntry(id).map {
             PartUsedInput(it.partNumber, it.description, it.batchOrSerial, it.formOneRef, it.quantity)
         }
@@ -322,8 +329,9 @@ class WorkEntryRepositoryImpl @Inject constructor(
                     entryId = entryId,
                     reference = ref.reference,
                     referenceNormalised = Identifiers.normalise(ref.reference),
+                    category = ref.category,
                     revision = ref.revision,
-                    revisionDate = null,
+                    revisionDate = ref.revisionDate,
                 ),
             )
         }

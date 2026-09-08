@@ -8,11 +8,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import nl.part66l.logbook.data.ProfileEntity
 import nl.part66l.logbook.data.ProfileRepository
 import nl.part66l.logbook.data.SettingsRepository
+import nl.part66l.logbook.domain.CrsNumberFormat
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -44,6 +46,28 @@ class SettingsViewModel @Inject constructor(
     private val _researchCountsTowardRecency = MutableStateFlow(false)
     val researchCountsTowardRecency: StateFlow<Boolean> = _researchCountsTowardRecency.asStateFlow()
 
+    /**
+     * CRS numbering (§9.2) — template, prefix, annual reset and start-at are validated
+     * together, since [CrsNumberFormat]'s own constructor checks the combination (a
+     * `{SEQ:N}` placeholder must exist, be unique, and be last). Local buffers, not bound
+     * to the persisted flow, so a keystroke never snaps back mid-edit — only a value that
+     * actually constructs a valid [CrsNumberFormat] is written to [settingsRepository].
+     */
+    private val _crsNumberTemplate = MutableStateFlow("")
+    val crsNumberTemplate: StateFlow<String> = _crsNumberTemplate.asStateFlow()
+
+    private val _crsNumberPrefix = MutableStateFlow("")
+    val crsNumberPrefix: StateFlow<String> = _crsNumberPrefix.asStateFlow()
+
+    private val _crsAnnualReset = MutableStateFlow(true)
+    val crsAnnualReset: StateFlow<Boolean> = _crsAnnualReset.asStateFlow()
+
+    private val _crsStartAt = MutableStateFlow("1")
+    val crsStartAt: StateFlow<String> = _crsStartAt.asStateFlow()
+
+    private val _crsNumberingError = MutableStateFlow<String?>(null)
+    val crsNumberingError: StateFlow<String?> = _crsNumberingError.asStateFlow()
+
     init {
         viewModelScope.launch {
             profile = profileRepository.get()
@@ -52,6 +76,12 @@ class SettingsViewModel @Inject constructor(
                 _recencyReductionReference.value = it.recencyReductionReference.orEmpty()
                 _researchCountsTowardRecency.value = it.researchCountsTowardRecency
             }
+        }
+        viewModelScope.launch {
+            _crsNumberTemplate.value = settingsRepository.crsNumberTemplate.first()
+            _crsNumberPrefix.value = settingsRepository.crsNumberPrefix.first()
+            _crsAnnualReset.value = settingsRepository.crsAnnualReset.first()
+            _crsStartAt.value = settingsRepository.crsStartAt.first().toString()
         }
     }
 
@@ -76,5 +106,46 @@ class SettingsViewModel @Inject constructor(
         val updated = update(current)
         profile = updated
         viewModelScope.launch { profileRepository.upsert(updated) }
+    }
+
+    fun onCrsNumberTemplateChange(value: String) {
+        _crsNumberTemplate.value = value
+        validateAndPersistCrsNumbering()
+    }
+
+    fun onCrsNumberPrefixChange(value: String) {
+        _crsNumberPrefix.value = value
+        validateAndPersistCrsNumbering()
+    }
+
+    fun onCrsAnnualResetChange(value: Boolean) {
+        _crsAnnualReset.value = value
+        validateAndPersistCrsNumbering()
+    }
+
+    fun onCrsStartAtChange(value: String) {
+        _crsStartAt.value = value
+        validateAndPersistCrsNumbering()
+    }
+
+    private fun validateAndPersistCrsNumbering() {
+        val startAt = _crsStartAt.value.toIntOrNull()
+        if (startAt == null) {
+            _crsNumberingError.value = "Start-at must be a whole number"
+            return
+        }
+        try {
+            CrsNumberFormat(template = _crsNumberTemplate.value, prefix = _crsNumberPrefix.value, annualReset = _crsAnnualReset.value, startAt = startAt)
+        } catch (e: IllegalArgumentException) {
+            _crsNumberingError.value = e.message
+            return
+        }
+        _crsNumberingError.value = null
+        viewModelScope.launch {
+            settingsRepository.setCrsNumberTemplate(_crsNumberTemplate.value)
+            settingsRepository.setCrsNumberPrefix(_crsNumberPrefix.value)
+            settingsRepository.setCrsAnnualReset(_crsAnnualReset.value)
+            settingsRepository.setCrsStartAt(startAt)
+        }
     }
 }

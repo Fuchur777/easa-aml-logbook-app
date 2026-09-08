@@ -56,16 +56,16 @@ class CrsPdfRenderer {
 
         w.heading("Maintenance data used")
         w.rows(
-            listOf("Reference", "Revision", "Date"),
-            data.documentation.map { listOf(it.reference, it.revision, it.date) },
-            listOf(95f, 35f, 35f),
+            listOf("Reference", "Category", "Revision", "Date"),
+            data.documentation.map { listOf(it.reference, it.category, it.revision, it.date) },
+            listOf(55f, 25f, 40f, 40f),
         )
 
         w.heading("Parts and materials installed")
         w.rows(
-            listOf("Part number", "Batch / serial", "Release document"),
-            data.parts.map { listOf(it.partNumber, it.batchOrSerial, it.releaseDocument) },
-            listOf(70f, 50f, 45f),
+            listOf("Part number", "Description", "Batch / serial", "Release document"),
+            data.parts.map { listOf(it.partNumber, it.description, it.batchOrSerial, it.releaseDocument) },
+            listOf(40f, 55f, 35f, 35f),
         )
 
         w.heading("Limitations to airworthiness or operations")
@@ -102,6 +102,19 @@ class CrsPdfRenderer {
             )
         }
 
+        if (data.activities.isNotEmpty() || data.completedTasks.isNotEmpty()) {
+            w.heading("Activities and tasks")
+            if (data.activities.isNotEmpty()) {
+                w.para("Activities: " + data.activities.joinToString(", "))
+            }
+            if (data.completedTasks.isNotEmpty()) {
+                w.need(8f)
+                w.text(L, w.y, "Appendix II tasks checked:", HELVETICA, 9f, BLACK)
+                w.y -= 4.3f * MM
+                data.completedTasks.forEach { w.para("- $it") }
+            }
+        }
+
         if (data.photos.isNotEmpty()) {
             w.heading("Photographic record, held separately")
             w.rows(
@@ -112,6 +125,16 @@ class CrsPdfRenderer {
             w.need(6f)
             w.text(L, w.y, "Photographs are bound to this certificate by the hashes listed above.", HELVETICA, 6.8f, GREY)
             w.y -= 5f * MM
+        }
+
+        if (data.workOrders.isNotEmpty()) {
+            w.forceNewPage()
+            w.heading("Work Order")
+            w.rows(
+                listOf("Issuer", "Date", "Requested work", "Reference"),
+                data.workOrders.map { listOf(it.issuer, it.date, it.requestedWork, it.reference) },
+                listOf(40f, 25f, 65f, 35f),
+            )
         }
 
         return w.finish()
@@ -226,6 +249,9 @@ private class PageWriter(
     fun need(heightMm: Float) {
         if (y - heightMm * CrsPdfRenderer.MM < CrsPdfRenderer.BOTTOM) newPage()
     }
+
+    /** Unconditional page break — for a section that must start its own page (e.g. Work Order) regardless of remaining space. */
+    fun forceNewPage() = newPage()
 
     fun heading(title: String, keep: Float = 12f) {
         need(keep)

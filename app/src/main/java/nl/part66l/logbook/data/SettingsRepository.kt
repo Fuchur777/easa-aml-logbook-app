@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import javax.inject.Inject
@@ -22,6 +23,19 @@ interface SettingsRepository {
     /** Sections folded closed in the Appendix II task picker. */
     val collapsedCatalogueSections: Flow<Set<String>>
     suspend fun setCatalogueSectionCollapsed(section: String, collapsed: Boolean)
+
+    /** CRS numbering template (§9.2), e.g. `{REG}-{YYYY}-{SEQ:4}`. Default matches the worked example. */
+    val crsNumberTemplate: Flow<String>
+    suspend fun setCrsNumberTemplate(value: String)
+
+    val crsNumberPrefix: Flow<String>
+    suspend fun setCrsNumberPrefix(value: String)
+
+    val crsAnnualReset: Flow<Boolean>
+    suspend fun setCrsAnnualReset(value: Boolean)
+
+    val crsStartAt: Flow<Int>
+    suspend fun setCrsStartAt(value: Int)
 }
 
 @Singleton
@@ -33,6 +47,10 @@ class SettingsRepositoryImpl @Inject constructor(
         val SHOW_ARCHIVED_AIRCRAFT = booleanPreferencesKey("show_archived_aircraft")
         val CATALOGUE_SECTION_ORDER = stringPreferencesKey("catalogue_section_order")
         val COLLAPSED_CATALOGUE_SECTIONS = stringSetPreferencesKey("collapsed_catalogue_sections")
+        val CRS_NUMBER_TEMPLATE = stringPreferencesKey("crs_number_template")
+        val CRS_NUMBER_PREFIX = stringPreferencesKey("crs_number_prefix")
+        val CRS_ANNUAL_RESET = booleanPreferencesKey("crs_annual_reset")
+        val CRS_START_AT = intPreferencesKey("crs_start_at")
     }
 
     /** ASCII unit separator (code point 31) - won't appear in a section name, so it safely joins/splits the stored order string. */
@@ -62,5 +80,33 @@ class SettingsRepositoryImpl @Inject constructor(
             val current = prefs[Keys.COLLAPSED_CATALOGUE_SECTIONS] ?: emptySet()
             prefs[Keys.COLLAPSED_CATALOGUE_SECTIONS] = if (collapsed) current + section else current - section
         }
+    }
+
+    override val crsNumberTemplate: Flow<String> =
+        dataStore.data.map { it[Keys.CRS_NUMBER_TEMPLATE] ?: "{REG}-{YYYY}-{SEQ:4}" }
+
+    override suspend fun setCrsNumberTemplate(value: String) {
+        dataStore.edit { it[Keys.CRS_NUMBER_TEMPLATE] = value }
+    }
+
+    override val crsNumberPrefix: Flow<String> =
+        dataStore.data.map { it[Keys.CRS_NUMBER_PREFIX] ?: "" }
+
+    override suspend fun setCrsNumberPrefix(value: String) {
+        dataStore.edit { it[Keys.CRS_NUMBER_PREFIX] = value }
+    }
+
+    override val crsAnnualReset: Flow<Boolean> =
+        dataStore.data.map { it[Keys.CRS_ANNUAL_RESET] ?: true }
+
+    override suspend fun setCrsAnnualReset(value: Boolean) {
+        dataStore.edit { it[Keys.CRS_ANNUAL_RESET] = value }
+    }
+
+    override val crsStartAt: Flow<Int> =
+        dataStore.data.map { it[Keys.CRS_START_AT] ?: 1 }
+
+    override suspend fun setCrsStartAt(value: Int) {
+        dataStore.edit { it[Keys.CRS_START_AT] = value }
     }
 }

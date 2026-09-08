@@ -61,6 +61,8 @@ fun WorkEntryFormScreen(
     onSaved: () -> Unit,
     onDeleted: () -> Unit,
     onClose: () -> Unit,
+    /** Only ever invoked when [WorkEntryFormState.isEditing] — a new, unsaved entry has no id to view certificates for. */
+    onCertificates: (String) -> Unit = {},
     viewModel: WorkEntryFormViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -332,6 +334,13 @@ fun WorkEntryFormScreen(
 
             if (state.isEditing) {
                 OutlinedButton(
+                    onClick = { state.entryId?.let(onCertificates) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Generate CRS")
+                }
+
+                OutlinedButton(
                     onClick = { showDeleteConfirm = true },
                     enabled = state.canDelete,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -382,9 +391,12 @@ fun WorkEntryFormScreen(
     }
 }
 
-/** "Name (Revision) - Category" — the composed label used both in the dropdown and as the reference snapshot text. */
+/** "Name (Revision) - Category" — display label for the dropdown and the picked-refs list; the CRS itself renders the fields separately. */
 private val DocumentEntity.pickerLabel: String
     get() = "$name${revision?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""} - ${category.displayLabel}"
+
+private val DocumentationRefInput.displayLabel: String
+    get() = "$reference${revision?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""}${category?.let { " - ${it.displayLabel}" } ?: ""}"
 
 @Composable
 private fun DocumentationRefEditor(
@@ -402,7 +414,7 @@ private fun DocumentationRefEditor(
         refs.forEachIndexed { index, ref ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    ref.reference,
+                    ref.displayLabel,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f),
                 )
@@ -415,7 +427,9 @@ private fun DocumentationRefEditor(
             value = null,
             options = documentOptions,
             optionLabel = { it.pickerLabel },
-            onValueChange = { document -> onAdd(DocumentationRefInput(document.pickerLabel, document.revision)) },
+            onValueChange = { document ->
+                onAdd(DocumentationRefInput(document.name, document.revision, document.revisionDate, document.category))
+            },
             modifier = Modifier.fillMaxWidth(),
         )
         if (documentOptions.isEmpty()) {

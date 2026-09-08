@@ -27,6 +27,16 @@ sealed interface Destination {
         }
     }
 
+    /** Certificates issued against a work entry (§9), plus generating a new one. [entryId] builds the concrete route; [ROUTE_PATTERN] registers it with NavHost. */
+    data class Crs(val entryId: String) : Destination {
+        override val route = "work-entries/$entryId/crs"
+
+        companion object {
+            const val ARG_ENTRY_ID = "entryId"
+            const val ROUTE_PATTERN = "work-entries/{$ARG_ENTRY_ID}/crs"
+        }
+    }
+
     data object Aircraft : Destination {
         override val route = "aircraft"
     }

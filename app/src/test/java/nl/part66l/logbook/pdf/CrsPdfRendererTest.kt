@@ -21,7 +21,12 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class CrsPdfRendererTest {
 
-    private fun sampleData(documentation: List<DocRow> = defaultDocumentation) = CrsRenderData(
+    private fun sampleData(
+        documentation: List<DocRow> = defaultDocumentation,
+        workOrders: List<WorkOrderRow> = defaultWorkOrders,
+        activities: List<String> = defaultActivities,
+        completedTasks: List<String> = defaultCompletedTasks,
+    ) = CrsRenderData(
         number = "NL66-2026-0007",
         basisLabel = "Independent certifying staff — ML.A.801(b)(2)",
         aircraft = listOf(
@@ -32,13 +37,13 @@ class CrsPdfRendererTest {
         ),
         description = "Annual inspection in accordance with the approved maintenance programme.",
         period = listOf(
-            "Work started" to "11 March 2026",
-            "Maintenance completed" to "14 March 2026",
+            "Start" to "11 March 2026",
+            "End" to "14 March 2026",
             "Days worked" to "3",
-            "Work order" to "WO-2026-014",
         ),
         documentation = documentation,
-        parts = listOf(PartRow("6204-2RS", "B-77412", "EASA Form 1 ref. 55120")),
+        parts = listOf(PartRow("6204-2RS", "Wheel bearing", "B-77412", "EASA Form 1 ref. 55120")),
+        workOrders = workOrders,
         limitations = "None.",
         statement = "certifies that the work specified, except as otherwise specified, was carried " +
             "out in accordance with Part-ML, and in respect to that work, the aircraft is considered " +
@@ -47,7 +52,12 @@ class CrsPdfRendererTest {
         licenceNumber = "NL.66.00000",
         issuedDate = "14 March 2026",
         regulationFooter = "Issued under ML.A.801(b)(2) of Regulation (EU) No 1321/2014, Annex Vb (Part-ML).",
-        personnel = listOf(PersonnelRow("J. de Vries", "NL.66.11111", "Assisted")),
+        personnel = listOf(
+            PersonnelRow("F. Example", "NL.66.00000", "Certifying staff"),
+            PersonnelRow("J. de Vries", "NL.66.11111", "Assisted / On the job training"),
+        ),
+        activities = activities,
+        completedTasks = completedTasks,
         photos = listOf(PhotoRow("a3f1c0e2-…-9b41.jpg", "9f2a41c7de08b533", "14 March 2026 10:12")),
     )
 
@@ -56,7 +66,7 @@ class CrsPdfRendererTest {
     @Test
     fun `renders a single page for the ordinary case, with a correct page total`() {
         PDDocument().use { document ->
-            val pages = CrsPdfRenderer().render(document, sampleData())
+            val pages = CrsPdfRenderer().render(document, sampleData(workOrders = emptyList()))
 
             assertEquals(1, pages)
             assertEquals(document.numberOfPages, pages)
@@ -80,8 +90,59 @@ class CrsPdfRendererTest {
     }
 
     @Test
+    fun `personnel lists the certifying staff alongside anyone who assisted`() {
+        PDDocument().use { document ->
+            CrsPdfRenderer().render(document, sampleData())
+
+            val text = textOf(document)
+            assertTrue(text.contains("PERSONNEL WHO CARRIED OUT THE WORK"))
+            assertTrue(text.contains("F. Example"))
+            assertTrue(text.contains("Certifying staff"))
+            assertTrue(text.contains("J. de Vries"))
+            assertTrue(text.contains("Assisted / On the job training"))
+        }
+    }
+
+    @Test
+    fun `activities and completed tasks are listed, and omitted entirely when both are empty`() {
+        PDDocument().use { document ->
+            CrsPdfRenderer().render(document, sampleData())
+
+            val text = textOf(document)
+            assertTrue(text.contains("ACTIVITIES AND TASKS"))
+            assertTrue(text.contains("Inspection"))
+            assertTrue(text.contains("Weighing, weight & balance sheet"))
+        }
+        PDDocument().use { document ->
+            CrsPdfRenderer().render(document, sampleData(activities = emptyList(), completedTasks = emptyList()))
+
+            assertTrue(!textOf(document).contains("ACTIVITIES AND TASKS"))
+        }
+    }
+
+    @Test
+    fun `a work order, when present, is rendered on its own page titled Work Order`() {
+        PDDocument().use { document ->
+            CrsPdfRenderer().render(document, sampleData())
+
+            val text = textOf(document)
+            assertTrue(text.contains("WORK ORDER"))
+            assertTrue(text.contains("WO-2026-014"))
+        }
+    }
+
+    @Test
+    fun `an empty work order list omits the Work Order section entirely`() {
+        PDDocument().use { document ->
+            CrsPdfRenderer().render(document, sampleData(workOrders = emptyList()))
+
+            assertTrue(!textOf(document).contains("WORK ORDER"))
+        }
+    }
+
+    @Test
     fun `a long documentation table paginates, repeats its header, and drops nothing`() {
-        val longDocs = (1..80).map { DocRow("Doc reference $it", "Rev. $it", "1 January 2026") }
+        val longDocs = (1..80).map { DocRow("Doc reference $it", "Manual", "Rev. $it", "1 January 2026") }
 
         PDDocument().use { document ->
             val pages = CrsPdfRenderer().render(document, sampleData(documentation = longDocs))
@@ -106,6 +167,14 @@ class CrsPdfRendererTest {
 }
 
 private val defaultDocumentation = listOf(
-    DocRow("ASK 21 Maintenance Manual, chapter 4", "Rev. 7", "12 June 2024"),
-    DocRow("TN 826-11", "Issue 2", "3 February 2021"),
+    DocRow("ASK 21 Maintenance Manual, chapter 4", "Manual", "Rev. 7", "12 June 2024"),
+    DocRow("TN 826-11", "SD", "Issue 2", "3 February 2021"),
 )
+
+private val defaultWorkOrders = listOf(
+    WorkOrderRow("Club maintenance officer", "10 March 2026", "Annual inspection", "WO-2026-014"),
+)
+
+private val defaultActivities = listOf("Inspection", "Repairing")
+
+private val defaultCompletedTasks = listOf("Weighing, weight & balance sheet")

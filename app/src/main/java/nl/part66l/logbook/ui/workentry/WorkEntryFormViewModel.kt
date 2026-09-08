@@ -166,7 +166,7 @@ class WorkEntryFormViewModel @Inject constructor(
 
     /** Adds straight to the directory — [documentOptions] picks it up reactively, no round trip needed here. */
     fun onCreateDocument(name: String, category: DocumentCategory, revision: String?, link: String?) {
-        viewModelScope.launch { documentRepository.create(name, category, revision, link) }
+        viewModelScope.launch { documentRepository.create(name = name, category = category, revision = revision, link = link) }
     }
 
     fun onTaskCompletionToggle(taskId: String) = _state.update {

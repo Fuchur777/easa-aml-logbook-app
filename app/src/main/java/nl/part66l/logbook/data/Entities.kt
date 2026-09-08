@@ -209,6 +209,7 @@ data class DocumentationRefEntity(
     val entryId: String,
     val reference: String,
     val referenceNormalised: String,
+    val category: DocumentCategory? = null,
     val revision: String?,
     val revisionDate: LocalDate?,
 )
@@ -242,6 +243,7 @@ data class DocumentEntity(
     val name: String,
     val category: DocumentCategory,
     val revision: String? = null,
+    val revisionDate: LocalDate? = null,
     /** Optional link to the document itself (a cloud file, manufacturer page, etc.). */
     val link: String? = null,
     /** Absolute path of a PDF copied into app-private storage. PDF only, for now. */
@@ -296,6 +298,10 @@ data class CrsEntity(
     val entryId: String,
     val number: String,
     val numberNormalised: String,
+    /** The number without any "-revN" suffix — shared by every revision of the same certificate, so a later regeneration can find it. */
+    val baseNumber: String = number,
+    /** 0 for the original; 1+ for each reprint of the same base number ("-rev1", "-rev2", ...). Never re-allocates the underlying sequence. */
+    val revision: Int = 0,
     /** Sequence part, stored separately so "CRS 7" finds CRS-2026-0007 despite leading zeros. */
     val sequence: Int,
     val year: Int?,

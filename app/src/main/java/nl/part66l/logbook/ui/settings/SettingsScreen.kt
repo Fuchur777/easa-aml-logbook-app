@@ -37,6 +37,11 @@ fun SettingsScreen(
     val recencyReductionGranted by viewModel.recencyReductionGranted.collectAsStateWithLifecycle()
     val recencyReductionReference by viewModel.recencyReductionReference.collectAsStateWithLifecycle()
     val researchCountsTowardRecency by viewModel.researchCountsTowardRecency.collectAsStateWithLifecycle()
+    val crsNumberTemplate by viewModel.crsNumberTemplate.collectAsStateWithLifecycle()
+    val crsNumberPrefix by viewModel.crsNumberPrefix.collectAsStateWithLifecycle()
+    val crsAnnualReset by viewModel.crsAnnualReset.collectAsStateWithLifecycle()
+    val crsStartAt by viewModel.crsStartAt.collectAsStateWithLifecycle()
+    val crsNumberingError by viewModel.crsNumberingError.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -118,6 +123,57 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+
+            Card {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("CRS numbering", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Placeholders: {PREFIX}, {YYYY} and {SEQ:N} (zero-padded to N digits). " +
+                            "{SEQ:N} is required, used once, and must be last. Issued numbers never change " +
+                            "when this format does.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value = crsNumberTemplate,
+                        onValueChange = viewModel::onCrsNumberTemplateChange,
+                        label = { Text("Template") },
+                        isError = crsNumberingError != null,
+                        supportingText = { crsNumberingError?.let { Text(it) } },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = crsNumberPrefix,
+                        onValueChange = viewModel::onCrsNumberPrefixChange,
+                        label = { Text("Prefix") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = crsStartAt,
+                        onValueChange = viewModel::onCrsStartAtChange,
+                        label = { Text("Start at") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Reset sequence every year")
+                            Text(
+                                "Off keeps the sequence climbing across year boundaries, even though {YYYY} still prints.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(checked = crsAnnualReset, onCheckedChange = viewModel::onCrsAnnualResetChange)
+                    }
                 }
             }
         }

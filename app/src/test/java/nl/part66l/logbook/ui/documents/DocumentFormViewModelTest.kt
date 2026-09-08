@@ -1,6 +1,7 @@
 package nl.part66l.logbook.ui.documents
 
 import androidx.lifecycle.SavedStateHandle
+import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -60,6 +61,19 @@ class DocumentFormViewModelTest {
         assertEquals(DocumentCategory.MANUAL, created.category)
         assertEquals("Rev 3", created.revision)
         assertEquals("https://example.com", created.link)
+    }
+
+    @Test
+    fun `save round-trips the revision date`() {
+        val repository = FakeDocumentRepository()
+        val viewModel = DocumentFormViewModel(newState(), repository)
+        viewModel.onNameChange("AMM")
+        viewModel.onRevisionDateChange(LocalDate.of(2025, 6, 1))
+
+        viewModel.save()
+
+        val created = runBlocking { repository.observeAll(includeArchived = true).first() }.first()
+        assertEquals(LocalDate.of(2025, 6, 1), created.revisionDate)
     }
 
     @Test

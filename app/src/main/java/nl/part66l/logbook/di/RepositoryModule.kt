@@ -10,6 +10,8 @@ import nl.part66l.logbook.data.CatalogueRepository
 import nl.part66l.logbook.data.CatalogueRepositoryImpl
 import nl.part66l.logbook.data.CrsNumberingRepository
 import nl.part66l.logbook.data.CrsNumberingRepositoryImpl
+import nl.part66l.logbook.data.CrsRepository
+import nl.part66l.logbook.data.CrsRepositoryImpl
 import nl.part66l.logbook.data.DocumentRepository
 import nl.part66l.logbook.data.DocumentRepositoryImpl
 import nl.part66l.logbook.data.PersonRepository
@@ -53,4 +55,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindDocumentRepository(impl: DocumentRepositoryImpl): DocumentRepository
+
+    @Binds
+    abstract fun bindCrsRepository(impl: CrsRepositoryImpl): CrsRepository
 }

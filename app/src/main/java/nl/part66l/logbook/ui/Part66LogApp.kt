@@ -26,6 +26,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import nl.part66l.logbook.ui.aircraft.AircraftFormScreen
 import nl.part66l.logbook.ui.aircraft.AircraftListScreen
+import nl.part66l.logbook.ui.crs.CrsScreen
 import nl.part66l.logbook.ui.documents.DocumentFormScreen
 import nl.part66l.logbook.ui.documents.DocumentListScreen
 import nl.part66l.logbook.ui.navigation.Destination
@@ -66,6 +67,7 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
         Destination.Settings.route,
         Destination.WorkEntryForm.route,
         Destination.WorkEntryEdit.ROUTE_PATTERN,
+        Destination.Crs.ROUTE_PATTERN,
         Destination.Documents.route,
         Destination.DocumentForm.route,
         Destination.DocumentEdit.ROUTE_PATTERN,
@@ -146,7 +148,14 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                     onSaved = { navController.popBackStack() },
                     onDeleted = { navController.popBackStack() },
                     onClose = { navController.popBackStack() },
+                    onCertificates = { id -> navController.navigate(Destination.Crs(id).route) },
                 )
+            }
+            composable(
+                route = Destination.Crs.ROUTE_PATTERN,
+                arguments = listOf(navArgument(Destination.Crs.ARG_ENTRY_ID) { type = NavType.StringType }),
+            ) {
+                CrsScreen(onClose = { navController.popBackStack() })
             }
             composable(Destination.Aircraft.route) {
                 AircraftListScreen(

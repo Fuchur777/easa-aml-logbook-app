@@ -20,6 +20,8 @@ data class CrsRenderData(
     val period: List<Pair<String, String>>,
     val documentation: List<DocRow>,
     val parts: List<PartRow>,
+    /** One row per contributing work order, rendered on its own page (only when non-empty) since a work order isn't part of the certificate content itself. */
+    val workOrders: List<WorkOrderRow>,
     /** Always rendered, even when empty — an absent section reads as an omission (crs-field-mapping.md). */
     val limitations: String,
     val statement: String,              // the certification statement itself, issuer's name NOT yet inlined
@@ -28,10 +30,15 @@ data class CrsRenderData(
     val issuedDate: String,             // already formatted and unambiguous, e.g. "14 March 2026"
     val regulationFooter: String,
     val personnel: List<PersonnelRow>,
+    /** Activity types recorded on the contributing entry/entries, e.g. "Inspection", "Repairing". */
+    val activities: List<String>,
+    /** Appendix II task text, snapshotted at completion time. */
+    val completedTasks: List<String>,
     val photos: List<PhotoRow>,
 )
 
-data class DocRow(val reference: String, val revision: String, val date: String)
-data class PartRow(val partNumber: String, val batchOrSerial: String, val releaseDocument: String)
+data class DocRow(val reference: String, val category: String, val revision: String, val date: String)
+data class PartRow(val partNumber: String, val description: String, val batchOrSerial: String, val releaseDocument: String)
 data class PersonnelRow(val name: String, val licenceNumber: String, val role: String)
 data class PhotoRow(val fileName: String, val sha256Prefix: String, val capturedAt: String)
+data class WorkOrderRow(val issuer: String, val date: String, val requestedWork: String, val reference: String)

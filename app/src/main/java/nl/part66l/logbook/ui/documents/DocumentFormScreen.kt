@@ -41,6 +41,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import nl.part66l.logbook.domain.DocumentCategory
+import nl.part66l.logbook.ui.components.DatePickerField
 import nl.part66l.logbook.ui.components.DropdownField
 import nl.part66l.logbook.ui.components.UnsavedChangesDialog
 import nl.part66l.logbook.ui.theme.Part66ConfirmGreen
@@ -135,6 +136,12 @@ fun DocumentFormScreen(
                 onValueChange = viewModel::onRevisionChange,
                 label = { Text("Revision") },
                 singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            DatePickerField(
+                label = "Revision date",
+                value = state.revisionDate,
+                onValueChange = viewModel::onRevisionDateChange,
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(

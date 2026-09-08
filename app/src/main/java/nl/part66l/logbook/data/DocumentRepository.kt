@@ -1,5 +1,6 @@
 package nl.part66l.logbook.data
 
+import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -16,6 +17,7 @@ interface DocumentRepository {
         name: String,
         category: DocumentCategory,
         revision: String?,
+        revisionDate: LocalDate? = null,
         link: String?,
         pdfPath: String? = null,
         pdfFileName: String? = null,
@@ -26,6 +28,7 @@ interface DocumentRepository {
         name: String,
         category: DocumentCategory,
         revision: String?,
+        revisionDate: LocalDate? = null,
         link: String?,
         pdfPath: String? = null,
         pdfFileName: String? = null,
@@ -55,6 +58,7 @@ class DocumentRepositoryImpl @Inject constructor(
         name: String,
         category: DocumentCategory,
         revision: String?,
+        revisionDate: LocalDate?,
         link: String?,
         pdfPath: String?,
         pdfFileName: String?,
@@ -62,7 +66,7 @@ class DocumentRepositoryImpl @Inject constructor(
         val id = UUID.randomUUID().toString()
         documentDao.insert(
             DocumentEntity(
-                id = id, name = name, category = category, revision = revision, link = link,
+                id = id, name = name, category = category, revision = revision, revisionDate = revisionDate, link = link,
                 pdfPath = pdfPath, pdfFileName = pdfFileName,
             ),
         )
@@ -74,6 +78,7 @@ class DocumentRepositoryImpl @Inject constructor(
         name: String,
         category: DocumentCategory,
         revision: String?,
+        revisionDate: LocalDate?,
         link: String?,
         pdfPath: String?,
         pdfFileName: String?,
@@ -81,7 +86,7 @@ class DocumentRepositoryImpl @Inject constructor(
         val existing = documentDao.byId(id) ?: return
         documentDao.update(
             existing.copy(
-                name = name, category = category, revision = revision, link = link,
+                name = name, category = category, revision = revision, revisionDate = revisionDate, link = link,
                 pdfPath = pdfPath, pdfFileName = pdfFileName,
             ),
         )

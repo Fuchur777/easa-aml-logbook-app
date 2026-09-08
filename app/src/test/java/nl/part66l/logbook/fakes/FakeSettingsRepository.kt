@@ -8,10 +8,18 @@ class FakeSettingsRepository(
     initialShowArchivedAircraft: Boolean = false,
     initialCatalogueSectionOrder: List<String> = emptyList(),
     initialCollapsedCatalogueSections: Set<String> = emptySet(),
+    initialCrsNumberTemplate: String = "{REG}-{YYYY}-{SEQ:4}",
+    initialCrsNumberPrefix: String = "",
+    initialCrsAnnualReset: Boolean = true,
+    initialCrsStartAt: Int = 1,
 ) : SettingsRepository {
     private val showArchived = MutableStateFlow(initialShowArchivedAircraft)
     private val sectionOrder = MutableStateFlow(initialCatalogueSectionOrder)
     private val collapsedSections = MutableStateFlow(initialCollapsedCatalogueSections)
+    private val crsNumberTemplateFlow = MutableStateFlow(initialCrsNumberTemplate)
+    private val crsNumberPrefixFlow = MutableStateFlow(initialCrsNumberPrefix)
+    private val crsAnnualResetFlow = MutableStateFlow(initialCrsAnnualReset)
+    private val crsStartAtFlow = MutableStateFlow(initialCrsStartAt)
 
     override val showArchivedAircraft: Flow<Boolean> = showArchived
 
@@ -29,5 +37,29 @@ class FakeSettingsRepository(
 
     override suspend fun setCatalogueSectionCollapsed(section: String, collapsed: Boolean) {
         collapsedSections.value = if (collapsed) collapsedSections.value + section else collapsedSections.value - section
+    }
+
+    override val crsNumberTemplate: Flow<String> = crsNumberTemplateFlow
+
+    override suspend fun setCrsNumberTemplate(value: String) {
+        crsNumberTemplateFlow.value = value
+    }
+
+    override val crsNumberPrefix: Flow<String> = crsNumberPrefixFlow
+
+    override suspend fun setCrsNumberPrefix(value: String) {
+        crsNumberPrefixFlow.value = value
+    }
+
+    override val crsAnnualReset: Flow<Boolean> = crsAnnualResetFlow
+
+    override suspend fun setCrsAnnualReset(value: Boolean) {
+        crsAnnualResetFlow.value = value
+    }
+
+    override val crsStartAt: Flow<Int> = crsStartAtFlow
+
+    override suspend fun setCrsStartAt(value: Int) {
+        crsStartAtFlow.value = value
     }
 }

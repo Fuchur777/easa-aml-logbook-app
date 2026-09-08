@@ -1,5 +1,6 @@
 package nl.part66l.logbook.fakes
 
+import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,13 +21,14 @@ class FakeDocumentRepository(initial: List<DocumentEntity> = emptyList()) : Docu
         name: String,
         category: DocumentCategory,
         revision: String?,
+        revisionDate: LocalDate?,
         link: String?,
         pdfPath: String?,
         pdfFileName: String?,
     ): String {
         val id = UUID.randomUUID().toString()
         documents.value = documents.value + DocumentEntity(
-            id = id, name = name, category = category, revision = revision, link = link,
+            id = id, name = name, category = category, revision = revision, revisionDate = revisionDate, link = link,
             pdfPath = pdfPath, pdfFileName = pdfFileName,
         )
         return id
@@ -37,13 +39,17 @@ class FakeDocumentRepository(initial: List<DocumentEntity> = emptyList()) : Docu
         name: String,
         category: DocumentCategory,
         revision: String?,
+        revisionDate: LocalDate?,
         link: String?,
         pdfPath: String?,
         pdfFileName: String?,
     ) {
         documents.value = documents.value.map {
             if (it.id == id) {
-                it.copy(name = name, category = category, revision = revision, link = link, pdfPath = pdfPath, pdfFileName = pdfFileName)
+                it.copy(
+                    name = name, category = category, revision = revision, revisionDate = revisionDate,
+                    link = link, pdfPath = pdfPath, pdfFileName = pdfFileName,
+                )
             } else {
                 it
             }

@@ -1,5 +1,6 @@
 package nl.part66l.logbook.ui.documents
 
+import java.time.LocalDate
 import nl.part66l.logbook.domain.DocumentCategory
 
 /** Same validation pattern as every other form in this app: raw fields, computed errors, canSave gates Save. */
@@ -9,6 +10,7 @@ data class DocumentFormState(
     val name: String = "",
     val category: DocumentCategory = DocumentCategory.MANUAL,
     val revision: String = "",
+    val revisionDate: LocalDate? = null,
     val link: String = "",
     /** PDF only, for now. Both blank means no attachment; [pdfPath] is app-internal storage, [pdfFileName] is the original name for display. */
     val pdfPath: String = "",

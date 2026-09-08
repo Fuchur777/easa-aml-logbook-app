@@ -2,10 +2,17 @@ package nl.part66l.logbook.domain
 
 /**
  * A CRS numbering template (§9.2). Placeholders: `{PREFIX}`, `{YYYY}` (four
- * digits) and `{SEQ:N}` (zero-padded to N digits) — each usable at most once,
- * with arbitrary literal text around and between them. `{SEQ:N}` is required
+ * digits), `{REG}` (the aircraft registration, or `NOREG` for component/bench
+ * work — always pre-normalised to alphanumeric-only by the caller) and
+ * `{SEQ:N}` (zero-padded to N digits) — each usable at most once, with
+ * arbitrary literal text around and between them. `{SEQ:N}` is required
  * exactly once and must be the last placeholder: nothing else may vary after
  * it, or "the highest issued number" stops being well-defined.
+ *
+ * The sequence is shared across every registration and NOREG alike — `{REG}`
+ * varies the printed number, not the counter. A number-matching pass therefore
+ * treats `{REG}` as a wildcard, the same way `{YYYY}` is treated when
+ * [annualReset] is off.
  *
  * Pure and stateless — it only computes what the next number *would* be from
  * what has already been issued. Nothing is reserved or persisted here.
@@ -21,6 +28,7 @@ class CrsNumberFormat(
 ) {
     private val tokens: List<Token> = tokenize(template)
     private val hasYear: Boolean = tokens.any { it is Token.Year }
+    private val hasRegistration: Boolean = tokens.any { it is Token.Registration }
     private val sequenceWidth: Int
 
     init {
@@ -35,9 +43,14 @@ class CrsNumberFormat(
         sequenceWidth = (tokens[seqIndex] as Token.Sequence).width
     }
 
-    /** Renders a concrete number. [year] is required when the template contains `{YYYY}`. */
-    fun format(sequence: Int, year: Int? = null): String {
+    /**
+     * Renders a concrete number. [year] is required when the template contains
+     * `{YYYY}`; [registration] is required when it contains `{REG}` — already
+     * resolved by the caller to the normalised registration or `NOREG`.
+     */
+    fun format(sequence: Int, year: Int? = null, registration: String? = null): String {
         require(!hasYear || year != null) { "Template requires a year: $template" }
+        require(!hasRegistration || registration != null) { "Template requires a registration: $template" }
         require(sequence >= 0 && sequence.toString().length <= sequenceWidth) {
             "Sequence $sequence does not fit {SEQ:$sequenceWidth} in $template"
         }
@@ -46,6 +59,7 @@ class CrsNumberFormat(
                 is Token.Literal -> token.text
                 is Token.Prefix -> prefix
                 is Token.Year -> year!!.toString().padStart(4, '0')
+                is Token.Registration -> registration!!
                 is Token.Sequence -> sequence.toString().padStart(token.width, '0')
             }
         }
@@ -63,14 +77,17 @@ class CrsNumberFormat(
      * the sequence keeps climbing across year boundaries even though `{YYYY}`
      * may still appear in the printed number.
      */
-    fun nextNumber(existingNumbers: Collection<String>, year: Int? = null): String {
+    fun nextNumber(existingNumbers: Collection<String>, year: Int? = null, registration: String? = null): String =
+        format(nextSequence(existingNumbers, year), year, registration)
+
+    /** The bare sequence integer [nextNumber] would format — what [CrsEntity.sequence] stores alongside the printed number. */
+    fun nextSequence(existingNumbers: Collection<String>, year: Int? = null): Int {
         require(!hasYear || year != null) { "Template requires a year: $template" }
         val matcher = matcherFor(pinnedYear = if (annualReset) year else null)
         val highest = existingNumbers
             .mapNotNull { matcher.find(it)?.groupValues?.get(1)?.toIntOrNull() }
             .maxOrNull()
-        val next = maxOf(startAt, (highest ?: 0) + 1)
-        return format(next, year)
+        return maxOf(startAt, (highest ?: 0) + 1)
     }
 
     /** The §9.2 collision check required before accepting a changed format. */
@@ -88,6 +105,7 @@ class CrsNumberFormat(
                 } else {
                     "\\d{4}"
                 }
+                is Token.Registration -> "[A-Za-z0-9]+"
                 is Token.Sequence -> "(\\d{${token.width}})"
             }
         }
@@ -98,11 +116,12 @@ class CrsNumberFormat(
         data class Literal(val text: String) : Token
         data object Prefix : Token
         data object Year : Token
+        data object Registration : Token
         data class Sequence(val width: Int) : Token
     }
 
     companion object {
-        private val TOKEN_PATTERN = Regex("\\{PREFIX\\}|\\{YYYY\\}|\\{SEQ:(\\d+)\\}")
+        private val TOKEN_PATTERN = Regex("\\{PREFIX\\}|\\{YYYY\\}|\\{REG\\}|\\{SEQ:(\\d+)\\}")
 
         private fun tokenize(template: String): List<Token> {
             val tokens = mutableListOf<Token>()
@@ -112,6 +131,7 @@ class CrsNumberFormat(
                 tokens += when (match.value) {
                     "{PREFIX}" -> Token.Prefix
                     "{YYYY}" -> Token.Year
+                    "{REG}" -> Token.Registration
                     else -> Token.Sequence(match.groupValues[1].toInt())
                 }
                 last = match.range.last + 1

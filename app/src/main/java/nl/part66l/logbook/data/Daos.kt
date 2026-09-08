@@ -347,6 +347,9 @@ interface CrsDao {
 
     @Query("SELECT * FROM crs WHERE id = :id")
     suspend fun byId(id: String): CrsEntity?
+
+    @Query("SELECT * FROM crs WHERE entryId = :entryId ORDER BY number DESC")
+    fun forEntry(entryId: String): Flow<List<CrsEntity>>
 }
 
 @Dao

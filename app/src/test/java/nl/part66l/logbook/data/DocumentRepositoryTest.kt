@@ -2,6 +2,7 @@ package nl.part66l.logbook.data
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import nl.part66l.logbook.domain.DocumentCategory
@@ -104,6 +105,23 @@ class DocumentRepositoryTest {
         val updated = repository.byId(id)
         assertEquals("/data/documents/def.pdf", updated!!.pdfPath)
         assertEquals("AMM v2.pdf", updated.pdfFileName)
+    }
+
+    @Test
+    fun `create and update round-trip the revision date`() = runBlocking {
+        val id = repository.create(
+            name = "AMM", category = DocumentCategory.MANUAL, revision = "Rev 3",
+            revisionDate = LocalDate.of(2025, 6, 1), link = null,
+        )
+
+        assertEquals(LocalDate.of(2025, 6, 1), repository.byId(id)!!.revisionDate)
+
+        repository.update(
+            id, name = "AMM", category = DocumentCategory.MANUAL, revision = "Rev 4",
+            revisionDate = LocalDate.of(2026, 1, 15), link = null,
+        )
+
+        assertEquals(LocalDate.of(2026, 1, 15), repository.byId(id)!!.revisionDate)
     }
 
     @Test

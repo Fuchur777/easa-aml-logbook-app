@@ -46,6 +46,59 @@ class CrsNumberFormatTest {
     }
 
     // -----------------------------------------------------------------
+    // {REG} placeholder
+    // -----------------------------------------------------------------
+
+    private fun withRegistration(annualReset: Boolean) = CrsNumberFormat(
+        template = "{REG}-{YYYY}-{SEQ:4}",
+        prefix = "",
+        annualReset = annualReset,
+    )
+
+    @Test
+    fun `format renders the resolved registration in place of REG`() {
+        assertEquals("PH1234-2026-0007", withRegistration(annualReset = true).format(sequence = 7, year = 2026, registration = "PH1234"))
+    }
+
+    @Test
+    fun `format renders NOREG for bench or component work`() {
+        assertEquals("NOREG-2026-0001", withRegistration(annualReset = true).format(sequence = 1, year = 2026, registration = "NOREG"))
+    }
+
+    @Test
+    fun `format requires a registration when the template contains REG`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            withRegistration(annualReset = true).format(sequence = 1, year = 2026, registration = null)
+        }
+    }
+
+    @Test
+    fun `a template without REG needs no registration, at all`() {
+        assertEquals("CRS-2026-0001", standard(annualReset = true).format(sequence = 1, year = 2026))
+    }
+
+    @Test
+    fun `the sequence is shared across registrations, not counted per registration`() {
+        val format = withRegistration(annualReset = true)
+        val existing = listOf("PH1234-2026-0001", "NOREG-2026-0002", "PH5678-2026-0003")
+
+        assertEquals(4, format.nextSequence(existing, year = 2026))
+        assertEquals("PH9999-2026-0004", format.nextNumber(existing, year = 2026, registration = "PH9999"))
+    }
+
+    // -----------------------------------------------------------------
+    // nextSequence
+    // -----------------------------------------------------------------
+
+    @Test
+    fun `nextSequence returns the bare integer nextNumber would format`() {
+        val existing = listOf("CRS-2026-0007", "CRS-2026-0003")
+
+        assertEquals(8, standard(annualReset = true).nextSequence(existing, year = 2026))
+        assertEquals("CRS-2026-0008", standard(annualReset = true).nextNumber(existing, year = 2026))
+    }
+
+    // -----------------------------------------------------------------
     // nextNumber
     // -----------------------------------------------------------------
 

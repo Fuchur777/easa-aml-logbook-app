@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +48,7 @@ class DocumentFormViewModel @Inject constructor(
                             name = entity.name,
                             category = entity.category,
                             revision = entity.revision.orEmpty(),
+                            revisionDate = entity.revisionDate,
                             link = entity.link.orEmpty(),
                             pdfPath = entity.pdfPath.orEmpty(),
                             pdfFileName = entity.pdfFileName.orEmpty(),
@@ -71,6 +73,7 @@ class DocumentFormViewModel @Inject constructor(
     fun onNameChange(value: String) = _state.update { it.copy(name = value) }
     fun onCategoryChange(value: DocumentCategory) = _state.update { it.copy(category = value) }
     fun onRevisionChange(value: String) = _state.update { it.copy(revision = value) }
+    fun onRevisionDateChange(value: LocalDate?) = _state.update { it.copy(revisionDate = value) }
     fun onLinkChange(value: String) = _state.update { it.copy(link = value) }
 
     fun onPdfAttached(path: String, fileName: String) = _state.update { it.copy(pdfPath = path, pdfFileName = fileName) }
@@ -96,6 +99,7 @@ class DocumentFormViewModel @Inject constructor(
                     name = current.name.trim(),
                     category = current.category,
                     revision = current.revision.trim().ifBlank { null },
+                    revisionDate = current.revisionDate,
                     link = current.link.trim().ifBlank { null },
                     pdfPath = current.pdfPath.ifBlank { null },
                     pdfFileName = current.pdfFileName.ifBlank { null },
@@ -106,6 +110,7 @@ class DocumentFormViewModel @Inject constructor(
                     name = current.name.trim(),
                     category = current.category,
                     revision = current.revision.trim().ifBlank { null },
+                    revisionDate = current.revisionDate,
                     link = current.link.trim().ifBlank { null },
                     pdfPath = current.pdfPath.ifBlank { null },
                     pdfFileName = current.pdfFileName.ifBlank { null },
