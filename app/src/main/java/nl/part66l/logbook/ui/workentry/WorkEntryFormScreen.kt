@@ -17,6 +17,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -51,7 +52,11 @@ fun WorkEntryFormScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val aircraftOptions by viewModel.aircraftOptions.collectAsStateWithLifecycle()
     val knownHelperNames by viewModel.knownHelperNames.collectAsStateWithLifecycle()
+    val availableTasks by viewModel.availableTasks.collectAsStateWithLifecycle()
+    val catalogueSectionOrder by viewModel.catalogueSectionOrder.collectAsStateWithLifecycle()
+    val collapsedCatalogueSections by viewModel.collapsedCatalogueSections.collectAsStateWithLifecycle()
     var showUnsavedDialog by remember { mutableStateOf(false) }
+    var showTaskPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.saved.collect { onSaved() }
@@ -162,6 +167,16 @@ fun WorkEntryFormScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Appendix II tasks (Route B)", style = MaterialTheme.typography.labelLarge)
+                OutlinedButton(onClick = { showTaskPicker = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        if (state.completedTaskIds.isEmpty()) "Select tasks completed"
+                        else "${state.completedTaskIds.size} task(s) completed — tap to change",
+                    )
+                }
+            }
+
             Button(
                 onClick = viewModel::save,
                 enabled = state.canSave,
@@ -178,6 +193,19 @@ fun WorkEntryFormScreen(
             onSave = { showUnsavedDialog = false; viewModel.save() },
             onDiscard = { showUnsavedDialog = false; onClose() },
             onCancel = { showUnsavedDialog = false },
+        )
+    }
+
+    if (showTaskPicker) {
+        TaskCompletionPickerDialog(
+            tasks = availableTasks,
+            selectedIds = state.completedTaskIds,
+            sectionOrder = catalogueSectionOrder,
+            collapsedSections = collapsedCatalogueSections,
+            onToggle = viewModel::onTaskCompletionToggle,
+            onSectionReorder = viewModel::onCatalogueSectionReorder,
+            onSectionFoldToggle = viewModel::onCatalogueSectionFoldToggle,
+            onDone = { showTaskPicker = false },
         )
     }
 }

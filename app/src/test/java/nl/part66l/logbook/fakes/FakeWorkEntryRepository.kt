@@ -15,6 +15,7 @@ data class CreatedWorkEntry(
     val entry: WorkEntryEntity,
     val activityTypes: Set<ActivityType>,
     val helperNames: List<String>,
+    val completedTaskIds: Set<String>,
 )
 
 /**
@@ -53,6 +54,7 @@ class FakeWorkEntryRepository : WorkEntryRepository {
         sessionDate: LocalDate,
         helperNames: List<String>,
         researchAndPaperwork: Boolean,
+        completedTaskIds: Set<String>,
     ): String {
         val id = UUID.randomUUID().toString()
         created += CreatedWorkEntry(
@@ -63,6 +65,7 @@ class FakeWorkEntryRepository : WorkEntryRepository {
             ),
             activityTypes = activityTypes,
             helperNames = helperNames,
+            completedTaskIds = completedTaskIds,
         )
         return id
     }

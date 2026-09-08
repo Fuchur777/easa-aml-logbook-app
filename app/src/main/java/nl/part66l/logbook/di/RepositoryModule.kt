@@ -6,6 +6,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import nl.part66l.logbook.data.AircraftRepository
 import nl.part66l.logbook.data.AircraftRepositoryImpl
+import nl.part66l.logbook.data.CatalogueRepository
+import nl.part66l.logbook.data.CatalogueRepositoryImpl
 import nl.part66l.logbook.data.CrsNumberingRepository
 import nl.part66l.logbook.data.CrsNumberingRepositoryImpl
 import nl.part66l.logbook.data.PersonRepository
@@ -43,4 +45,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindPersonRepository(impl: PersonRepositoryImpl): PersonRepository
+
+    @Binds
+    abstract fun bindCatalogueRepository(impl: CatalogueRepositoryImpl): CatalogueRepository
 }

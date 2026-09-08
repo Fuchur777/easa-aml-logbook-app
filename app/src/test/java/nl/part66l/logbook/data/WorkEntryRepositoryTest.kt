@@ -39,7 +39,10 @@ class WorkEntryRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = WorkEntryRepositoryImpl(db.workEntries(), db.workSessions(), db.entryHelpers(), PersonRepositoryImpl(db.people()))
+        repository = WorkEntryRepositoryImpl(
+            db.workEntries(), db.workSessions(), db.entryHelpers(), PersonRepositoryImpl(db.people()),
+            db.catalogue(), db.taskCompletions(),
+        )
     }
 
     @After
@@ -90,6 +93,32 @@ class WorkEntryRepositoryTest {
         val allPeople = db.people().all().first()
         assertEquals(2, allPeople.size)
         assertTrue(allPeople.any { it.name == "Piet Bakker" })
+    }
+
+    @Test
+    fun `create resolves completed task ids into snapshotted TaskCompletionEntity rows`() = runBlocking {
+        db.catalogue().upsertAll(listOf(
+            CatalogueTaskEntity(
+                id = "T1", catalogueVersion = "2026.1", table = "B", section = "General activities", sectionCode = "GEN",
+                text = "Task text as seeded", reference = "ref", appliesToL1 = true, appliesToL1C = false, appliesToL2 = false, appliesToL2C = false,
+            ),
+        ))
+
+        val id = repository.create(
+            aircraftId = null,
+            description = "Practical task work",
+            activityTypes = setOf(ActivityType.SERVICING),
+            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
+            supervisedAnother = false,
+            sessionDate = LocalDate.of(2026, 1, 15),
+            completedTaskIds = setOf("T1"),
+        )
+
+        val completions = db.taskCompletions().forEntry(id)
+        assertEquals(1, completions.size)
+        assertEquals("T1", completions.first().taskId)
+        assertEquals("2026.1", completions.first().catalogueVersion)
+        assertEquals("Task text as seeded", completions.first().taskTextSnapshot)
     }
 
     @Test

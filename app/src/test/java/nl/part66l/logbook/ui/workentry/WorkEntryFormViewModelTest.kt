@@ -6,13 +6,16 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import nl.part66l.logbook.data.CatalogueTaskEntity
 import nl.part66l.logbook.data.PersonEntity
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.Structure
 import nl.part66l.logbook.fakes.FakeAircraftRepository
+import nl.part66l.logbook.fakes.FakeCatalogueRepository
 import nl.part66l.logbook.fakes.FakePersonRepository
+import nl.part66l.logbook.fakes.FakeSettingsRepository
 import nl.part66l.logbook.fakes.FakeWorkEntryRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -38,7 +41,9 @@ class WorkEntryFormViewModelTest {
         workEntryRepository: FakeWorkEntryRepository = FakeWorkEntryRepository(),
         aircraftRepository: FakeAircraftRepository = FakeAircraftRepository(),
         personRepository: FakePersonRepository = FakePersonRepository(),
-    ) = WorkEntryFormViewModel(workEntryRepository, aircraftRepository, personRepository)
+        catalogueRepository: FakeCatalogueRepository = FakeCatalogueRepository(),
+        settingsRepository: FakeSettingsRepository = FakeSettingsRepository(),
+    ) = WorkEntryFormViewModel(workEntryRepository, aircraftRepository, personRepository, catalogueRepository, settingsRepository)
 
     @Test
     fun `canSave requires a description, an aircraft selection and at least one activity, and defaults to no release claimed`() {
@@ -131,6 +136,71 @@ class WorkEntryFormViewModelTest {
         viewModel.save()
 
         assertTrue(repository.created.first().entry.researchAndPaperwork)
+    }
+
+    @Test
+    fun `availableTasks reflects the catalogue repository's applicable tasks`() {
+        val task = CatalogueTaskEntity(
+            id = "T1", catalogueVersion = "2026.1", table = "B", section = "General activities", sectionCode = "GEN",
+            text = "Task text", reference = "ref", appliesToL1 = true, appliesToL1C = false, appliesToL2 = false, appliesToL2C = false,
+        )
+        val viewModel = viewModel(catalogueRepository = FakeCatalogueRepository(applicableTasks = listOf(task)))
+
+        assertEquals(listOf(task), viewModel.availableTasks.value)
+    }
+
+    @Test
+    fun `task completion toggle adds and removes from the set, and is passed through on save`() {
+        val repository = FakeWorkEntryRepository()
+        val viewModel = viewModel(workEntryRepository = repository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Replaced altimeter seal")
+        viewModel.onActivityTypeToggle(ActivityType.REPAIRING)
+
+        viewModel.onTaskCompletionToggle("T1")
+        viewModel.onTaskCompletionToggle("T2")
+        assertEquals(setOf("T1", "T2"), viewModel.state.value.completedTaskIds)
+
+        viewModel.onTaskCompletionToggle("T1")
+        assertEquals(setOf("T2"), viewModel.state.value.completedTaskIds)
+
+        viewModel.save()
+
+        assertEquals(setOf("T2"), repository.created.first().completedTaskIds)
+    }
+
+    @Test
+    fun `catalogueSectionOrder and collapsedCatalogueSections reflect the settings repository`() {
+        val settingsRepository = FakeSettingsRepository(
+            initialCatalogueSectionOrder = listOf("Propulsion", "General activities"),
+            initialCollapsedCatalogueSections = setOf("Propulsion"),
+        )
+        val viewModel = viewModel(settingsRepository = settingsRepository)
+
+        assertEquals(listOf("Propulsion", "General activities"), viewModel.catalogueSectionOrder.value)
+        assertEquals(setOf("Propulsion"), viewModel.collapsedCatalogueSections.value)
+    }
+
+    @Test
+    fun `section reorder is persisted to settings`() {
+        val settingsRepository = FakeSettingsRepository()
+        val viewModel = viewModel(settingsRepository = settingsRepository)
+
+        viewModel.onCatalogueSectionReorder(listOf("Propulsion", "General activities"))
+
+        assertEquals(listOf("Propulsion", "General activities"), viewModel.catalogueSectionOrder.value)
+    }
+
+    @Test
+    fun `section fold toggle flips the section's collapsed state in settings`() {
+        val settingsRepository = FakeSettingsRepository()
+        val viewModel = viewModel(settingsRepository = settingsRepository)
+
+        viewModel.onCatalogueSectionFoldToggle("General activities")
+        assertEquals(setOf("General activities"), viewModel.collapsedCatalogueSections.value)
+
+        viewModel.onCatalogueSectionFoldToggle("General activities")
+        assertEquals(emptySet<String>(), viewModel.collapsedCatalogueSections.value)
     }
 
     @Test

@@ -267,6 +267,10 @@ interface CatalogueDao {
     /** Only one catalogue version is ever seeded at a time, so any row's version is THE current one. */
     @Query("SELECT catalogueVersion FROM catalogue_task LIMIT 1")
     suspend fun currentVersion(): String?
+
+    /** Resolves selected task ids back to their full rows — what a completion's text/version snapshot is taken from. */
+    @Query("SELECT * FROM catalogue_task WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<String>): List<CatalogueTaskEntity>
 }
 
 @Dao

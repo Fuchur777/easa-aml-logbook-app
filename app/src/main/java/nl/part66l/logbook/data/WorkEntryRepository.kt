@@ -30,6 +30,9 @@ interface WorkEntryRepository {
      * Creates an entry and its first work session together — a session-less entry can
      * never feed Route A. [helperNames] are resolved to the person directory by exact
      * name match, creating a new [PersonEntity] for any name not already on file.
+     * [completedTaskIds] are snapshotted into [TaskCompletionEntity] rows as they read
+     * today — a later catalogue update must never retroactively change what a past
+     * completion said.
      */
     suspend fun create(
         aircraftId: String?,
@@ -40,6 +43,7 @@ interface WorkEntryRepository {
         sessionDate: LocalDate,
         helperNames: List<String> = emptyList(),
         researchAndPaperwork: Boolean = false,
+        completedTaskIds: Set<String> = emptySet(),
     ): String
 }
 
@@ -49,6 +53,8 @@ class WorkEntryRepositoryImpl @Inject constructor(
     private val workSessionDao: WorkSessionDao,
     private val entryHelperDao: EntryHelperDao,
     private val personRepository: PersonRepository,
+    private val catalogueDao: CatalogueDao,
+    private val taskCompletionDao: TaskCompletionDao,
 ) : WorkEntryRepository {
 
     override fun pagedAll(): PagingSource<Int, WorkEntryEntity> = workEntryDao.pagedAll()
@@ -74,6 +80,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
         sessionDate: LocalDate,
         helperNames: List<String>,
         researchAndPaperwork: Boolean,
+        completedTaskIds: Set<String>,
     ): String {
         val entryId = UUID.randomUUID().toString()
         val now = Instant.now()
@@ -96,6 +103,17 @@ class WorkEntryRepositoryImpl @Inject constructor(
         helperNames.map { it.trim() }.filter { it.isNotEmpty() }.distinct().forEach { name ->
             val personId = personRepository.findOrCreate(name)
             entryHelperDao.insert(EntryHelperEntity(entryId = entryId, personId = personId, role = HelperRole.ASSISTED))
+        }
+        catalogueDao.byIds(completedTaskIds.toList()).forEach { task ->
+            taskCompletionDao.insert(
+                TaskCompletionEntity(
+                    id = UUID.randomUUID().toString(),
+                    entryId = entryId,
+                    taskId = task.id,
+                    catalogueVersion = task.catalogueVersion,
+                    taskTextSnapshot = task.text,
+                ),
+            )
         }
         return entryId
     }

@@ -28,6 +28,8 @@ data class WorkEntryFormState(
     val helperNames: List<String> = emptyList(),
     /** Personal time-tracking only, kept out of the regulatory [ActivityType] set — see there for why. */
     val researchAndPaperwork: Boolean = false,
+    /** Appendix II catalogue task ids evidenced by this entry — feeds Route B. Entirely optional. */
+    val completedTaskIds: Set<String> = emptySet(),
     val saving: Boolean = false,
 ) {
     val descriptionError: String? get() = if (description.isBlank()) "Description of work done is required" else null
