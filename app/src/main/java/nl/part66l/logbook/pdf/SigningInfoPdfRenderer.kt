@@ -1,5 +1,6 @@
 package nl.part66l.logbook.pdf
 
+import android.content.Context
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.PDPage
 import com.tom_roush.pdfbox.pdmodel.PDPageContentStream
@@ -65,10 +66,13 @@ object SigningInfoPdfRenderer {
             "this document, once on file with you, is the trust anchor in its place.",
     )
 
-    fun render(document: PDDocument, data: SigningInfoRenderData) {
+    fun render(document: PDDocument, data: SigningInfoRenderData, context: Context) {
         val page = PDPage(PAGE)
         document.addPage(page)
+        val watermark = PdfBranding.loadWatermark(document, context)
         PDPageContentStream(document, page).use { stream ->
+            // Drawn first, before any real content — everything drawn afterwards paints over it.
+            PdfBranding.drawWatermark(stream, PAGE.width, PAGE.height, watermark)
             var y = TOP
 
             fun text(x: Float, yPos: Float, s: String, font: PDFont, size: Float, color: FloatArray) {
@@ -144,6 +148,8 @@ object SigningInfoPdfRenderer {
                 text(L, y, line, COURIER, 7.5f, BLACK)
                 y -= 3.6f * MM
             }
+
+            PdfBranding.drawFooterText(stream, PAGE.width, 14f * MM, HELVETICA)
         }
     }
 }

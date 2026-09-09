@@ -100,7 +100,7 @@ class SigningInfoViewModel @Inject constructor(
                 )
                 val document = PDDocument()
                 try {
-                    SigningInfoPdfRenderer.render(document, renderData)
+                    SigningInfoPdfRenderer.render(document, renderData, context)
                     val destDir = File(context.filesDir, "signing").apply { mkdirs() }
                     File(destDir, "system-description-${UUID.randomUUID()}.pdf").also { document.save(it) }
                 } finally {

@@ -145,6 +145,7 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                     onSaved = { navController.popBackStack() },
                     onDeleted = { navController.popBackStack() },
                     onClose = { navController.popBackStack() },
+                    onCertificates = { id -> navController.navigate(Destination.Crs(id).route) },
                 )
             }
             composable(

@@ -365,7 +365,7 @@ fun WorkEntryFormScreen(
                     onClick = { state.entryId?.let(onCertificates) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Generate CRS")
+                    Text("Certificates")
                 }
 
                 OutlinedButton(

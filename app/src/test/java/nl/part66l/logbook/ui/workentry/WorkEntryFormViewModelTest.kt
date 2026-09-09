@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -561,6 +562,51 @@ class WorkEntryFormViewModelTest {
         viewModel.save()
 
         assertEquals(1, viewModel.openDeferredItems.value.size)
+    }
+
+    @Test
+    fun `save on a brand-new entry reveals editing in place, without emitting saved`() = runBlocking {
+        val repository = FakeWorkEntryRepository()
+        val viewModel = viewModel(workEntryRepository = repository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Bench work")
+        viewModel.onActivityTypeToggle(ActivityType.SERVICING)
+        var savedEmitted = false
+        // Launched on Main (the Unconfined test dispatcher) so it starts collecting synchronously,
+        // right here — plain launch{} on runBlocking's own dispatcher would only be queued,
+        // and save()'s emit (also synchronous, on the same Unconfined dispatcher) would fire
+        // before this collector ever got a turn to actually start listening.
+        val collector = launch(Dispatchers.Main) { viewModel.saved.collect { savedEmitted = true } }
+
+        viewModel.save()
+
+        assertTrue("expected isEditing to flip true so the certificate section appears", viewModel.state.value.isEditing)
+        assertEquals(repository.created.first().entry.id, viewModel.state.value.entryId)
+        assertFalse("a first save shouldn't navigate away — it stays on this screen", savedEmitted)
+        collector.cancel()
+    }
+
+    @Test
+    fun `save on an already-existing entry still emits saved`() = runBlocking {
+        val repository = FakeWorkEntryRepository()
+        val id = runBlocking {
+            repository.create(
+                aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
+                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+            )
+        }
+        val viewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
+        var savedEmitted = false
+        // Launched on Main (the Unconfined test dispatcher) so it starts collecting synchronously,
+        // right here — plain launch{} on runBlocking's own dispatcher would only be queued,
+        // and save()'s emit (also synchronous, on the same Unconfined dispatcher) would fire
+        // before this collector ever got a turn to actually start listening.
+        val collector = launch(Dispatchers.Main) { viewModel.saved.collect { savedEmitted = true } }
+
+        viewModel.save()
+
+        assertTrue(savedEmitted)
+        collector.cancel()
     }
 
     @Test

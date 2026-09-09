@@ -125,14 +125,6 @@ fun CrsScreen(
                             onRemove = viewModel::onDeferredItemRemove,
                         )
                     }
-                    Button(
-                        onClick = viewModel::generate,
-                        enabled = !state.generating && !state.signing,
-                        colors = ButtonDefaults.buttonColors(containerColor = Part66ConfirmGreen),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(if (state.generating) "Generating…" else "Generate CRS")
-                    }
                     if (activity != null) {
                         Button(
                             onClick = {
@@ -145,10 +137,18 @@ fun CrsScreen(
                                 }
                             },
                             enabled = !state.generating && !state.signing,
+                            colors = ButtonDefaults.buttonColors(containerColor = Part66ConfirmGreen),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text(if (state.signing) "Signing…" else "Sign now (local)")
+                            Text(if (state.signing) "Signing…" else "Sign Digitally")
                         }
+                    }
+                    Button(
+                        onClick = viewModel::generate,
+                        enabled = !state.generating && !state.signing,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (state.generating) "Generating…" else "Print and Sign")
                     }
                 }
             }

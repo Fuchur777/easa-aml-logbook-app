@@ -287,9 +287,15 @@ class WorkEntryFormViewModel @Inject constructor(
             current.closesDeferredItemId?.let { itemId ->
                 deferredItemRepository.close(itemId, savedEntryId, current.sessionDates.max())
             }
-            _state.update { it.copy(saving = false) }
+            _state.update { it.copy(saving = false, entryId = savedEntryId) }
             initialState = _state.value
-            _saved.emit(Unit)
+            // A brand-new entry stays on this screen — setting entryId flips state.isEditing
+            // to true, which reveals the certificate section immediately, rather than closing
+            // and making the user reopen the entry to find it. Saving an entry that was already
+            // being edited keeps the existing save-and-close behaviour.
+            if (id != null) {
+                _saved.emit(Unit)
+            }
         }
     }
 

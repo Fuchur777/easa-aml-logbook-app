@@ -1,5 +1,6 @@
 package nl.part66l.logbook.pdf
 
+import android.content.Context
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.PDPage
 import com.tom_roush.pdfbox.pdmodel.PDPageContentStream
@@ -7,6 +8,7 @@ import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
 import com.tom_roush.pdfbox.pdmodel.font.PDFont
 import com.tom_roush.pdfbox.pdmodel.font.PDType1Font
 import com.tom_roush.pdfbox.pdmodel.graphics.color.PDDeviceRGB
+import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject
 
 /**
  * Renders a Certificate of Release to Service, laid out per docs/crs/crs-field-mapping.md
@@ -26,19 +28,24 @@ import com.tom_roush.pdfbox.pdmodel.graphics.color.PDDeviceRGB
  */
 class CrsPdfRenderer {
 
-    /** Renders into [document], returning the page count. Two passes internally for "Page n of m" (see [render]). */
-    fun render(document: PDDocument, data: CrsRenderData): Int {
+    /**
+     * Renders into [document], returning the page count. Two passes internally for "Page n of m"
+     * (see [render]) — the first, into a throwaway document, never needs [PdfBranding]'s
+     * watermark decoded at all, since only the page *count* it produces is used.
+     */
+    fun render(document: PDDocument, data: CrsRenderData, context: Context): Int {
         val counting = PDDocument()
         val total = try {
-            build(counting, data, total = null)
+            build(counting, data, total = null, watermark = null)
         } finally {
             counting.close()
         }
-        return build(document, data, total = total)
+        val watermark = PdfBranding.loadWatermark(document, context)
+        return build(document, data, total = total, watermark = watermark)
     }
 
-    private fun build(document: PDDocument, data: CrsRenderData, total: Int?): Int {
-        val w = PageWriter(document, data.number, total)
+    private fun build(document: PDDocument, data: CrsRenderData, total: Int?, watermark: PDImageXObject?): Int {
+        val w = PageWriter(document, data.number, total, watermark)
 
         w.text(L, w.y, "Certificate of Release to Service", HELVETICA_BOLD, 15f, BLACK)
         w.textRight(R, w.y + 1f, data.number, HELVETICA_BOLD, 10f, GREY)
@@ -206,6 +213,7 @@ private class PageWriter(
     private val document: PDDocument,
     private val number: String,
     private val total: Int?,
+    private val watermark: PDImageXObject?,
 ) {
     var page = 1
     var y: Float = CrsPdfRenderer.TOP
@@ -215,7 +223,10 @@ private class PageWriter(
     private fun openPage(): PDPageContentStream {
         val pdPage = PDPage(PDRectangle.A4)
         document.addPage(pdPage)
-        return PDPageContentStream(document, pdPage)
+        val contentStream = PDPageContentStream(document, pdPage)
+        // Drawn first, before any real content — later draws on this same stream always paint over it.
+        watermark?.let { PdfBranding.drawWatermark(contentStream, PDRectangle.A4.width, PDRectangle.A4.height, it) }
+        return contentStream
     }
 
     fun text(x: Float, y: Float, string: String, font: PDFont, size: Float, color: FloatArray) {
@@ -251,10 +262,13 @@ private class PageWriter(
         y -= gapMm * CrsPdfRenderer.MM
     }
 
+    /** Document number, app attribution and page count all on one line — three columns, not three lines. */
     fun footer() {
-        text(CrsPdfRenderer.L, 14f * CrsPdfRenderer.MM, number, CrsPdfRenderer.HELVETICA, 6.5f, CrsPdfRenderer.GREY)
+        val y = 14f * CrsPdfRenderer.MM
+        text(CrsPdfRenderer.L, y, number, CrsPdfRenderer.HELVETICA, 6.5f, CrsPdfRenderer.GREY)
+        PdfBranding.drawFooterText(stream, PDRectangle.A4.width, y, CrsPdfRenderer.HELVETICA)
         val label = if (total != null) "Page $page of $total" else "Page $page"
-        textRight(CrsPdfRenderer.R, 14f * CrsPdfRenderer.MM, label, CrsPdfRenderer.HELVETICA, 6.5f, CrsPdfRenderer.GREY)
+        textRight(CrsPdfRenderer.R, y, label, CrsPdfRenderer.HELVETICA, 6.5f, CrsPdfRenderer.GREY)
     }
 
     private fun newPage() {

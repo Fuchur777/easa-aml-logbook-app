@@ -1,5 +1,6 @@
 package nl.part66l.logbook.pdf
 
+import androidx.test.core.app.ApplicationProvider
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
 import org.junit.Assert.assertEquals
@@ -20,6 +21,8 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CrsPdfRendererTest {
+
+    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 
     private fun sampleData(
         documentation: List<DocRow> = defaultDocumentation,
@@ -67,7 +70,7 @@ class CrsPdfRendererTest {
     @Test
     fun `renders a single page for the ordinary case, with a correct page total`() {
         PDDocument().use { document ->
-            val pages = CrsPdfRenderer().render(document, sampleData(workOrders = emptyList()))
+            val pages = CrsPdfRenderer().render(document, sampleData(workOrders = emptyList()), context)
 
             assertEquals(1, pages)
             assertEquals(document.numberOfPages, pages)
@@ -82,7 +85,7 @@ class CrsPdfRendererTest {
     @Test
     fun `an empty personnel or photos section is omitted rather than printed empty`() {
         PDDocument().use { document ->
-            CrsPdfRenderer().render(document, sampleData().copy(personnel = emptyList(), photos = emptyList()))
+            CrsPdfRenderer().render(document, sampleData().copy(personnel = emptyList(), photos = emptyList()), context)
 
             val text = textOf(document)
             assertTrue(!text.contains("PERSONNEL WHO CARRIED OUT THE WORK"))
@@ -93,7 +96,7 @@ class CrsPdfRendererTest {
     @Test
     fun `personnel lists the certifying staff alongside anyone who assisted`() {
         PDDocument().use { document ->
-            CrsPdfRenderer().render(document, sampleData())
+            CrsPdfRenderer().render(document, sampleData(), context)
 
             val text = textOf(document)
             assertTrue(text.contains("PERSONNEL WHO CARRIED OUT THE WORK"))
@@ -107,7 +110,7 @@ class CrsPdfRendererTest {
     @Test
     fun `activities and completed tasks are listed, and omitted entirely when both are empty`() {
         PDDocument().use { document ->
-            CrsPdfRenderer().render(document, sampleData())
+            CrsPdfRenderer().render(document, sampleData(), context)
 
             val text = textOf(document)
             assertTrue(text.contains("ACTIVITIES AND TASKS"))
@@ -115,7 +118,7 @@ class CrsPdfRendererTest {
             assertTrue(text.contains("Weighing, weight & balance sheet"))
         }
         PDDocument().use { document ->
-            CrsPdfRenderer().render(document, sampleData(activities = emptyList(), completedTasks = emptyList()))
+            CrsPdfRenderer().render(document, sampleData(activities = emptyList(), completedTasks = emptyList()), context)
 
             assertTrue(!textOf(document).contains("ACTIVITIES AND TASKS"))
         }
@@ -125,7 +128,7 @@ class CrsPdfRendererTest {
     fun `an empty documentation or parts section prints None rather than an empty table`() {
         PDDocument().use { document ->
             val data = sampleData(documentation = emptyList(), parts = emptyList()).copy(limitations = "No limitations apply.")
-            CrsPdfRenderer().render(document, data)
+            CrsPdfRenderer().render(document, data, context)
 
             val text = textOf(document)
             assertTrue(text.contains("MAINTENANCE DATA USED"))
@@ -137,7 +140,7 @@ class CrsPdfRendererTest {
     @Test
     fun `a work order, when present, is rendered on its own page titled Work Order`() {
         PDDocument().use { document ->
-            CrsPdfRenderer().render(document, sampleData())
+            CrsPdfRenderer().render(document, sampleData(), context)
 
             val text = textOf(document)
             assertTrue(text.contains("WORK ORDER"))
@@ -148,7 +151,7 @@ class CrsPdfRendererTest {
     @Test
     fun `an empty work order list omits the Work Order section entirely`() {
         PDDocument().use { document ->
-            CrsPdfRenderer().render(document, sampleData(workOrders = emptyList()))
+            CrsPdfRenderer().render(document, sampleData(workOrders = emptyList()), context)
 
             assertTrue(!textOf(document).contains("WORK ORDER"))
         }
@@ -159,7 +162,7 @@ class CrsPdfRendererTest {
         val longDocs = (1..80).map { DocRow("Doc reference $it", "Manual", "Rev. $it", "1 January 2026") }
 
         PDDocument().use { document ->
-            val pages = CrsPdfRenderer().render(document, sampleData(documentation = longDocs))
+            val pages = CrsPdfRenderer().render(document, sampleData(documentation = longDocs), context)
 
             assertTrue("expected pagination past a single page, got $pages", pages > 1)
             assertEquals(document.numberOfPages, pages)

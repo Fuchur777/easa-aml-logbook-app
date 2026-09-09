@@ -285,7 +285,7 @@ class CrsRepositoryImpl @Inject constructor(
         val document = PDDocument()
         val pdfFile: File
         try {
-            CrsPdfRenderer().render(document, renderData)
+            CrsPdfRenderer().render(document, renderData, context)
             val destDir = File(context.filesDir, "crs").apply { mkdirs() }
             pdfFile = File(destDir, "${UUID.randomUUID()}.pdf")
             document.save(pdfFile)
