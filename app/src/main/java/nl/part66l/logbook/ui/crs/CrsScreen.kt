@@ -68,7 +68,7 @@ fun CrsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Certificates") },
+                title = { Text("Certificate of Release to Service") },
                 navigationIcon = { IconButton(onClick = onClose) { Text("✕") } },
                 colors = part66TopAppBarColors(),
             )
@@ -101,19 +101,7 @@ fun CrsScreen(
 
             Card {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Generate certificate", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Generate an unsigned certificate for printing and signing by hand, or sign it now " +
-                            "on this device (§9.3) with a hardware-backed key released by your biometric.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    OutlinedTextField(
-                        value = state.limitations,
-                        onValueChange = viewModel::onLimitationsChange,
-                        label = { Text("Limitations to airworthiness or operations") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Text("Generate CRS", style = MaterialTheme.typography.titleMedium)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = state.maintenanceIncomplete, onCheckedChange = viewModel::onMaintenanceIncompleteChange)
                         Text("Maintenance could not be completed")
@@ -125,6 +113,12 @@ fun CrsScreen(
                             onRemove = viewModel::onDeferredItemRemove,
                         )
                     }
+                    OutlinedTextField(
+                        value = state.limitations,
+                        onValueChange = viewModel::onLimitationsChange,
+                        label = { Text("Limitations to airworthiness or operations") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     if (activity != null) {
                         Button(
                             onClick = {
