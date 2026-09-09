@@ -398,6 +398,22 @@ interface CrsDao {
     fun forEntry(entryId: String): Flow<List<CrsEntity>>
 }
 
+/** The local signer's own generation history (§9.3/§9.4) — see [SigningKeyEntity]'s doc comment for why this exists as its own table rather than being inferred from [CrsEntity] rows. */
+@Dao
+interface SigningKeyDao {
+    @Insert suspend fun insert(key: SigningKeyEntity)
+
+    /** At most one row at a time — enforced by construction, not a DB constraint, since retiring the old one and inserting the new one are two separate statements. */
+    @Query("SELECT * FROM signing_key WHERE retiredAt IS NULL LIMIT 1")
+    suspend fun current(): SigningKeyEntity?
+
+    @Query("SELECT * FROM signing_key ORDER BY generatedAt DESC")
+    fun observeAll(): Flow<List<SigningKeyEntity>>
+
+    @Query("UPDATE signing_key SET retiredAt = :retiredAt, retiredReason = :reason WHERE retiredAt IS NULL")
+    suspend fun retireCurrent(retiredAt: Instant, reason: String)
+}
+
 @Dao
 interface AircraftDao {
     @Insert suspend fun insert(aircraft: AircraftEntity)

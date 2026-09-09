@@ -60,13 +60,14 @@ class Converters {
         PartUsedEntity::class,
         AttachmentEntity::class,
         CrsEntity::class,
+        SigningKeyEntity::class,
         DeferredItemEntity::class,
         CatalogueTaskEntity::class,
         TaskCompletionEntity::class,
         ProfileEntity::class,
         DocumentEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -75,6 +76,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recency(): RecencyDao
     abstract fun catalogue(): CatalogueDao
     abstract fun crs(): CrsDao
+    abstract fun signingKeys(): SigningKeyDao
     abstract fun aircraft(): AircraftDao
     abstract fun attachments(): AttachmentDao
     abstract fun search(): SearchDao

@@ -13,12 +13,16 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.part66l.logbook.data.ProfileRepository
+import nl.part66l.logbook.data.SigningKeyDao
+import nl.part66l.logbook.data.SigningKeyEntity
 import nl.part66l.logbook.pdf.SigningInfoPdfRenderer
 import nl.part66l.logbook.pdf.SigningInfoRenderData
 import nl.part66l.logbook.signing.LocalKeystoreSigner
@@ -51,10 +55,15 @@ class SigningInfoViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val localKeystoreSigner: LocalKeystoreSigner,
     private val profileRepository: ProfileRepository,
+    signingKeyDao: SigningKeyDao,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SigningInfoState())
     val state: StateFlow<SigningInfoState> = _state.asStateFlow()
+
+    /** Every key generation this device has ever had, newest first — current one has a null [SigningKeyEntity.retiredAt]. */
+    val keyHistory: StateFlow<List<SigningKeyEntity>> = signingKeyDao.observeAll()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     init {
         viewModelScope.launch {

@@ -23,6 +23,7 @@ import nl.part66l.logbook.data.PersonDao
 import nl.part66l.logbook.data.ProfileDao
 import nl.part66l.logbook.data.RecencyDao
 import nl.part66l.logbook.data.SearchDao
+import nl.part66l.logbook.data.SigningKeyDao
 import nl.part66l.logbook.data.TaskCompletionDao
 import nl.part66l.logbook.data.WorkEntryDao
 import nl.part66l.logbook.data.WorkSessionDao
@@ -51,6 +52,7 @@ object DatabaseModule {
     @Provides fun provideRecencyDao(db: AppDatabase): RecencyDao = db.recency()
     @Provides fun provideCatalogueDao(db: AppDatabase): CatalogueDao = db.catalogue()
     @Provides fun provideCrsDao(db: AppDatabase): CrsDao = db.crs()
+    @Provides fun provideSigningKeyDao(db: AppDatabase): SigningKeyDao = db.signingKeys()
     @Provides fun provideAircraftDao(db: AppDatabase): AircraftDao = db.aircraft()
     @Provides fun provideAttachmentDao(db: AppDatabase): AttachmentDao = db.attachments()
     @Provides fun provideSearchDao(db: AppDatabase): SearchDao = db.search()

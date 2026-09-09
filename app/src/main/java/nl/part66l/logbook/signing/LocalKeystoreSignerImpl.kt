@@ -3,6 +3,7 @@ package nl.part66l.logbook.signing
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyInfo
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
@@ -12,6 +13,7 @@ import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.Signature
 import java.security.cert.X509Certificate
@@ -19,8 +21,13 @@ import java.security.spec.ECGenParameterSpec
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Date
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import nl.part66l.logbook.data.SigningKeyDao
+import nl.part66l.logbook.data.SigningKeyEntity
 
 private const val ALIAS = "part66l-crs-signing-key"
 private const val SIGNATURE_ALGORITHM = "SHA256withECDSA"
@@ -31,14 +38,20 @@ private const val SIGNATURE_ALGORITHM = "SHA256withECDSA"
  * biometric-gated key needs a [Signature] that only [BiometricSigningGate]'s prompt can
  * unlock. Real signing goes through [signWithAuthorizedSignature], called by the
  * [AuthorizedLocalKeystoreSigner] the gate hands back on success.
+ *
+ * Every key this class ever generates — including one Android silently invalidates after a
+ * biometric enrolment change — gets a row in [SigningKeyDao], retired rather than deleted when
+ * superseded. The Keystore itself only ever knows about *one* key at a time; this table is
+ * what still knows "fingerprint X was active from date A to date B" once that key is gone.
  */
 @Singleton
 class LocalKeystoreSignerImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val keyStore: KeyStore,
+    private val signingKeyDao: SigningKeyDao,
 ) : LocalKeystoreSigner {
 
-    private val keyLock = Any()
+    private val keyLock = Mutex()
 
     override val id: String = "local-keystore"
 
@@ -60,40 +73,53 @@ class LocalKeystoreSignerImpl @Inject constructor(
         ),
     )
 
-    override fun describe(): SignerDescription = SignerDescription(
-        method = "Hardware-backed key, biometric unlock",
-        keyStorage = if (isStrongBoxBacked()) "Android Keystore (StrongBox)" else "Android Keystore (TEE)",
-        authentication = "Class 3 biometric",
-        certificateSubject = certificateOrNull()?.subjectX500Principal?.name,
-        qualified = false,
-    )
-
-    override fun certificatePem(): String {
+    override suspend fun describe(): SignerDescription {
         ensureKeyExists()
-        val encoded = Base64.encodeToString(certificate().encoded, Base64.NO_WRAP)
-        val wrapped = encoded.chunked(64).joinToString("\n")
-        return "-----BEGIN CERTIFICATE-----\n$wrapped\n-----END CERTIFICATE-----\n"
+        return SignerDescription(
+            method = "Hardware-backed key, biometric unlock",
+            keyStorage = if (isStrongBoxBacked()) "Android Keystore (StrongBox)" else "Android Keystore (TEE)",
+            authentication = "Class 3 biometric",
+            certificateSubject = certificateOrNull()?.subjectX500Principal?.name,
+            qualified = false,
+        )
     }
 
-    override fun fingerprint(): String {
+    override suspend fun certificatePem(): String {
         ensureKeyExists()
-        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(certificate().encoded)
-        return digest.joinToString(":") { "%02X".format(it) }
+        return pemOf(certificate())
+    }
+
+    override suspend fun fingerprint(): String {
+        ensureKeyExists()
+        return fingerprintOf(certificate())
     }
 
     override suspend fun rotate(): Result<String> = try {
-        synchronized(keyLock) {
-            if (keyStore.containsAlias(ALIAS)) keyStore.deleteEntry(ALIAS)
-            ensureKeyExists()
-        }
+        keyLock.withLock { retireAndDeleteCurrentLocked("Rotated by user") }
+        ensureKeyExists()
         Result.success(fingerprint())
     } catch (e: Exception) {
         Result.failure(e)
     }
 
     /** An unlocked [Signature] for this key, ready to be wrapped in a [android.hardware.biometrics.BiometricPrompt.CryptoObject] — never returns the private key itself. */
-    internal fun newSignatureForAuthorization(): Signature {
+    internal suspend fun newSignatureForAuthorization(): Signature {
         ensureKeyExists()
+        return try {
+            unlockedSignature()
+        } catch (e: KeyPermanentlyInvalidatedException) {
+            // The device's enrolled biometrics changed since this key was generated — Android
+            // destroys the key over it (correctly: sole control no longer holds), but leaves
+            // the now-unusable alias sitting in the Keystore rather than removing it, so
+            // ensureKeyExists()'s "does the alias exist" check alone would never recover from
+            // this. Retire the record, clear the alias, generate a fresh key, try once more.
+            keyLock.withLock { retireAndDeleteCurrentLocked("Invalidated by a change to enrolled biometrics") }
+            ensureKeyExists()
+            unlockedSignature()
+        }
+    }
+
+    private fun unlockedSignature(): Signature {
         val privateKey = keyStore.getKey(ALIAS, null) as PrivateKey
         return Signature.getInstance(SIGNATURE_ALGORITHM).apply { initSign(privateKey) }
     }
@@ -110,7 +136,7 @@ class LocalKeystoreSignerImpl @Inject constructor(
      * [PrecomputedDigestAttributeTableGenerator], with [org.bouncycastle.cms.CMSAbsentContent]
      * standing in for the (deliberately not re-supplied) original content.
      */
-    internal fun signWithAuthorizedSignature(digest: ByteArray, authorizedSignature: Signature): Result<ByteArray> = try {
+    internal suspend fun signWithAuthorizedSignature(digest: ByteArray, authorizedSignature: Signature): Result<ByteArray> = try {
         ensureKeyExists()
         Result.success(CrsCmsBuilder.build(digest, authorizedSignature, certificate()))
     } catch (e: Exception) {
@@ -122,6 +148,15 @@ class LocalKeystoreSignerImpl @Inject constructor(
 
     private fun certificateOrNull(): X509Certificate? =
         if (keyStore.containsAlias(ALIAS)) keyStore.getCertificate(ALIAS) as? X509Certificate else null
+
+    private fun fingerprintOf(cert: X509Certificate): String =
+        MessageDigest.getInstance("SHA-256").digest(cert.encoded).joinToString(":") { "%02X".format(it) }
+
+    private fun pemOf(cert: X509Certificate): String {
+        val encoded = Base64.encodeToString(cert.encoded, Base64.NO_WRAP)
+        val wrapped = encoded.chunked(64).joinToString("\n")
+        return "-----BEGIN CERTIFICATE-----\n$wrapped\n-----END CERTIFICATE-----\n"
+    }
 
     private fun isStrongBoxBacked(): Boolean = try {
         val privateKey = (if (keyStore.containsAlias(ALIAS)) keyStore.getKey(ALIAS, null) else null) as? PrivateKey
@@ -137,16 +172,37 @@ class LocalKeystoreSignerImpl @Inject constructor(
         false
     }
 
-    private fun ensureKeyExists() {
+    private suspend fun ensureKeyExists() {
         if (keyStore.containsAlias(ALIAS)) return
-        synchronized(keyLock) {
-            if (keyStore.containsAlias(ALIAS)) return
+        keyLock.withLock {
+            if (keyStore.containsAlias(ALIAS)) return@withLock
             try {
                 generateKey(useStrongBox = true)
             } catch (e: StrongBoxUnavailableException) {
                 generateKey(useStrongBox = false)
             }
+            recordNewKey()
         }
+    }
+
+    /** Caller must already hold [keyLock]. Only touches the Keystore/DB if a key is actually there to retire. */
+    private suspend fun retireAndDeleteCurrentLocked(reason: String) {
+        if (!keyStore.containsAlias(ALIAS)) return
+        signingKeyDao.retireCurrent(Instant.now(), reason)
+        keyStore.deleteEntry(ALIAS)
+    }
+
+    private suspend fun recordNewKey() {
+        val cert = certificate()
+        signingKeyDao.insert(
+            SigningKeyEntity(
+                id = UUID.randomUUID().toString(),
+                fingerprint = fingerprintOf(cert),
+                certificatePem = pemOf(cert),
+                keyStorage = if (isStrongBoxBacked()) "Android Keystore (StrongBox)" else "Android Keystore (TEE)",
+                generatedAt = Instant.now(),
+            ),
+        )
     }
 
     /**

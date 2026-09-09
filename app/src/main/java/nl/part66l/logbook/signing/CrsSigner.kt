@@ -28,8 +28,13 @@ interface CrsSigner {
      */
     suspend fun sign(digest: ByteArray): Result<ByteArray>
 
-    /** Describes the signer for the signature intent record and the system description PDF. */
-    fun describe(): SignerDescription
+    /**
+     * Describes the signer for the signature intent record and the system description PDF.
+     * Suspend, not because it needs the private key (it doesn't), but because
+     * [LocalKeystoreSigner]'s first-ever call generates the key and records that generation
+     * (§9.3/§9.4) — both real I/O, just never anything requiring a biometric prompt.
+     */
+    suspend fun describe(): SignerDescription
 }
 
 data class SignerDescription(
@@ -78,14 +83,14 @@ interface TimestampAuthority {
 interface LocalKeystoreSigner : CrsSigner {
 
     /** PEM of the self-signed certificate, archived with each CRS. */
-    fun certificatePem(): String
+    suspend fun certificatePem(): String
 
     /**
      * SHA-256 fingerprint, printed in the system description document. The
      * competent authority pins this to the licence holder, which is what makes the
      * authority — rather than a trust provider — the anchor of the scheme.
      */
-    fun fingerprint(): String
+    suspend fun fingerprint(): String
 
     /** Generates a replacement key on a new device. Historical certificates are retained. */
     suspend fun rotate(): Result<String>

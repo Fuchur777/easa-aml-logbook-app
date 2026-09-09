@@ -34,11 +34,11 @@ class FakeLocalKeystoreSigner(
         return Result.success(byteArrayOf(1, 2, 3)) // placeholder CMS bytes — not structurally validated by CrsPdfSigningSupport
     }
 
-    override fun describe(): SignerDescription = description
+    override suspend fun describe(): SignerDescription = description
 
-    override fun certificatePem(): String = pem
+    override suspend fun certificatePem(): String = pem
 
-    override fun fingerprint(): String = fingerprintValue
+    override suspend fun fingerprint(): String = fingerprintValue
 
     override suspend fun rotate(): Result<String> = Result.success(fingerprintValue)
 }

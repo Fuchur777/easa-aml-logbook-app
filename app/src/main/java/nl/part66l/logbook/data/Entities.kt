@@ -348,6 +348,29 @@ data class CrsEntity(
 )
 
 /**
+ * One generation of the local signing key (§9.3) — a durable history the Keystore itself
+ * doesn't keep: once a key is deleted (rotated, or destroyed by Android after a biometric
+ * enrolment change), it's gone from the Keystore for good, but this row survives, so
+ * "was fingerprint X valid on this date" stays answerable long after the key it names is
+ * gone. [certificatePem] is a frozen copy for the same reason — [CrsEntity] already keeps
+ * its own copy per certificate too, so nothing about an already-signed CRS depends on this
+ * table, but this table is the one place that knows the key's own generated/retired dates
+ * rather than just "some certificate that happened to sign one particular CRS."
+ */
+@Entity(tableName = "signing_key")
+data class SigningKeyEntity(
+    @PrimaryKey val id: String,
+    val fingerprint: String,
+    val certificatePem: String,
+    val keyStorage: String,
+    val generatedAt: Instant,
+    /** Null while this is the active key. */
+    val retiredAt: Instant? = null,
+    /** e.g. "Rotated by user", "Invalidated by a change to enrolled biometrics". Null while active. */
+    val retiredReason: String? = null,
+)
+
+/**
  * A note in the engineer's record — never a statement about the aircraft's
  * airworthiness. No due dates, no reminders, no computed status.
  */
