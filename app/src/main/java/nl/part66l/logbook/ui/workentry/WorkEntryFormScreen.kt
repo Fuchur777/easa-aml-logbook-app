@@ -109,7 +109,7 @@ fun WorkEntryFormScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showTaskPicker by remember { mutableStateOf(false) }
     var workorderExpanded by remember { mutableStateOf(true) }
-    val dirty = viewModel.isDirty()
+    val dirty by viewModel.isDirty.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.deleted.collect { onDeleted() }

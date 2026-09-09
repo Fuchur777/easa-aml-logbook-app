@@ -472,15 +472,15 @@ class WorkEntryFormViewModelTest {
     @Test
     fun `isDirty is false until a field changes, and false again after saving`() {
         val viewModel = viewModel()
-        assertFalse(viewModel.isDirty())
+        assertFalse(viewModel.isDirty.value)
 
         viewModel.onDescriptionChange("Bench-tested altimeter")
-        assertTrue(viewModel.isDirty())
+        assertTrue(viewModel.isDirty.value)
 
         viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
         viewModel.onActivityTypeToggle(ActivityType.TROUBLESHOOTING)
         viewModel.save()
-        assertFalse(viewModel.isDirty())
+        assertFalse(viewModel.isDirty.value)
     }
 
     @Test
@@ -536,7 +536,7 @@ class WorkEntryFormViewModelTest {
         assertTrue(viewModel.state.value.concurrentWithArc)
         assertEquals(listOf(DocumentationRefInput("AMM 12-34", "Rev 5")), viewModel.state.value.documentationRefs)
         assertEquals(listOf(PartUsedInput("PN-001", batchOrSerial = "SN-9")), viewModel.state.value.partsUsed)
-        assertFalse(viewModel.isDirty()) // freshly loaded, nothing edited yet
+        assertFalse(viewModel.isDirty.value) // freshly loaded, nothing edited yet
     }
 
     @Test
@@ -557,7 +557,7 @@ class WorkEntryFormViewModelTest {
         assertEquals(1, repository.created.size) // unchanged — save() didn't create a second entry
         assertEquals(1, repository.updated.size)
         assertEquals("Bench work, corrected", repository.updated.first().entry.description)
-        assertFalse(viewModel.isDirty())
+        assertFalse(viewModel.isDirty.value)
     }
 
     @Test
@@ -614,7 +614,7 @@ class WorkEntryFormViewModelTest {
 
         assertTrue("expected isEditing to flip true so the certificate section appears", viewModel.state.value.isEditing)
         assertEquals(repository.created.first().entry.id, viewModel.state.value.entryId)
-        assertFalse("no navigation event exists any more — the screen just stays as it is", viewModel.isDirty())
+        assertFalse("no navigation event exists any more — the screen just stays as it is", viewModel.isDirty.value)
     }
 
     @Test
@@ -628,12 +628,52 @@ class WorkEntryFormViewModelTest {
         }
         val viewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
         viewModel.onDescriptionChange("Bench work, corrected")
-        assertTrue(viewModel.isDirty())
+        assertTrue(viewModel.isDirty.value)
 
         viewModel.save()
 
         assertEquals("Bench work, corrected", repository.updated.first().entry.description)
-        assertFalse("a save should leave nothing pending — the button reads \"Saved\", not \"Save\"", viewModel.isDirty())
+        assertFalse("a save should leave nothing pending — the button reads \"Saved\", not \"Save\"", viewModel.isDirty.value)
+    }
+
+    @Test
+    fun `editing again after a save is recognized as dirty, so the button leaves Saved for Save`() {
+        val repository = FakeWorkEntryRepository()
+        val id = runBlocking {
+            repository.create(
+                aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
+                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+            )
+        }
+        val viewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
+        viewModel.onDescriptionChange("First correction")
+        viewModel.save()
+        assertFalse(viewModel.isDirty.value)
+
+        viewModel.onDescriptionChange("Second correction, after the save completed")
+
+        assertTrue("a further edit after a completed save must show up as dirty again", viewModel.isDirty.value)
+    }
+
+    @Test
+    fun `an edit that lands while a save is still in flight is not silently treated as saved`() = runBlocking {
+        val repository = FakeWorkEntryRepository()
+        val id = repository.create(
+            aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
+            role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+        )
+        val viewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
+        viewModel.onDescriptionChange("First correction")
+
+        // Simulates the real race: an edit lands (onDescriptionChange, below) after save() has
+        // captured its snapshot but before its suspend repository call has actually resumed —
+        // performSave's own baseline must come from what it persisted, not from re-reading
+        // state after the fact, or this second edit would be silently treated as already saved.
+        viewModel.save()
+        viewModel.onDescriptionChange("Second correction, landed mid-save")
+
+        assertTrue("the second edit was never part of any repository call — it must still show as dirty", viewModel.isDirty.value)
+        assertEquals("First correction", repository.updated.first().entry.description)
     }
 
     @Test
@@ -649,7 +689,7 @@ class WorkEntryFormViewModelTest {
         // By the time this line runs (not just "eventually"), the save is done — that's the
         // whole point of this method over the fire-and-forget save().
         assertEquals(1, repository.created.size)
-        assertFalse(viewModel.isDirty())
+        assertFalse(viewModel.isDirty.value)
     }
 
     @Test

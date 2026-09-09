@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -37,6 +38,9 @@ import nl.part66l.logbook.domain.DocumentCategory
 import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.ui.navigation.Destination
 
+/** Loading/saving/deleting are metadata, not pending edits — excluded from the [WorkEntryFormViewModel.isDirty] comparison. */
+private fun WorkEntryFormState.normalizedForDirtyCheck() = copy(loading = false, saving = false, deleting = false)
+
 @HiltViewModel
 class WorkEntryFormViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -55,7 +59,18 @@ class WorkEntryFormViewModel @Inject constructor(
     val state: StateFlow<WorkEntryFormState> = _state.asStateFlow()
 
     /** Baseline to detect unsaved changes against — updated right after every save. */
-    private var initialState: WorkEntryFormState = _state.value
+    private val _initialState = MutableStateFlow(_state.value)
+
+    /**
+     * Whether the form differs from its last-saved state — gates the unsaved-changes prompt and
+     * drives the Save button's own label. Exposed as a [StateFlow], not a plain function, so the
+     * Compose screen can `collectAsStateWithLifecycle()` it like [state] itself: a plain function
+     * reading [_state]/[_initialState] directly is invisible to Compose's snapshot system, so a
+     * screen that calls it once and holds the result in a local `val` never sees it change again.
+     */
+    val isDirty: StateFlow<Boolean> = combine(_state, _initialState) { current, initial ->
+        current.normalizedForDirtyCheck() != initial.normalizedForDirtyCheck()
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     /** Archived aircraft aren't offered for new work — matches the Aircraft list's default visibility. */
     val aircraftOptions: StateFlow<List<AircraftWithRegistration>> = aircraftRepository.observeAllWithRegistration(includeArchived = false)
@@ -132,7 +147,7 @@ class WorkEntryFormViewModel @Inject constructor(
                 } else {
                     _state.update { it.copy(loading = false) }
                 }
-                initialState = _state.value
+                _initialState.value = _state.value
             }
         }
     }
@@ -232,13 +247,7 @@ class WorkEntryFormViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setCatalogueSectionCollapsed(section, collapsed) }
     }
 
-    /** Whether the form differs from its last-saved state — gates the unsaved-changes prompt on close/back. Loading/saving/deleting are metadata, not pending edits. */
-    fun isDirty(): Boolean {
-        fun WorkEntryFormState.normalized() = copy(loading = false, saving = false, deleting = false)
-        return _state.value.normalized() != initialState.normalized()
-    }
-
-    /** Fire-and-forget — the screen stays put either way; [WorkEntryFormState.isEditing]/`isDirty()` drive the Save button's own label. */
+    /** Fire-and-forget — the screen stays put either way; [WorkEntryFormState.isEditing]/[isDirty] drive the Save button's own label. */
     fun save() {
         val current = _state.value
         if (!current.canSave) return
@@ -316,10 +325,15 @@ class WorkEntryFormViewModel @Inject constructor(
         }
         // entryId flips state.isEditing to true on a brand-new entry's first save, revealing
         // the certificate section immediately rather than closing and making the user reopen
-        // it to find it. initialState resets here too, so isDirty() (and the Save button's own
-        // "Saved" vs "Save" label) reflects this save right away.
+        // it to find it.
         _state.update { it.copy(saving = false, entryId = savedEntryId) }
-        initialState = _state.value
+        // The new baseline is what was actually persisted above (current, the snapshot save()
+        // captured) — not _state.value read now. Those can differ: if the user edited something
+        // else while this suspend call was in flight (a real possibility — the repository call
+        // above is a genuine thread hop), _state.value already reflects that edit, but the
+        // database write just above does not. Baselining on _state.value here would make
+        // isDirty silently treat that edit as saved when it was never persisted.
+        _initialState.value = current.copy(saving = false, entryId = savedEntryId)
     }
 
     fun delete() {
