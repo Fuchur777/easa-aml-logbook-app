@@ -30,6 +30,7 @@ import nl.part66l.logbook.pdf.CrsRenderData
 import nl.part66l.logbook.pdf.DocRow
 import nl.part66l.logbook.pdf.PartRow
 import nl.part66l.logbook.pdf.PersonnelRow
+import nl.part66l.logbook.pdf.PhotoRow
 import nl.part66l.logbook.pdf.SignatureBlockData
 import nl.part66l.logbook.pdf.WorkOrderRow
 import nl.part66l.logbook.signing.CrsPdfSigningSupport
@@ -98,6 +99,7 @@ private data class CrsSnapshot(
     val workorderRequestedWork: String?,
     val workorderReference: String?,
     val limitations: String?,
+    val photos: List<SnapshotPhoto>,
 )
 
 @Serializable
@@ -108,6 +110,10 @@ private data class SnapshotPart(val partNumber: String, val description: String?
 
 @Serializable
 private data class SnapshotHelper(val name: String, val licenceNumber: String?, val role: String)
+
+/** [id] is the attachment id — the frozen counterpart to [PhotoRow.index]'s printed position, so the record can be tied back to a specific file even if it's later renamed or moved. */
+@Serializable
+private data class SnapshotPhoto(val id: String, val caption: String?, val sha256: String, val capturedAt: String?)
 
 /** What [CrsRepositoryImpl.buildDraft] resolved for this call: either a freshly allocated number, or the next revision of an existing one. */
 private data class NumberAllocation(
@@ -173,6 +179,7 @@ class CrsRepositoryImpl @Inject constructor(
     private val documentationRefDao: DocumentationRefDao,
     private val partUsedDao: PartUsedDao,
     private val taskCompletionDao: TaskCompletionDao,
+    private val attachmentDao: AttachmentDao,
     private val crsDao: CrsDao,
     private val settingsRepository: SettingsRepository,
 ) : CrsRepository {
@@ -312,6 +319,8 @@ class CrsRepositoryImpl @Inject constructor(
         }
         val activityTypes = workEntryDao.activityTypesForEntry(entryId).map { it.activityType }
         val completedTasks = taskCompletionDao.forEntry(entryId).map { it.taskTextSnapshot }
+        // Capture order, not attach order — a stable, meaningful sequence for the printed index.
+        val photos = attachmentDao.forEntry(entryId).filter { it.kind == "PHOTO" }.sortedBy { it.capturedAt }
 
         val aircraft = entry.aircraftId?.let { aircraftDao.byId(it) }
         val registration = entry.aircraftId?.let { aircraftDao.registrationOn(it, LocalDate.now()) }
@@ -429,7 +438,15 @@ class CrsRepositoryImpl @Inject constructor(
             ) + helpers.map { (name, licence, role) -> PersonnelRow(name, licence.orEmpty(), role.displayLabel()) },
             activities = activityTypes.map { it.displayLabel() },
             completedTasks = completedTasks,
-            photos = emptyList(), // no per-entry photo capture yet (spec §8) — nothing to list
+            photos = photos.mapIndexed { i, attachment ->
+                PhotoRow(
+                    index = i + 1,
+                    caption = attachment.caption,
+                    sha256Prefix = attachment.sha256.take(16),
+                    capturedAt = (attachment.capturedAt ?: Instant.EPOCH).atZone(ZoneId.systemDefault()).format(SIGNED_AT_FORMAT),
+                    localPath = attachment.localPath,
+                )
+            },
         )
 
         val snapshot = CrsSnapshot(
@@ -448,6 +465,7 @@ class CrsRepositoryImpl @Inject constructor(
             workorderRequestedWork = entry.workorderRequestedWork,
             workorderReference = entry.workorderReference,
             limitations = limitations,
+            photos = photos.map { SnapshotPhoto(it.id, it.caption, it.sha256, it.capturedAt?.toString()) },
         )
 
         return CrsDraft(

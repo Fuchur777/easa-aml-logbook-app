@@ -113,6 +113,7 @@ dependencies {
     implementation(libs.bouncycastle.bcpkix)
 
     implementation(libs.androidx.biometric)
+    implementation(libs.androidx.exifinterface)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

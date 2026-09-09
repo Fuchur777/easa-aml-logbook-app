@@ -1,6 +1,15 @@
 package nl.part66l.logbook.ui.workentry
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,9 +18,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -36,19 +47,30 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import nl.part66l.logbook.data.DeferredItemEntity
 import nl.part66l.logbook.data.DocumentEntity
 import nl.part66l.logbook.data.DocumentationRefInput
 import nl.part66l.logbook.data.PartUsedInput
+import nl.part66l.logbook.data.PhotoInput
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.DocumentCategory
 import nl.part66l.logbook.domain.EntryRole
@@ -64,7 +86,6 @@ import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkEntryFormScreen(
-    onSaved: () -> Unit,
     onDeleted: () -> Unit,
     onClose: () -> Unit,
     /** Only ever invoked when [WorkEntryFormState.isEditing] — a new, unsaved entry has no id to view certificates for. */
@@ -80,26 +101,41 @@ fun WorkEntryFormScreen(
     val collapsedCatalogueSections by viewModel.collapsedCatalogueSections.collectAsStateWithLifecycle()
     val documentOptions by viewModel.documentOptions.collectAsStateWithLifecycle()
     val openDeferredItems by viewModel.openDeferredItems.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
     var showUnsavedDialog by remember { mutableStateOf(false) }
+    // What to do once the unsaved-changes dialog is resolved — leaving via ✕ or via Certificates
+    // need different destinations, so this is set right before the dialog is shown.
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showTaskPicker by remember { mutableStateOf(false) }
     var workorderExpanded by remember { mutableStateOf(true) }
+    val dirty = viewModel.isDirty()
 
-    LaunchedEffect(Unit) {
-        viewModel.saved.collect { onSaved() }
-    }
     LaunchedEffect(Unit) {
         viewModel.deleted.collect { onDeleted() }
     }
 
-    BackHandler(enabled = viewModel.isDirty()) { showUnsavedDialog = true }
+    /** Runs [action] now if there's nothing unsaved; otherwise asks first, saving beforehand only if the user chooses to. */
+    fun requireSaved(action: () -> Unit) {
+        if (dirty) {
+            pendingAction = action
+            showUnsavedDialog = true
+        } else {
+            action()
+        }
+    }
+
+    BackHandler(enabled = dirty) {
+        pendingAction = onClose
+        showUnsavedDialog = true
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(if (state.isEditing) "Edit work entry" else "Add work entry") },
                 navigationIcon = {
-                    IconButton(onClick = { if (viewModel.isDirty()) showUnsavedDialog = true else onClose() }) {
+                    IconButton(onClick = { requireSaved(onClose) }) {
                         Text("✕")
                     }
                 },
@@ -277,6 +313,18 @@ fun WorkEntryFormScreen(
                 }
             }
 
+            Card {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    PhotosEditor(
+                        photos = state.photos,
+                        onAdd = viewModel::onPhotoAdd,
+                        onCaptionChange = viewModel::onPhotoCaptionChange,
+                        onRemove = viewModel::onPhotoRemove,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+
             if (openDeferredItems.isNotEmpty()) {
                 Card {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -351,21 +399,28 @@ fun WorkEntryFormScreen(
                 }
             }
 
+            val alreadySaved = state.isEditing && !dirty
             Button(
                 onClick = viewModel::save,
-                enabled = state.canSave,
+                enabled = state.canSave && (dirty || !state.isEditing),
                 colors = ButtonDefaults.buttonColors(containerColor = Part66ConfirmGreen),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(if (state.saving) "Saving…" else "Save")
+                Text(
+                    when {
+                        state.saving -> "Saving…"
+                        alreadySaved -> "Saved ✓"
+                        else -> "Save"
+                    },
+                )
             }
 
             if (state.isEditing) {
                 OutlinedButton(
-                    onClick = { state.entryId?.let(onCertificates) },
+                    onClick = { requireSaved { state.entryId?.let(onCertificates) } },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Certificates")
+                    Text("Release to Service Certificate")
                 }
 
                 OutlinedButton(
@@ -399,9 +454,25 @@ fun WorkEntryFormScreen(
 
     if (showUnsavedDialog) {
         UnsavedChangesDialog(
-            onSave = { showUnsavedDialog = false; viewModel.save() },
-            onDiscard = { showUnsavedDialog = false; onClose() },
-            onCancel = { showUnsavedDialog = false },
+            onSave = {
+                showUnsavedDialog = false
+                val action = pendingAction
+                pendingAction = null
+                coroutineScope.launch {
+                    viewModel.saveAndAwaitCompletion()
+                    action?.invoke()
+                }
+            },
+            onDiscard = {
+                showUnsavedDialog = false
+                val action = pendingAction
+                pendingAction = null
+                action?.invoke()
+            },
+            onCancel = {
+                showUnsavedDialog = false
+                pendingAction = null
+            },
         )
     }
 
@@ -685,5 +756,132 @@ private fun PartUsedEditor(
         ) {
             Text("+ Add part")
         }
+    }
+}
+
+/** Evidence of the work performed (§8) — camera or gallery, downscaled/hashed/GPS-stripped before it ever reaches [onAdd]. */
+@Composable
+private fun PhotosEditor(
+    photos: List<PhotoInput>,
+    onAdd: (PhotoInput) -> Unit,
+    onCaptionChange: (id: String, caption: String) -> Unit,
+    onRemove: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        val uri = pendingCameraUri
+        if (success && uri != null) {
+            coroutineScope.launch { processAndStorePhoto(context, uri)?.let(onAdd) }
+        }
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            val uri = newCameraCaptureUri(context)
+            pendingCameraUri = uri
+            cameraLauncher.launch(uri)
+        }
+    }
+    // The Photo Picker (no storage permission needed) — multi-select, processed one at a time
+    // so several large photos don't all decode into memory together.
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
+        if (uris.isNotEmpty()) {
+            coroutineScope.launch {
+                uris.forEach { uri -> processAndStorePhoto(context, uri)?.let(onAdd) }
+            }
+        }
+    }
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Photos", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Evidence of the work performed. Downscaled and stripped of GPS location automatically; the capture time is kept.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        photos.forEach { photo ->
+            PhotoAttachmentRow(
+                photo = photo,
+                onCaptionChange = { caption -> onCaptionChange(photo.id, caption) },
+                onRemove = { onRemove(photo.id) },
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = {
+                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                        val uri = newCameraCaptureUri(context)
+                        pendingCameraUri = uri
+                        cameraLauncher.launch(uri)
+                    } else {
+                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("📷 Camera")
+            }
+            OutlinedButton(
+                onClick = { galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("🖼️ Gallery")
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhotoAttachmentRow(photo: PhotoInput, onCaptionChange: (String) -> Unit, onRemove: () -> Unit) {
+    var showRemoveConfirm by remember { mutableStateOf(false) }
+
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        PhotoThumbnail(path = photo.localPath, modifier = Modifier.size(56.dp).clip(RoundedCornerShape(4.dp)))
+        OutlinedTextField(
+            value = photo.caption.orEmpty(),
+            onValueChange = onCaptionChange,
+            label = { Text("Caption (optional)") },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = { showRemoveConfirm = true }) { Text("✕") }
+    }
+
+    if (showRemoveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRemoveConfirm = false },
+            title = { Text("Remove this photo?") },
+            text = { Text("This removes the photo from this entry. The processed file on your device is untouched.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRemoveConfirm = false
+                    onRemove()
+                }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveConfirm = false }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+/** Decoded off the main thread, at a coarse downsample — these are ~1600px source files and this is a 56dp thumbnail, not a full-resolution view. */
+@Composable
+private fun PhotoThumbnail(path: String, modifier: Modifier = Modifier) {
+    var bitmap by remember(path) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(path) {
+        bitmap = withContext(Dispatchers.IO) {
+            val options = BitmapFactory.Options().apply { inSampleSize = 4 }
+            runCatching { BitmapFactory.decodeFile(path, options)?.asImageBitmap() }.getOrNull()
+        }
+    }
+    val loaded = bitmap
+    if (loaded != null) {
+        Image(bitmap = loaded, contentDescription = null, contentScale = ContentScale.Crop, modifier = modifier)
+    } else {
+        Column(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {}
     }
 }

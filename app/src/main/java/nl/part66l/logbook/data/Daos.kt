@@ -469,6 +469,10 @@ interface AttachmentDao {
 
     @Query("UPDATE attachment SET driveFileId = :driveFileId WHERE id = :id")
     suspend fun setDriveFileId(id: String, driveFileId: String)
+
+    /** The entry's own full-save-replaces-children pattern (see WorkEntryRepositoryImpl.update) — [kind]-scoped so clearing photos never touches a workorder attachment on the same entry. */
+    @Query("DELETE FROM attachment WHERE entryId = :entryId AND kind = :kind")
+    suspend fun deleteForEntry(entryId: String, kind: String)
 }
 
 /**

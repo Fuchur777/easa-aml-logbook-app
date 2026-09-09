@@ -29,6 +29,7 @@ import nl.part66l.logbook.data.DocumentationRefInput
 import nl.part66l.logbook.data.PartUsedInput
 import nl.part66l.logbook.data.PersonEntity
 import nl.part66l.logbook.data.PersonRepository
+import nl.part66l.logbook.data.PhotoInput
 import nl.part66l.logbook.data.SettingsRepository
 import nl.part66l.logbook.data.WorkEntryRepository
 import nl.part66l.logbook.domain.ActivityType
@@ -91,9 +92,6 @@ class WorkEntryFormViewModel @Inject constructor(
     val openDeferredItems: StateFlow<List<DeferredItemEntity>> = deferredItemRepository.open()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    private val _saved = MutableSharedFlow<Unit>()
-    val saved: SharedFlow<Unit> = _saved.asSharedFlow()
-
     private val _deleted = MutableSharedFlow<Unit>()
     val deleted: SharedFlow<Unit> = _deleted.asSharedFlow()
 
@@ -127,6 +125,7 @@ class WorkEntryFormViewModel @Inject constructor(
                             concurrentWithArc = edit.concurrentWithArc,
                             documentationRefs = edit.documentationRefs,
                             partsUsed = edit.partsUsed,
+                            photos = edit.photos,
                             loading = false,
                         )
                     }
@@ -201,6 +200,16 @@ class WorkEntryFormViewModel @Inject constructor(
     fun onPartUsedAdd(part: PartUsedInput) = _state.update { it.copy(partsUsed = it.partsUsed + part) }
     fun onPartUsedRemove(index: Int) = _state.update { it.copy(partsUsed = it.partsUsed.filterIndexed { i, _ -> i != index }) }
 
+    /** [photo] arrives already fully processed (§8) — see [processAndStorePhoto] — this just adds it to the form. */
+    fun onPhotoAdd(photo: PhotoInput) = _state.update { it.copy(photos = it.photos + photo) }
+
+    fun onPhotoCaptionChange(id: String, caption: String) = _state.update {
+        it.copy(photos = it.photos.map { photo -> if (photo.id == id) photo.copy(caption = caption.ifBlank { null }) else photo })
+    }
+
+    /** Only drops it from the form — the processed file on disk is untouched, same as removing a CRS's signed-copy photo. */
+    fun onPhotoRemove(id: String) = _state.update { it.copy(photos = it.photos.filterNot { photo -> photo.id == id }) }
+
     fun onClosesDeferredItemChange(id: String?) = _state.update { it.copy(closesDeferredItemId = id) }
 
     /** Adds straight to the directory — [documentOptions] picks it up reactively, no round trip needed here. */
@@ -229,74 +238,88 @@ class WorkEntryFormViewModel @Inject constructor(
         return _state.value.normalized() != initialState.normalized()
     }
 
+    /** Fire-and-forget — the screen stays put either way; [WorkEntryFormState.isEditing]/`isDirty()` drive the Save button's own label. */
     fun save() {
         val current = _state.value
         if (!current.canSave) return
-        viewModelScope.launch {
-            _state.update { it.copy(saving = true) }
-            val id = current.entryId
-            val savedEntryId = if (id == null) {
-                workEntryRepository.create(
-                    aircraftId = (current.aircraftSelection as? AircraftSelection.Specific)?.aircraftId,
-                    description = current.description.trim(),
-                    activityTypes = current.activityTypes,
-                    role = current.role,
-                    supervisedAnother = current.supervisedAnother,
-                    sessionDates = current.sessionDates,
-                    daysWorkedOverride = current.daysWorkedOverride.toIntOrNull(),
-                    helperNames = current.helperNames,
-                    completedTaskIds = current.completedTaskIds,
-                    airframeHoursAtWork = current.airframeHours.toDoubleOrNull(),
-                    launchesAtWork = current.launches.toIntOrNull(),
-                    workorderIssuerName = current.workorderIssuerName.trim().ifBlank { null },
-                    workorderDate = current.workorderDate,
-                    workorderRequestedWork = current.workorderRequestedWork.trim().ifBlank { null },
-                    workorderReference = current.workorderReference.trim().ifBlank { null },
-                    annualInspection = current.annualInspection,
-                    concurrentWithArc = current.concurrentWithArc,
-                    documentationRefs = current.documentationRefs,
-                    partsUsed = current.partsUsed,
-                )
-            } else {
-                workEntryRepository.update(
-                    id = id,
-                    aircraftId = (current.aircraftSelection as? AircraftSelection.Specific)?.aircraftId,
-                    description = current.description.trim(),
-                    activityTypes = current.activityTypes,
-                    role = current.role,
-                    supervisedAnother = current.supervisedAnother,
-                    sessionDates = current.sessionDates,
-                    daysWorkedOverride = current.daysWorkedOverride.toIntOrNull(),
-                    helperNames = current.helperNames,
-                    completedTaskIds = current.completedTaskIds,
-                    airframeHoursAtWork = current.airframeHours.toDoubleOrNull(),
-                    launchesAtWork = current.launches.toIntOrNull(),
-                    workorderIssuerName = current.workorderIssuerName.trim().ifBlank { null },
-                    workorderDate = current.workorderDate,
-                    workorderRequestedWork = current.workorderRequestedWork.trim().ifBlank { null },
-                    workorderReference = current.workorderReference.trim().ifBlank { null },
-                    annualInspection = current.annualInspection,
-                    concurrentWithArc = current.concurrentWithArc,
-                    documentationRefs = current.documentationRefs,
-                    partsUsed = current.partsUsed,
-                )
-                id
-            }
-            // The work that resolved it happened by the entry's own last session date, not today —
-            // matches how the CRS derives its own "completed" date from the same sessions.
-            current.closesDeferredItemId?.let { itemId ->
-                deferredItemRepository.close(itemId, savedEntryId, current.sessionDates.max())
-            }
-            _state.update { it.copy(saving = false, entryId = savedEntryId) }
-            initialState = _state.value
-            // A brand-new entry stays on this screen — setting entryId flips state.isEditing
-            // to true, which reveals the certificate section immediately, rather than closing
-            // and making the user reopen the entry to find it. Saving an entry that was already
-            // being edited keeps the existing save-and-close behaviour.
-            if (id != null) {
-                _saved.emit(Unit)
-            }
+        viewModelScope.launch { performSave(current) }
+    }
+
+    /**
+     * For a caller that needs to know the save has actually finished before doing something
+     * else — e.g. the unsaved-changes dialog's own "Save" option, which then has to navigate
+     * to wherever the user was originally trying to go. A no-op, returning immediately, if
+     * there's nothing valid to save.
+     */
+    suspend fun saveAndAwaitCompletion() {
+        val current = _state.value
+        if (!current.canSave) return
+        performSave(current)
+    }
+
+    private suspend fun performSave(current: WorkEntryFormState) {
+        _state.update { it.copy(saving = true) }
+        val id = current.entryId
+        val savedEntryId = if (id == null) {
+            workEntryRepository.create(
+                aircraftId = (current.aircraftSelection as? AircraftSelection.Specific)?.aircraftId,
+                description = current.description.trim(),
+                activityTypes = current.activityTypes,
+                role = current.role,
+                supervisedAnother = current.supervisedAnother,
+                sessionDates = current.sessionDates,
+                daysWorkedOverride = current.daysWorkedOverride.toIntOrNull(),
+                helperNames = current.helperNames,
+                completedTaskIds = current.completedTaskIds,
+                airframeHoursAtWork = current.airframeHours.toDoubleOrNull(),
+                launchesAtWork = current.launches.toIntOrNull(),
+                workorderIssuerName = current.workorderIssuerName.trim().ifBlank { null },
+                workorderDate = current.workorderDate,
+                workorderRequestedWork = current.workorderRequestedWork.trim().ifBlank { null },
+                workorderReference = current.workorderReference.trim().ifBlank { null },
+                annualInspection = current.annualInspection,
+                concurrentWithArc = current.concurrentWithArc,
+                documentationRefs = current.documentationRefs,
+                partsUsed = current.partsUsed,
+                photos = current.photos,
+            )
+        } else {
+            workEntryRepository.update(
+                id = id,
+                aircraftId = (current.aircraftSelection as? AircraftSelection.Specific)?.aircraftId,
+                description = current.description.trim(),
+                activityTypes = current.activityTypes,
+                role = current.role,
+                supervisedAnother = current.supervisedAnother,
+                sessionDates = current.sessionDates,
+                daysWorkedOverride = current.daysWorkedOverride.toIntOrNull(),
+                helperNames = current.helperNames,
+                completedTaskIds = current.completedTaskIds,
+                airframeHoursAtWork = current.airframeHours.toDoubleOrNull(),
+                launchesAtWork = current.launches.toIntOrNull(),
+                workorderIssuerName = current.workorderIssuerName.trim().ifBlank { null },
+                workorderDate = current.workorderDate,
+                workorderRequestedWork = current.workorderRequestedWork.trim().ifBlank { null },
+                workorderReference = current.workorderReference.trim().ifBlank { null },
+                annualInspection = current.annualInspection,
+                concurrentWithArc = current.concurrentWithArc,
+                documentationRefs = current.documentationRefs,
+                partsUsed = current.partsUsed,
+                photos = current.photos,
+            )
+            id
         }
+        // The work that resolved it happened by the entry's own last session date, not today —
+        // matches how the CRS derives its own "completed" date from the same sessions.
+        current.closesDeferredItemId?.let { itemId ->
+            deferredItemRepository.close(itemId, savedEntryId, current.sessionDates.max())
+        }
+        // entryId flips state.isEditing to true on a brand-new entry's first save, revealing
+        // the certificate section immediately rather than closing and making the user reopen
+        // it to find it. initialState resets here too, so isDirty() (and the Save button's own
+        // "Saved" vs "Save" label) reflects this save right away.
+        _state.update { it.copy(saving = false, entryId = savedEntryId) }
+        initialState = _state.value
     }
 
     fun delete() {

@@ -3,6 +3,7 @@ package nl.part66l.logbook.ui.workentry
 import java.time.LocalDate
 import nl.part66l.logbook.data.DocumentationRefInput
 import nl.part66l.logbook.data.PartUsedInput
+import nl.part66l.logbook.data.PhotoInput
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.EntryRole
 
@@ -54,6 +55,8 @@ data class WorkEntryFormState(
 
     val documentationRefs: List<DocumentationRefInput> = emptyList(),
     val partsUsed: List<PartUsedInput> = emptyList(),
+    /** Already fully processed (§8) by the time they land here — see [nl.part66l.logbook.ui.workentry.processAndStorePhoto]. */
+    val photos: List<PhotoInput> = emptyList(),
 
     /** Optional — closes a note in the engineer's own record (§5.7), never a statement about the aircraft. Always starts unselected, even when editing. */
     val closesDeferredItemId: String? = null,

@@ -1,8 +1,13 @@
 package nl.part66l.logbook.pdf
 
+import android.graphics.Bitmap
+import android.graphics.Color
 import androidx.test.core.app.ApplicationProvider
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
+import java.io.File
+import java.io.FileOutputStream
+import java.util.UUID
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -24,12 +29,21 @@ class CrsPdfRendererTest {
 
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 
+    /** A real, tiny JPEG on disk — the appendix embeds this file directly, so a fake path would only exercise the missing-file fallback. */
+    private fun testPhotoFile(): String {
+        val bitmap = Bitmap.createBitmap(40, 30, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLUE) }
+        val file = File(context.cacheDir, "test-photo-${UUID.randomUUID()}.jpg")
+        FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+        return file.absolutePath
+    }
+
     private fun sampleData(
         documentation: List<DocRow> = defaultDocumentation,
         parts: List<PartRow> = defaultParts,
         workOrders: List<WorkOrderRow> = defaultWorkOrders,
         activities: List<String> = defaultActivities,
         completedTasks: List<String> = defaultCompletedTasks,
+        photos: List<PhotoRow> = emptyList(),
     ) = CrsRenderData(
         number = "NL66-2026-0007",
         basisLabel = "Independent certifying staff — ML.A.801(b)(2)",
@@ -62,7 +76,7 @@ class CrsPdfRendererTest {
         ),
         activities = activities,
         completedTasks = completedTasks,
-        photos = listOf(PhotoRow("a3f1c0e2-…-9b41.jpg", "9f2a41c7de08b533", "14 March 2026 10:12")),
+        photos = photos,
     )
 
     private fun textOf(document: PDDocument): String = PDFTextStripper().getText(document)
@@ -134,6 +148,54 @@ class CrsPdfRendererTest {
             assertTrue(text.contains("MAINTENANCE DATA USED"))
             assertTrue(text.contains("PARTS AND MATERIALS INSTALLED"))
             assertEquals(2, Regex("None\\.").findAll(text).count()) // one for each empty section
+        }
+    }
+
+    @Test
+    fun `photos get their own appendix page, with a grid label and manifest row per photo`() {
+        val photo = PhotoRow(
+            index = 1,
+            caption = "Wing spar corrosion, left root",
+            sha256Prefix = "9f2a41c7de08b533",
+            capturedAt = "14 March 2026, 10:12",
+            localPath = testPhotoFile(),
+        )
+
+        PDDocument().use { document ->
+            val pages = CrsPdfRenderer().render(document, sampleData(workOrders = emptyList(), photos = listOf(photo)), context)
+
+            assertTrue("expected the photo appendix to push past a single page", pages > 1)
+            val text = textOf(document)
+            assertTrue(text.contains("PHOTOGRAPHIC RECORD"))
+            assertTrue(text.contains("Photo 1"))
+            assertTrue(text.contains("Wing spar corrosion, left root"))
+            assertTrue(text.contains("9f2a41c7de08b533"))
+        }
+    }
+
+    @Test
+    fun `a photo with no caption still prints a numbered label`() {
+        val photo = PhotoRow(index = 1, caption = null, sha256Prefix = "abc123", capturedAt = "14 March 2026", localPath = testPhotoFile())
+
+        PDDocument().use { document ->
+            CrsPdfRenderer().render(document, sampleData(workOrders = emptyList(), photos = listOf(photo)), context)
+
+            assertTrue(textOf(document).contains("Photo 1"))
+        }
+    }
+
+    @Test
+    fun `many photos paginate the appendix without dropping any`() {
+        val photos = (1..10).map { i ->
+            PhotoRow(index = i, caption = "Photo caption $i", sha256Prefix = "hash$i", capturedAt = "14 March 2026", localPath = testPhotoFile())
+        }
+
+        PDDocument().use { document ->
+            val pages = CrsPdfRenderer().render(document, sampleData(workOrders = emptyList(), photos = photos), context)
+
+            assertEquals(document.numberOfPages, pages)
+            val text = textOf(document)
+            (1..10).forEach { i -> assertTrue("expected photo $i in the manifest", text.contains("Photo caption $i")) }
         }
     }
 

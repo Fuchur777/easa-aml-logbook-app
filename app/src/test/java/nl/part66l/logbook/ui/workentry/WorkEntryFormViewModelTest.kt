@@ -1,10 +1,10 @@
 package nl.part66l.logbook.ui.workentry
 
 import androidx.lifecycle.SavedStateHandle
+import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -14,6 +14,7 @@ import nl.part66l.logbook.data.DocumentEntity
 import nl.part66l.logbook.data.DocumentationRefInput
 import nl.part66l.logbook.data.PartUsedInput
 import nl.part66l.logbook.data.PersonEntity
+import nl.part66l.logbook.data.PhotoInput
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.DocumentCategory
 import nl.part66l.logbook.domain.EntryRole
@@ -306,6 +307,43 @@ class WorkEntryFormViewModelTest {
         assertEquals(listOf(PartUsedInput("PN-001", batchOrSerial = "SN-9")), created.partsUsed)
     }
 
+    private fun photo(id: String, caption: String? = null) =
+        PhotoInput(id = id, localPath = "/data/attachments/$id.jpg", sha256 = "hash-$id", capturedAt = Instant.now(), caption = caption, bytes = 100)
+
+    @Test
+    fun `photos can be added, captioned and removed, and are passed through on save`() {
+        val repository = FakeWorkEntryRepository()
+        val viewModel = viewModel(workEntryRepository = repository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Panel inspection")
+        viewModel.onActivityTypeToggle(ActivityType.INSPECTION)
+
+        viewModel.onPhotoAdd(photo("p1"))
+        viewModel.onPhotoAdd(photo("p2"))
+        assertEquals(2, viewModel.state.value.photos.size)
+
+        viewModel.onPhotoCaptionChange("p1", "Wing spar corrosion")
+        assertEquals("Wing spar corrosion", viewModel.state.value.photos.first { it.id == "p1" }.caption)
+
+        viewModel.onPhotoRemove("p2")
+        assertEquals(listOf("p1"), viewModel.state.value.photos.map { it.id })
+
+        viewModel.save()
+
+        assertEquals(listOf("p1"), repository.created.first().photos.map { it.id })
+        assertEquals("Wing spar corrosion", repository.created.first().photos.first().caption)
+    }
+
+    @Test
+    fun `a blank caption is stored as null, not an empty string`() {
+        val viewModel = viewModel()
+        viewModel.onPhotoAdd(photo("p1", caption = "Something"))
+
+        viewModel.onPhotoCaptionChange("p1", "   ")
+
+        assertEquals(null, viewModel.state.value.photos.first().caption)
+    }
+
     @Test
     fun `save passes through workorder fields and the annual inspection flag`() {
         val repository = FakeWorkEntryRepository()
@@ -565,29 +603,22 @@ class WorkEntryFormViewModelTest {
     }
 
     @Test
-    fun `save on a brand-new entry reveals editing in place, without emitting saved`() = runBlocking {
+    fun `save on a brand-new entry reveals editing in place, without navigating away`() {
         val repository = FakeWorkEntryRepository()
         val viewModel = viewModel(workEntryRepository = repository)
         viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
         viewModel.onDescriptionChange("Bench work")
         viewModel.onActivityTypeToggle(ActivityType.SERVICING)
-        var savedEmitted = false
-        // Launched on Main (the Unconfined test dispatcher) so it starts collecting synchronously,
-        // right here — plain launch{} on runBlocking's own dispatcher would only be queued,
-        // and save()'s emit (also synchronous, on the same Unconfined dispatcher) would fire
-        // before this collector ever got a turn to actually start listening.
-        val collector = launch(Dispatchers.Main) { viewModel.saved.collect { savedEmitted = true } }
 
         viewModel.save()
 
         assertTrue("expected isEditing to flip true so the certificate section appears", viewModel.state.value.isEditing)
         assertEquals(repository.created.first().entry.id, viewModel.state.value.entryId)
-        assertFalse("a first save shouldn't navigate away — it stays on this screen", savedEmitted)
-        collector.cancel()
+        assertFalse("no navigation event exists any more — the screen just stays as it is", viewModel.isDirty())
     }
 
     @Test
-    fun `save on an already-existing entry still emits saved`() = runBlocking {
+    fun `re-saving an already-existing entry updates it in place and clears isDirty`() {
         val repository = FakeWorkEntryRepository()
         val id = runBlocking {
             repository.create(
@@ -596,17 +627,29 @@ class WorkEntryFormViewModelTest {
             )
         }
         val viewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
-        var savedEmitted = false
-        // Launched on Main (the Unconfined test dispatcher) so it starts collecting synchronously,
-        // right here — plain launch{} on runBlocking's own dispatcher would only be queued,
-        // and save()'s emit (also synchronous, on the same Unconfined dispatcher) would fire
-        // before this collector ever got a turn to actually start listening.
-        val collector = launch(Dispatchers.Main) { viewModel.saved.collect { savedEmitted = true } }
+        viewModel.onDescriptionChange("Bench work, corrected")
+        assertTrue(viewModel.isDirty())
 
         viewModel.save()
 
-        assertTrue(savedEmitted)
-        collector.cancel()
+        assertEquals("Bench work, corrected", repository.updated.first().entry.description)
+        assertFalse("a save should leave nothing pending — the button reads \"Saved\", not \"Save\"", viewModel.isDirty())
+    }
+
+    @Test
+    fun `saveAndAwaitCompletion suspends until the save has actually finished`() = runBlocking {
+        val repository = FakeWorkEntryRepository()
+        val viewModel = viewModel(workEntryRepository = repository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Bench work")
+        viewModel.onActivityTypeToggle(ActivityType.SERVICING)
+
+        viewModel.saveAndAwaitCompletion()
+
+        // By the time this line runs (not just "eventually"), the save is done — that's the
+        // whole point of this method over the fire-and-forget save().
+        assertEquals(1, repository.created.size)
+        assertFalse(viewModel.isDirty())
     }
 
     @Test

@@ -9,6 +9,7 @@ import com.tom_roush.pdfbox.pdmodel.font.PDFont
 import com.tom_roush.pdfbox.pdmodel.font.PDType1Font
 import com.tom_roush.pdfbox.pdmodel.graphics.color.PDDeviceRGB
 import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject
+import java.io.IOException
 
 /**
  * Renders a Certificate of Release to Service, laid out per docs/crs/crs-field-mapping.md
@@ -146,15 +147,17 @@ class CrsPdfRenderer {
         }
 
         if (data.photos.isNotEmpty()) {
-            w.heading("Photographic record, held separately")
+            w.forceNewPage()
+            w.heading("Photographic record")
+            w.text(L, w.y, "Photographs are bound to this certificate by the hashes listed below.", HELVETICA, 6.8f, GREY)
+            w.y -= 6f * MM
+            w.photoGrid(data.photos)
+            w.y -= 2f * MM
             w.rows(
-                listOf("File", "SHA-256 (first 16)", "Captured"),
-                data.photos.map { listOf(it.fileName, it.sha256Prefix, it.capturedAt) },
-                listOf(70f, 60f, 35f),
+                listOf("#", "Caption", "SHA-256 (first 16)", "Captured"),
+                data.photos.map { listOf(it.index.toString(), it.caption.orEmpty(), it.sha256Prefix, it.capturedAt) },
+                listOf(12f, 78f, 50f, 30f),
             )
-            w.need(6f)
-            w.text(L, w.y, "Photographs are bound to this certificate by the hashes listed above.", HELVETICA, 6.8f, GREY)
-            w.y -= 5f * MM
         }
 
         if (data.workOrders.isNotEmpty()) {
@@ -367,6 +370,58 @@ private class PageWriter(
             y -= 4.3f * CrsPdfRenderer.MM
         }
         y -= 1.5f * CrsPdfRenderer.MM
+    }
+
+    /** Truncates [s] with an ellipsis rather than wrapping — appendix captions are meant to be a short label, not a paragraph. */
+    private fun truncateToWidth(s: String, font: PDFont, size: Float, maxWidth: Float): String {
+        if (stringWidth(s, font, size) <= maxWidth) return s
+        var truncated = s
+        while (truncated.isNotEmpty() && stringWidth("$truncated…", font, size) > maxWidth) {
+            truncated = truncated.dropLast(1)
+        }
+        return "$truncated…"
+    }
+
+    /**
+     * Three photos per row, full colour, each fit into a fixed box preserving its own aspect
+     * ratio (never cropped) — a missing/unreadable file (moved or deleted outside the app)
+     * leaves that cell's image blank; its row in the manifest table underneath still prints,
+     * since that comes from the database record, not the file.
+     */
+    fun photoGrid(photos: List<PhotoRow>) {
+        if (photos.isEmpty()) return
+        val cols = 3
+        val gutter = 6f * CrsPdfRenderer.MM
+        val cellWidth = (CrsPdfRenderer.COLW - (cols - 1) * gutter) / cols
+        val imageMaxHeight = 45f * CrsPdfRenderer.MM
+        val rowHeight = imageMaxHeight + 8f * CrsPdfRenderer.MM
+        val rowGap = 6f * CrsPdfRenderer.MM
+
+        photos.chunked(cols).forEach { row ->
+            need(rowHeight / CrsPdfRenderer.MM)
+            val rowTop = y
+            row.forEachIndexed { col, photo ->
+                val cellX = CrsPdfRenderer.L + col * (cellWidth + gutter)
+                try {
+                    val image = PDImageXObject.createFromFile(photo.localPath, document)
+                    val aspect = image.width.toFloat() / image.height.toFloat()
+                    var renderWidth = cellWidth
+                    var renderHeight = renderWidth / aspect
+                    if (renderHeight > imageMaxHeight) {
+                        renderHeight = imageMaxHeight
+                        renderWidth = renderHeight * aspect
+                    }
+                    val imageX = cellX + (cellWidth - renderWidth) / 2f
+                    val imageY = rowTop - imageMaxHeight + (imageMaxHeight - renderHeight) / 2f
+                    stream.drawImage(image, imageX, imageY, renderWidth, renderHeight)
+                } catch (e: IOException) {
+                    // Nothing sensible to draw — the manifest table row below still identifies it.
+                }
+                val label = if (photo.caption.isNullOrBlank()) "Photo ${photo.index}" else "Photo ${photo.index} — ${photo.caption}"
+                text(cellX, rowTop - imageMaxHeight - 4f * CrsPdfRenderer.MM, truncateToWidth(label, CrsPdfRenderer.HELVETICA, 7f, cellWidth), CrsPdfRenderer.HELVETICA, 7f, CrsPdfRenderer.GREY)
+            }
+            y = rowTop - rowHeight - rowGap
+        }
     }
 
     fun finish(): Int {

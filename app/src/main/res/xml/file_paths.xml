@@ -6,4 +6,6 @@
     <files-path name="crs" path="crs/" />
     <!-- Matches SigningInfoViewModel's exported-PDF destination: context.filesDir/signing/. -->
     <files-path name="signing" path="signing/" />
+    <!-- Matches WorkPhotoAttachments' processed-photo destination and camera-capture staging file: context.filesDir/attachments/. -->
+    <files-path name="attachments" path="attachments/" />
 </paths>

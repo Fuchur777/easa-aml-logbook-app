@@ -49,6 +49,13 @@ data class CrsRenderData(
 data class DocRow(val reference: String, val category: String, val revision: String, val date: String)
 data class PartRow(val partNumber: String, val description: String, val batchOrSerial: String, val releaseDocument: String)
 data class PersonnelRow(val name: String, val licenceNumber: String, val role: String)
-data class PhotoRow(val fileName: String, val sha256Prefix: String, val capturedAt: String)
+/**
+ * One photo of the work (§8), for the photo appendix. [index] (1-based, stable across the
+ * grid and the manifest table below it) is what's printed to identify the photo — never the
+ * raw UUID filename, which means nothing to a reader. [localPath] points at the already
+ * fully-processed file (downscaled, GPS EXIF stripped) — embedded as-is, never re-encoded, so
+ * what's on the page is exactly what [sha256Prefix] was computed over.
+ */
+data class PhotoRow(val index: Int, val caption: String?, val sha256Prefix: String, val capturedAt: String, val localPath: String)
 data class WorkOrderRow(val issuer: String, val date: String, val requestedWork: String, val reference: String)
 data class SignatureBlockData(val method: String, val signedAtLabel: String, val certificateSubject: String, val fingerprint: String)

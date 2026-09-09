@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
 import java.io.File
+import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -53,12 +54,13 @@ class CrsRepositoryTest {
             documentationRefDao = db.documentationRefs(),
             partUsedDao = db.partsUsed(),
             taskCompletionDao = db.taskCompletions(),
+            attachmentDao = db.attachments(),
             crsDao = db.crs(),
             settingsRepository = settingsRepository,
         )
         workEntryRepository = WorkEntryRepositoryImpl(
             db.workEntries(), db.workSessions(), db.entryHelpers(), PersonRepositoryImpl(db.people()), db.people(),
-            db.catalogue(), db.taskCompletions(), db.documentationRefs(), db.partsUsed(),
+            db.catalogue(), db.taskCompletions(), db.documentationRefs(), db.partsUsed(), db.attachments(),
         )
     }
 
@@ -223,6 +225,35 @@ class CrsRepositoryTest {
     @Test
     fun `generateUnsigned returns null for an unknown entry`() = runBlocking {
         assertNull(repository.generateUnsigned("does-not-exist", limitations = null, maintenanceIncomplete = false))
+    }
+
+    @Test
+    fun `generateUnsigned pulls the entry's photos into the printed record, in capture order`() = runBlocking {
+        val entryId = createEntry()
+        // Inserted out of capture order, deliberately — the printed numbering should follow capturedAt, not insertion order.
+        db.attachments().insert(
+            AttachmentEntity(
+                id = "photo-2", entryId = entryId, kind = "PHOTO", caption = "Second photo",
+                sha256 = "b".repeat(64), capturedAt = Instant.parse("2026-03-14T11:00:00Z"),
+                localPath = "/data/attachments/photo-2.jpg", bytes = 222,
+            ),
+        )
+        db.attachments().insert(
+            AttachmentEntity(
+                id = "photo-1", entryId = entryId, kind = "PHOTO", caption = "First photo",
+                sha256 = "a".repeat(64), capturedAt = Instant.parse("2026-03-14T09:00:00Z"),
+                localPath = "/data/attachments/photo-1.jpg", bytes = 111,
+            ),
+        )
+
+        val crs = repository.generateUnsigned(entryId, limitations = null, maintenanceIncomplete = false)
+
+        val text = PDDocument.load(File(crs!!.pdfLocalPath!!)).use { PDFTextStripper().getText(it) }
+        assertTrue(text.contains("PHOTOGRAPHIC RECORD"))
+        assertTrue(text.contains("Photo 1"))
+        assertTrue(text.contains("First photo"))
+        assertTrue(text.contains("Photo 2"))
+        assertTrue(text.contains("Second photo"))
     }
 
     @Test

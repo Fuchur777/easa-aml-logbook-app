@@ -29,6 +29,21 @@ data class PartUsedInput(
     val quantity: String? = null,
 )
 
+/**
+ * One photo of the work (§8) — already fully processed (downscaled, GPS EXIF stripped, hashed,
+ * stored under its own [id] as the filename) by the time it reaches the form; [id] is what
+ * becomes the [AttachmentEntity.id] and [localPath]'s filename, so it never changes across a
+ * load-edit-resave cycle for a photo the user didn't touch this session.
+ */
+data class PhotoInput(
+    val id: String,
+    val localPath: String,
+    val sha256: String,
+    val capturedAt: Instant,
+    val caption: String? = null,
+    val bytes: Long,
+)
+
 /** Everything the edit form needs to repopulate itself — the mirror image of [WorkEntryRepository.create]'s parameters. */
 data class WorkEntryEditData(
     val aircraftId: String?,
@@ -50,6 +65,7 @@ data class WorkEntryEditData(
     val concurrentWithArc: Boolean,
     val documentationRefs: List<DocumentationRefInput>,
     val partsUsed: List<PartUsedInput>,
+    val photos: List<PhotoInput>,
 )
 
 interface WorkEntryRepository {
@@ -78,11 +94,11 @@ interface WorkEntryRepository {
      * resolved to the person directory by exact name match, creating a new [PersonEntity]
      * for any name not already on file. [completedTaskIds] are snapshotted into
      * [TaskCompletionEntity] rows as they read today — a later catalogue update must
-     * never retroactively change what a past completion said. [documentationRefs] and
-     * [partsUsed] become their own child rows, same as helpers. [workorderIssuerName], if
-     * given, is also resolved into the person directory (same [PersonEntity] table as
-     * helpers) so its spelling can be reused — unlike helpers, the entry stores the plain
-     * name, not a person id.
+     * never retroactively change what a past completion said. [documentationRefs],
+     * [partsUsed] and [photos] become their own child rows, same as helpers.
+     * [workorderIssuerName], if given, is also resolved into the person directory (same
+     * [PersonEntity] table as helpers) so its spelling can be reused — unlike helpers, the
+     * entry stores the plain name, not a person id.
      */
     suspend fun create(
         aircraftId: String?,
@@ -104,6 +120,7 @@ interface WorkEntryRepository {
         concurrentWithArc: Boolean = false,
         documentationRefs: List<DocumentationRefInput> = emptyList(),
         partsUsed: List<PartUsedInput> = emptyList(),
+        photos: List<PhotoInput> = emptyList(),
     ): String
 
     /**
@@ -133,6 +150,7 @@ interface WorkEntryRepository {
         concurrentWithArc: Boolean = false,
         documentationRefs: List<DocumentationRefInput> = emptyList(),
         partsUsed: List<PartUsedInput> = emptyList(),
+        photos: List<PhotoInput> = emptyList(),
     )
 
     /** Cascades to every child row. The database itself refuses this once a CRS has been signed against the entry (FK RESTRICT) — there's no UI path to that state yet. */
@@ -150,6 +168,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
     private val taskCompletionDao: TaskCompletionDao,
     private val documentationRefDao: DocumentationRefDao,
     private val partUsedDao: PartUsedDao,
+    private val attachmentDao: AttachmentDao,
 ) : WorkEntryRepository {
 
     override fun pagedAll(): PagingSource<Int, WorkEntryEntity> = workEntryDao.pagedAll()
@@ -177,6 +196,9 @@ class WorkEntryRepositoryImpl @Inject constructor(
         val partsUsed = partUsedDao.forEntry(id).map {
             PartUsedInput(it.partNumber, it.description, it.batchOrSerial, it.formOneRef, it.quantity)
         }
+        val photos = attachmentDao.forEntry(id).filter { it.kind == "PHOTO" }.map {
+            PhotoInput(it.id, it.localPath, it.sha256, it.capturedAt ?: Instant.now(), it.caption, it.bytes)
+        }
         return WorkEntryEditData(
             aircraftId = entry.aircraftId,
             description = entry.description,
@@ -197,6 +219,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
             concurrentWithArc = entry.concurrentWithArc,
             documentationRefs = documentationRefs,
             partsUsed = partsUsed,
+            photos = photos,
         )
     }
 
@@ -220,6 +243,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
         concurrentWithArc: Boolean,
         documentationRefs: List<DocumentationRefInput>,
         partsUsed: List<PartUsedInput>,
+        photos: List<PhotoInput>,
     ): String {
         require(sessionDates.isNotEmpty()) { "A work entry needs at least one session date" }
         val entryId = UUID.randomUUID().toString()
@@ -248,7 +272,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
         sessionDates.distinct().forEach { date ->
             workSessionDao.insert(WorkSessionEntity(id = UUID.randomUUID().toString(), entryId = entryId, date = date))
         }
-        insertChildren(entryId, activityTypes, helperNames, workorderIssuerName, completedTaskIds, documentationRefs, partsUsed)
+        insertChildren(entryId, activityTypes, helperNames, workorderIssuerName, completedTaskIds, documentationRefs, partsUsed, photos)
         return entryId
     }
 
@@ -273,6 +297,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
         concurrentWithArc: Boolean,
         documentationRefs: List<DocumentationRefInput>,
         partsUsed: List<PartUsedInput>,
+        photos: List<PhotoInput>,
     ) {
         require(sessionDates.isNotEmpty()) { "A work entry needs at least one session date" }
         val existing = workEntryDao.byId(id) ?: return
@@ -306,7 +331,8 @@ class WorkEntryRepositoryImpl @Inject constructor(
         taskCompletionDao.deleteForEntry(id)
         documentationRefDao.deleteForEntry(id)
         partUsedDao.deleteForEntry(id)
-        insertChildren(id, activityTypes, helperNames, workorderIssuerName, completedTaskIds, documentationRefs, partsUsed)
+        attachmentDao.deleteForEntry(id, "PHOTO")
+        insertChildren(id, activityTypes, helperNames, workorderIssuerName, completedTaskIds, documentationRefs, partsUsed, photos)
     }
 
     override suspend fun delete(id: String) = workEntryDao.delete(id)
@@ -319,6 +345,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
         completedTaskIds: Set<String>,
         documentationRefs: List<DocumentationRefInput>,
         partsUsed: List<PartUsedInput>,
+        photos: List<PhotoInput>,
     ) {
         workEntryDao.insertActivityTypes(activityTypes.map { WorkEntryActivityTypeEntity(entryId, it) })
         helperNames.map { it.trim() }.filter { it.isNotEmpty() }.distinct().forEach { name ->
@@ -361,6 +388,20 @@ class WorkEntryRepositoryImpl @Inject constructor(
                     batchOrSerial = part.batchOrSerial,
                     formOneRef = part.formOneRef,
                     quantity = part.quantity,
+                ),
+            )
+        }
+        photos.forEach { photo ->
+            attachmentDao.insert(
+                AttachmentEntity(
+                    id = photo.id,
+                    entryId = entryId,
+                    kind = "PHOTO",
+                    caption = photo.caption,
+                    sha256 = photo.sha256,
+                    capturedAt = photo.capturedAt,
+                    localPath = photo.localPath,
+                    bytes = photo.bytes,
                 ),
             )
         }

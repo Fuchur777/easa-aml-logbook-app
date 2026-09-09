@@ -142,7 +142,6 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
             }
             composable(Destination.WorkEntryForm.route) {
                 WorkEntryFormScreen(
-                    onSaved = { navController.popBackStack() },
                     onDeleted = { navController.popBackStack() },
                     onClose = { navController.popBackStack() },
                     onCertificates = { id -> navController.navigate(Destination.Crs(id).route) },
@@ -153,7 +152,6 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                 arguments = listOf(navArgument(Destination.WorkEntryEdit.ARG_ENTRY_ID) { type = NavType.StringType }),
             ) {
                 WorkEntryFormScreen(
-                    onSaved = { navController.popBackStack() },
                     onDeleted = { navController.popBackStack() },
                     onClose = { navController.popBackStack() },
                     onCertificates = { id -> navController.navigate(Destination.Crs(id).route) },

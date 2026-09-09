@@ -5,6 +5,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.testing.asSnapshot
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -41,7 +42,7 @@ class WorkEntryRepositoryTest {
             .build()
         repository = WorkEntryRepositoryImpl(
             db.workEntries(), db.workSessions(), db.entryHelpers(), PersonRepositoryImpl(db.people()), db.people(),
-            db.catalogue(), db.taskCompletions(), db.documentationRefs(), db.partsUsed(),
+            db.catalogue(), db.taskCompletions(), db.documentationRefs(), db.partsUsed(), db.attachments(),
         )
     }
 
@@ -190,6 +191,53 @@ class WorkEntryRepositoryTest {
         assertEquals("SN-9", parts.first().batchOrSerial)
         assertEquals("F1-77", parts.first().formOneRef)
         assertEquals("2", parts.first().quantity)
+    }
+
+    @Test
+    fun `create stores photos, and forEdit reassembles them`() = runBlocking {
+        val photo = PhotoInput(
+            id = "photo-1", localPath = "/data/attachments/photo-1.jpg", sha256 = "abc123",
+            capturedAt = Instant.parse("2026-03-14T10:12:00Z"), caption = "Wing spar corrosion", bytes = 12345,
+        )
+
+        val id = repository.create(
+            aircraftId = null,
+            description = "Annual inspection",
+            activityTypes = setOf(ActivityType.INSPECTION),
+            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
+            supervisedAnother = false,
+            sessionDates = listOf(LocalDate.of(2026, 3, 14)),
+            photos = listOf(photo),
+        )
+
+        val stored = db.attachments().forEntry(id)
+        assertEquals(1, stored.size)
+        assertEquals("PHOTO", stored.first().kind)
+        assertEquals("Wing spar corrosion", stored.first().caption)
+
+        val edit = repository.forEdit(id)!!
+        assertEquals(listOf(photo), edit.photos)
+    }
+
+    @Test
+    fun `update replaces photos, same as documentation and parts`() = runBlocking {
+        val original = PhotoInput(id = "p1", localPath = "/data/p1.jpg", sha256 = "hash1", capturedAt = Instant.now(), bytes = 100)
+        val id = repository.create(
+            aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
+            role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+            photos = listOf(original),
+        )
+
+        val replacement = PhotoInput(id = "p2", localPath = "/data/p2.jpg", sha256 = "hash2", capturedAt = Instant.now(), bytes = 200)
+        repository.update(
+            id = id, aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
+            role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+            photos = listOf(replacement),
+        )
+
+        val stored = db.attachments().forEntry(id)
+        assertEquals(1, stored.size)
+        assertEquals("p2", stored.first().id)
     }
 
     @Test

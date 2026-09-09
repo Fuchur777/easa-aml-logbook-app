@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.util.UUID
 import nl.part66l.logbook.data.DocumentationRefInput
 import nl.part66l.logbook.data.PartUsedInput
+import nl.part66l.logbook.data.PhotoInput
 import nl.part66l.logbook.data.WorkEntryEditData
 import nl.part66l.logbook.data.WorkEntryEntity
 import nl.part66l.logbook.data.WorkEntryListRow
@@ -22,6 +23,7 @@ data class CreatedWorkEntry(
     val completedTaskIds: Set<String>,
     val documentationRefs: List<DocumentationRefInput>,
     val partsUsed: List<PartUsedInput>,
+    val photos: List<PhotoInput> = emptyList(),
 )
 
 /**
@@ -82,6 +84,7 @@ class FakeWorkEntryRepository : WorkEntryRepository {
             concurrentWithArc = e.entry.concurrentWithArc,
             documentationRefs = e.documentationRefs,
             partsUsed = e.partsUsed,
+            photos = e.photos,
         )
     }
 
@@ -105,6 +108,7 @@ class FakeWorkEntryRepository : WorkEntryRepository {
         concurrentWithArc: Boolean,
         documentationRefs: List<DocumentationRefInput>,
         partsUsed: List<PartUsedInput>,
+        photos: List<PhotoInput>,
     ): String {
         val id = UUID.randomUUID().toString()
         val entry = CreatedWorkEntry(
@@ -124,6 +128,7 @@ class FakeWorkEntryRepository : WorkEntryRepository {
             completedTaskIds = completedTaskIds,
             documentationRefs = documentationRefs,
             partsUsed = partsUsed,
+            photos = photos,
         )
         created += entry
         entries[id] = entry
@@ -151,6 +156,7 @@ class FakeWorkEntryRepository : WorkEntryRepository {
         concurrentWithArc: Boolean,
         documentationRefs: List<DocumentationRefInput>,
         partsUsed: List<PartUsedInput>,
+        photos: List<PhotoInput>,
     ) {
         val existing = entries[id] ?: return
         val updatedEntry = existing.copy(
@@ -168,6 +174,7 @@ class FakeWorkEntryRepository : WorkEntryRepository {
             completedTaskIds = completedTaskIds,
             documentationRefs = documentationRefs,
             partsUsed = partsUsed,
+            photos = photos,
         )
         updated += updatedEntry
         entries[id] = updatedEntry
