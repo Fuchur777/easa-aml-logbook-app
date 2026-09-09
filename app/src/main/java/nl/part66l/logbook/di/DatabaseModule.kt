@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import nl.part66l.logbook.data.ALL_MIGRATIONS
 import nl.part66l.logbook.data.AircraftDao
 import nl.part66l.logbook.data.AppDatabase
 import nl.part66l.logbook.data.AttachmentDao
@@ -34,12 +35,16 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "part66log.db")
-            // No Migration path exists yet — the schema is still moving during initial
-            // development and nothing has shipped. Recreating the DB on a schema change
-            // is correct for now; this must be replaced with real Migrations (schemas/
-            // are already exported for exactly that) before this app ever holds real CRS
-            // records that can't be regenerated.
-            .fallbackToDestructiveMigration(dropAllTables = true)
+            // Versions 1-11 predate real device data worth keeping (every schema bump up to
+            // and including 12 wiped the DB anyway, back when this whole app was still a
+            // moving target) — destructive fallback is fine for anyone still on one of those.
+            // From 12 onward the device may hold real signed CRS records, deferred items and
+            // a locally-generated signing key none of which can be regenerated, so every
+            // future schema change MUST ship its own Migration in DatabaseMigrations.kt and
+            // be added to ALL_MIGRATIONS below — never widen this destructive-from list to
+            // include 12 or later as a shortcut.
+            .fallbackToDestructiveMigrationFrom(dropAllTables = true, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+            .addMigrations(*ALL_MIGRATIONS)
             .build()
 
     @Provides fun provideWorkEntryDao(db: AppDatabase): WorkEntryDao = db.workEntries()

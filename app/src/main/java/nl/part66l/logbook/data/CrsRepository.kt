@@ -5,7 +5,9 @@ import com.tom_roush.pdfbox.pdmodel.PDDocument
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.security.MessageDigest
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.Inject
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import nl.part66l.logbook.BuildConfig
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.CertificationBasis
 import nl.part66l.logbook.domain.CertificationStatements
@@ -27,9 +30,13 @@ import nl.part66l.logbook.pdf.CrsRenderData
 import nl.part66l.logbook.pdf.DocRow
 import nl.part66l.logbook.pdf.PartRow
 import nl.part66l.logbook.pdf.PersonnelRow
+import nl.part66l.logbook.pdf.SignatureBlockData
 import nl.part66l.logbook.pdf.WorkOrderRow
+import nl.part66l.logbook.signing.CrsPdfSigningSupport
+import nl.part66l.logbook.signing.LocalKeystoreSigner
 
 private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy")
+private val SIGNED_AT_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy, HH:mm")
 
 interface CrsRepository {
     /** Every CRS issued against this entry, newest first — a correction is a new row, never an edit. */
@@ -55,6 +62,25 @@ interface CrsRepository {
 
     /** Attaches (or clears, with a null [path]) a photo of the hand-signed paper copy — the print-and-wet-sign path's only record of the actual signature. */
     suspend fun setSignedPhoto(id: String, path: String?)
+
+    /**
+     * Generates the same §9.1 content as [generateUnsigned], but signs it on-device (§9.3)
+     * with [signer] instead of leaving it for print-and-wet-signing. [signer] must already be
+     * authorized for one signature — see [nl.part66l.logbook.signing.BiometricSigningGate] —
+     * this call never itself shows a biometric prompt.
+     *
+     * The number (§9.2) is allocated and committed as soon as a [SignatureState.DRAFT] row is
+     * inserted, before anything fallible (rendering, signing) runs — so a failure partway
+     * through voids that row with a reason rather than silently losing or reusing the number.
+     * Null if the entry no longer exists; [Result.failure] on any other failure.
+     */
+    suspend fun signLocal(
+        entryId: String,
+        limitations: String?,
+        maintenanceIncomplete: Boolean,
+        deferredItemDescriptions: List<String> = emptyList(),
+        signer: LocalKeystoreSigner,
+    ): Result<CrsEntity>?
 }
 
 @Serializable
@@ -83,7 +109,7 @@ private data class SnapshotPart(val partNumber: String, val description: String?
 @Serializable
 private data class SnapshotHelper(val name: String, val licenceNumber: String?, val role: String)
 
-/** What [CrsRepositoryImpl.generateUnsigned] resolved for this call: either a freshly allocated number, or the next revision of an existing one. */
+/** What [CrsRepositoryImpl.buildDraft] resolved for this call: either a freshly allocated number, or the next revision of an existing one. */
 private data class NumberAllocation(
     val number: String,
     val baseNumber: String,
@@ -91,6 +117,22 @@ private data class NumberAllocation(
     val year: Int?,
     val revision: Int,
     val supersedes: String?,
+)
+
+/**
+ * Everything [CrsRepositoryImpl.generateUnsigned] and [CrsRepositoryImpl.signLocal] share:
+ * the §9.1 content, gathered and number-allocated once. [renderData] has no
+ * [nl.part66l.logbook.pdf.SignatureBlockData] yet — [generateUnsigned] renders it as-is,
+ * [signLocal] adds one (from its authorized signer's own description/fingerprint, obtainable
+ * without touching the private key) before rendering.
+ */
+private data class CrsDraft(
+    val allocation: NumberAllocation,
+    val year: Int?,
+    val basis: CertificationBasis,
+    val completionDate: LocalDate,
+    val renderData: CrsRenderData,
+    val snapshotJson: String,
 )
 
 private fun HelperRole.displayLabel(): String = when (this) {
@@ -145,6 +187,121 @@ class CrsRepositoryImpl @Inject constructor(
         maintenanceIncomplete: Boolean,
         deferredItemDescriptions: List<String>,
     ): CrsEntity? {
+        val draft = buildDraft(entryId, limitations, maintenanceIncomplete, deferredItemDescriptions) ?: return null
+        val (pdfFile, pdfSha256) = renderAndSave(draft.renderData)
+        val crs = CrsEntity(
+            id = UUID.randomUUID().toString(),
+            entryId = entryId,
+            number = draft.allocation.number,
+            numberNormalised = Identifiers.normalise(draft.allocation.number),
+            baseNumber = draft.allocation.baseNumber,
+            revision = draft.allocation.revision,
+            sequence = draft.allocation.sequence,
+            year = draft.year,
+            basis = draft.basis,
+            statementVersion = CertificationStatements.VERSION,
+            completionDate = draft.completionDate,
+            limitations = limitations,
+            maintenanceIncomplete = maintenanceIncomplete,
+            supersedesCrsId = draft.allocation.supersedes,
+            signatureState = SignatureState.ISSUED_UNSIGNED_PRINT,
+            snapshotJson = draft.snapshotJson,
+            pdfLocalPath = pdfFile.absolutePath,
+            pdfSha256 = pdfSha256,
+        )
+        crsDao.insert(crs)
+        return crs
+    }
+
+    override suspend fun signLocal(
+        entryId: String,
+        limitations: String?,
+        maintenanceIncomplete: Boolean,
+        deferredItemDescriptions: List<String>,
+        signer: LocalKeystoreSigner,
+    ): Result<CrsEntity>? {
+        val draft = buildDraft(entryId, limitations, maintenanceIncomplete, deferredItemDescriptions) ?: return null
+        val id = UUID.randomUUID().toString()
+        crsDao.insert(
+            CrsEntity(
+                id = id,
+                entryId = entryId,
+                number = draft.allocation.number,
+                numberNormalised = Identifiers.normalise(draft.allocation.number),
+                baseNumber = draft.allocation.baseNumber,
+                revision = draft.allocation.revision,
+                sequence = draft.allocation.sequence,
+                year = draft.year,
+                basis = draft.basis,
+                statementVersion = CertificationStatements.VERSION,
+                completionDate = draft.completionDate,
+                limitations = limitations,
+                maintenanceIncomplete = maintenanceIncomplete,
+                supersedesCrsId = draft.allocation.supersedes,
+                signatureState = SignatureState.DRAFT,
+                snapshotJson = draft.snapshotJson,
+            ),
+        )
+
+        return try {
+            val description = signer.describe()
+            val fingerprint = signer.fingerprint()
+            val signedAt = Instant.now()
+            val signedRenderData = draft.renderData.copy(
+                signatureBlock = SignatureBlockData(
+                    method = "${description.method} — ${description.keyStorage}",
+                    signedAtLabel = signedAt.atZone(ZoneId.systemDefault()).format(SIGNED_AT_FORMAT),
+                    certificateSubject = description.certificateSubject.orEmpty(),
+                    fingerprint = fingerprint,
+                ),
+            )
+            // The render/save digest is discarded: signInPlace appends signature bytes to
+            // pdfFile in place afterward, so only a digest taken after that call is final.
+            val (pdfFile, _) = renderAndSave(signedRenderData)
+            CrsPdfSigningSupport.signInPlace(pdfFile, signer)
+            val signedPdfSha256 = MessageDigest.getInstance("SHA-256").digest(pdfFile.readBytes()).joinToString("") { "%02x".format(it) }
+
+            val rows = crsDao.finalizeSigned(
+                id = id,
+                state = SignatureState.SIGNED_LOCAL,
+                signedAt = signedAt,
+                signedDevice = android.os.Build.MODEL ?: "unknown device",
+                signedAuthMethod = description.authentication,
+                signedAppVersion = BuildConfig.VERSION_NAME,
+                signingCertificatePem = signer.certificatePem(),
+                signingCertificateFingerprint = fingerprint,
+                pdfLocalPath = pdfFile.absolutePath,
+                pdfSha256 = signedPdfSha256,
+            )
+            check(rows == 1) { "CRS draft $id was not in DRAFT state when finalizing the signature" }
+            Result.success(requireNotNull(crsDao.byId(id)))
+        } catch (e: Exception) {
+            crsDao.transitionUnsigned(id, SignatureState.VOID, reason = e.message ?: e::class.simpleName)
+            Result.failure(e)
+        }
+    }
+
+    private fun renderAndSave(renderData: CrsRenderData): Pair<File, String> {
+        val document = PDDocument()
+        val pdfFile: File
+        try {
+            CrsPdfRenderer().render(document, renderData)
+            val destDir = File(context.filesDir, "crs").apply { mkdirs() }
+            pdfFile = File(destDir, "${UUID.randomUUID()}.pdf")
+            document.save(pdfFile)
+        } finally {
+            document.close()
+        }
+        val pdfSha256 = MessageDigest.getInstance("SHA-256").digest(pdfFile.readBytes()).joinToString("") { "%02x".format(it) }
+        return pdfFile to pdfSha256
+    }
+
+    private suspend fun buildDraft(
+        entryId: String,
+        limitations: String?,
+        maintenanceIncomplete: Boolean,
+        deferredItemDescriptions: List<String>,
+    ): CrsDraft? {
         val entry = workEntryDao.byId(entryId) ?: return null
         val profile = profileDao.get()
         val sessions = workSessionDao.forEntry(entryId)
@@ -275,18 +432,6 @@ class CrsRepositoryImpl @Inject constructor(
             photos = emptyList(), // no per-entry photo capture yet (spec §8) — nothing to list
         )
 
-        val document = PDDocument()
-        val pdfFile: File
-        try {
-            CrsPdfRenderer().render(document, renderData)
-            val destDir = File(context.filesDir, "crs").apply { mkdirs() }
-            pdfFile = File(destDir, "${UUID.randomUUID()}.pdf")
-            document.save(pdfFile)
-        } finally {
-            document.close()
-        }
-        val pdfSha256 = MessageDigest.getInstance("SHA-256").digest(pdfFile.readBytes()).joinToString("") { "%02x".format(it) }
-
         val snapshot = CrsSnapshot(
             aircraftRegistration = registration,
             aircraftManufacturer = aircraft?.manufacturer,
@@ -305,28 +450,14 @@ class CrsRepositoryImpl @Inject constructor(
             limitations = limitations,
         )
 
-        val crs = CrsEntity(
-            id = UUID.randomUUID().toString(),
-            entryId = entryId,
-            number = number,
-            numberNormalised = Identifiers.normalise(number),
-            baseNumber = allocation.baseNumber,
-            revision = allocation.revision,
-            sequence = allocation.sequence,
+        return CrsDraft(
+            allocation = allocation,
             year = year,
             basis = basis,
-            statementVersion = CertificationStatements.VERSION,
             completionDate = completionDate,
-            limitations = limitations,
-            maintenanceIncomplete = maintenanceIncomplete,
-            supersedesCrsId = allocation.supersedes,
-            signatureState = SignatureState.ISSUED_UNSIGNED_PRINT,
+            renderData = renderData,
             snapshotJson = json.encodeToString(snapshot),
-            pdfLocalPath = pdfFile.absolutePath,
-            pdfSha256 = pdfSha256,
         )
-        crsDao.insert(crs)
-        return crs
     }
 
     override suspend fun setSignedPhoto(id: String, path: String?) = crsDao.setSignedPhoto(id, path)

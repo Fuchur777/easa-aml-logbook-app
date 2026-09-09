@@ -35,6 +35,7 @@ import nl.part66l.logbook.ui.navigation.Destination
 import nl.part66l.logbook.ui.profile.ProfileFormScreen
 import nl.part66l.logbook.ui.recency.RecencyDashboardScreen
 import nl.part66l.logbook.ui.settings.SettingsScreen
+import nl.part66l.logbook.ui.signing.SigningInfoScreen
 import nl.part66l.logbook.ui.workentry.WorkEntryFormScreen
 import nl.part66l.logbook.ui.workentry.WorkEntryListScreen
 
@@ -76,6 +77,7 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
         Destination.Contacts.route,
         Destination.ContactForm.route,
         Destination.ContactEdit.ROUTE_PATTERN,
+        Destination.SigningInfo.route,
     )
     val showBottomBar = currentRoute?.hierarchy?.none { it.route in noBottomBarRoutes } ?: false
 
@@ -217,7 +219,11 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                 SettingsScreen(
                     onClose = { navController.popBackStack() },
                     onContacts = { navController.navigate(Destination.Contacts.route) },
+                    onSigningInfo = { navController.navigate(Destination.SigningInfo.route) },
                 )
+            }
+            composable(Destination.SigningInfo.route) {
+                SigningInfoScreen(onClose = { navController.popBackStack() })
             }
             composable(Destination.Contacts.route) {
                 ContactListScreen(

@@ -4,4 +4,6 @@
     <files-path name="documents" path="documents/" />
     <!-- Matches CrsRepository's rendered-PDF destination: context.filesDir/crs/. -->
     <files-path name="crs" path="crs/" />
+    <!-- Matches SigningInfoViewModel's exported-PDF destination: context.filesDir/signing/. -->
+    <files-path name="signing" path="signing/" />
 </paths>

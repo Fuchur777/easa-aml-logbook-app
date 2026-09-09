@@ -33,6 +33,7 @@ import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 fun SettingsScreen(
     onClose: () -> Unit,
     onContacts: () -> Unit = {},
+    onSigningInfo: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val showArchivedAircraft by viewModel.showArchivedAircraft.collectAsStateWithLifecycle()
@@ -72,6 +73,21 @@ fun SettingsScreen(
                     )
                     OutlinedButton(onClick = onContacts, modifier = Modifier.fillMaxWidth()) {
                         Text("Manage contacts")
+                    }
+                }
+            }
+
+            Card {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Digital signing", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "The local signing key's certificate and fingerprint (§9.3) — export it once to " +
+                            "submit to your competent authority.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(onClick = onSigningInfo, modifier = Modifier.fillMaxWidth()) {
+                        Text("Signing certificate")
                     }
                 }
             }

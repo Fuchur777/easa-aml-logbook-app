@@ -14,6 +14,7 @@ import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.SignatureState
 import nl.part66l.logbook.domain.Structure
+import nl.part66l.logbook.fakes.FakeLocalKeystoreSigner
 import nl.part66l.logbook.fakes.FakeSettingsRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -281,5 +282,57 @@ class CrsRepositoryTest {
         val issued = repository.forEntry(entryId).first()
 
         assertEquals(listOf("PH1234-2026-0001-rev1", "PH1234-2026-0001"), issued.map { it.number })
+    }
+
+    @Test
+    fun `signLocal finalizes to SIGNED_LOCAL with every signing field populated and a visible signature block on the PDF`() = runBlocking {
+        val entryId = createEntry()
+        val signer = FakeLocalKeystoreSigner()
+
+        val result = repository.signLocal(entryId, limitations = "None.", maintenanceIncomplete = false, signer = signer)
+
+        assertNotNull(result)
+        assertTrue("signLocal failed: ${result!!.exceptionOrNull()}", result.isSuccess)
+        val crs = result.getOrThrow()
+        assertEquals(SignatureState.SIGNED_LOCAL, crs.signatureState)
+        assertNotNull(crs.signedAt)
+        assertEquals("Class 3 biometric", crs.signedAuthMethod)
+        assertEquals("AA:BB:CC:DD", crs.signingCertificateFingerprint)
+        assertEquals(signer.certificatePem(), crs.signingCertificatePem)
+        assertNotNull(crs.pdfSha256)
+        assertTrue("expected sign() to actually be called", signer.signCalls.isNotEmpty())
+
+        val pdfFile = File(crs.pdfLocalPath!!)
+        assertTrue("expected the signed PDF to exist on disk", pdfFile.exists())
+        val text = PDDocument.load(pdfFile).use { PDFTextStripper().getText(it) }
+        assertTrue(text.contains("DIGITALLY SIGNED"))
+        assertTrue(text.contains("CN=Test Signer"))
+        assertTrue(text.contains("AA:BB:CC:DD"))
+    }
+
+    @Test
+    fun `a failed signLocal voids the draft, keeping its number reserved rather than reused`() = runBlocking {
+        val entryId = createEntry()
+        val failingSigner = FakeLocalKeystoreSigner().apply { signFailure = RuntimeException("biometric cancelled") }
+
+        val result = repository.signLocal(entryId, limitations = null, maintenanceIncomplete = false, signer = failingSigner)
+
+        assertNotNull(result)
+        assertTrue(result!!.isFailure)
+        val voided = repository.forEntry(entryId).first().single()
+        assertEquals(SignatureState.VOID, voided.signatureState)
+        assertEquals("PH1234-2026-0001", voided.number)
+        assertEquals("biometric cancelled", voided.voidReason)
+        assertNull(voided.pdfLocalPath)
+
+        // A different entry's own first certificate still gets a fresh number — the voided one isn't reused.
+        val secondEntryId = createEntry()
+        val secondCrs = repository.generateUnsigned(secondEntryId, limitations = null, maintenanceIncomplete = false)
+        assertEquals("PH1234-2026-0002", secondCrs!!.number)
+    }
+
+    @Test
+    fun `signLocal returns null for an unknown entry`() = runBlocking {
+        assertNull(repository.signLocal("does-not-exist", limitations = null, maintenanceIncomplete = false, signer = FakeLocalKeystoreSigner()))
     }
 }

@@ -106,4 +106,9 @@ sealed interface Destination {
             const val ROUTE_PATTERN = "contacts/edit/{$ARG_CONTACT_ID}"
         }
     }
+
+    /** Reached from Settings — the local signer's certificate/fingerprint (§9.3/§9.4), and exporting it. */
+    data object SigningInfo : Destination {
+        override val route = "signing-info"
+    }
 }

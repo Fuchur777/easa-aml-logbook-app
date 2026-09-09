@@ -35,6 +35,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     testOptions {
         unitTests {
@@ -110,6 +111,8 @@ dependencies {
 
     implementation(libs.bouncycastle.bcprov)
     implementation(libs.bouncycastle.bcpkix)
+
+    implementation(libs.androidx.biometric)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

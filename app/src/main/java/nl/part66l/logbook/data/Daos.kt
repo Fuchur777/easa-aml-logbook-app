@@ -5,6 +5,7 @@ import androidx.room.*
 // FTS index, identifier normalisation and search live in Search.kt
 import kotlinx.coroutines.flow.Flow
 import nl.part66l.logbook.domain.*
+import java.time.Instant
 import java.time.LocalDate
 
 @Dao
@@ -351,6 +352,37 @@ interface CrsDao {
     /** Signed certificates are never updated. Only draft and void transitions are permitted. */
     @Query("UPDATE crs SET signatureState = :state, voidReason = :reason WHERE id = :id AND signatureState IN ('DRAFT','TIMESTAMP_PENDING')")
     suspend fun transitionUnsigned(id: String, state: SignatureState, reason: String?): Int
+
+    /**
+     * Writes every signing-result column together with the state transition, atomically.
+     * Gated to DRAFT rows only — same guard style as [transitionUnsigned] — so a row already
+     * signed (or voided) can never be silently overwritten.
+     */
+    @Query("""
+        UPDATE crs SET
+            signatureState = :state,
+            signedAt = :signedAt,
+            signedDevice = :signedDevice,
+            signedAuthMethod = :signedAuthMethod,
+            signedAppVersion = :signedAppVersion,
+            signingCertificatePem = :signingCertificatePem,
+            signingCertificateFingerprint = :signingCertificateFingerprint,
+            pdfLocalPath = :pdfLocalPath,
+            pdfSha256 = :pdfSha256
+        WHERE id = :id AND signatureState = 'DRAFT'
+    """)
+    suspend fun finalizeSigned(
+        id: String,
+        state: SignatureState,
+        signedAt: Instant,
+        signedDevice: String,
+        signedAuthMethod: String,
+        signedAppVersion: String,
+        signingCertificatePem: String,
+        signingCertificateFingerprint: String,
+        pdfLocalPath: String,
+        pdfSha256: String,
+    ): Int
 
     /** The hand-signed photo is metadata about the print-and-wet-sign record, not certified content — settable any time, unlike the fields above. */
     @Query("UPDATE crs SET signedPhotoLocalPath = :path WHERE id = :id")

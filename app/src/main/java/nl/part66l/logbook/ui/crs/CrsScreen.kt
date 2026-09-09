@@ -38,10 +38,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
 import nl.part66l.logbook.data.CrsEntity
+import nl.part66l.logbook.di.LocalKeystoreSignerEntryPoint
+import nl.part66l.logbook.signing.BiometricSigningGate
 import nl.part66l.logbook.ui.documents.openPdf
 import nl.part66l.logbook.ui.theme.Part66ConfirmGreen
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
@@ -55,6 +59,11 @@ fun CrsScreen(
     val issued by viewModel.issued.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val activity = context as? FragmentActivity
+    val coroutineScope = rememberCoroutineScope()
+    val localSigner = remember(context) {
+        EntryPointAccessors.fromApplication(context.applicationContext, LocalKeystoreSignerEntryPoint::class.java).localKeystoreSigner()
+    }
 
     Scaffold(
         topBar = {
@@ -94,8 +103,8 @@ fun CrsScreen(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Generate certificate", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Unsigned, for printing and signing by hand. Local hardware-backed signing " +
-                            "(§9.3) isn't built yet — this produces the same document you'd hand-sign.",
+                        "Generate an unsigned certificate for printing and signing by hand, or sign it now " +
+                            "on this device (§9.3) with a hardware-backed key released by your biometric.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -118,16 +127,51 @@ fun CrsScreen(
                     }
                     Button(
                         onClick = viewModel::generate,
-                        enabled = !state.generating,
+                        enabled = !state.generating && !state.signing,
                         colors = ButtonDefaults.buttonColors(containerColor = Part66ConfirmGreen),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(if (state.generating) "Generating…" else "Generate CRS")
                     }
+                    if (activity != null) {
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    val authorized = BiometricSigningGate(activity).authorize(localSigner)
+                                    authorized.fold(
+                                        onSuccess = { signer -> viewModel.signNow(signer) },
+                                        onFailure = { error -> viewModel.onSignAuthorizationFailed(error) },
+                                    )
+                                }
+                            },
+                            enabled = !state.generating && !state.signing,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(if (state.signing) "Signing…" else "Sign now (local)")
+                        }
+                    }
                 }
             }
         }
     }
+
+    state.error?.let { error ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissError,
+            title = { Text("Signing failed") },
+            text = { Text(error.displayMessage()) },
+            confirmButton = { TextButton(onClick = viewModel::dismissError) { Text("OK") } },
+        )
+    }
+}
+
+private fun CrsGenerationError.displayMessage(): String = when (this) {
+    CrsGenerationError.EntryNotFound -> "This work entry no longer exists — it may have been deleted."
+    CrsGenerationError.BiometricCancelled -> "Signing was cancelled."
+    CrsGenerationError.BiometricUnavailable -> "No usable biometric is set up on this device — enrol a fingerprint or face in your device settings to sign locally."
+    CrsGenerationError.KeyInvalidated -> "The signing key was invalidated, likely by a change to your device's enrolled biometrics. Signing again will generate a new key."
+    CrsGenerationError.StrongBoxUnavailable -> "This device has no dedicated secure hardware; the signing key is protected by the device's trusted execution environment instead."
+    is CrsGenerationError.Other -> message
 }
 
 @Composable

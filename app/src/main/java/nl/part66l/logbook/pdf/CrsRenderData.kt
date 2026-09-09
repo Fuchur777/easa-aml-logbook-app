@@ -35,6 +35,15 @@ data class CrsRenderData(
     /** Appendix II task text, snapshotted at completion time. */
     val completedTasks: List<String>,
     val photos: List<PhotoRow>,
+    /**
+     * Null renders today's blank ruled "SIGNATURE" line, for print-and-wet-signing.
+     * Non-null renders the visible signature annotation instead (crs-field-mapping.md:
+     * "a visible annotation naming the method, the signing time and the certificate
+     * subject") — populated from [nl.part66l.logbook.signing.SignerDescription] plus the
+     * fingerprint, all obtainable without touching the private key, so this is filled in
+     * *before* the certificate ever needs to sign anything.
+     */
+    val signatureBlock: SignatureBlockData? = null,
 )
 
 data class DocRow(val reference: String, val category: String, val revision: String, val date: String)
@@ -42,3 +51,4 @@ data class PartRow(val partNumber: String, val description: String, val batchOrS
 data class PersonnelRow(val name: String, val licenceNumber: String, val role: String)
 data class PhotoRow(val fileName: String, val sha256Prefix: String, val capturedAt: String)
 data class WorkOrderRow(val issuer: String, val date: String, val requestedWork: String, val reference: String)
+data class SignatureBlockData(val method: String, val signedAtLabel: String, val certificateSubject: String, val fingerprint: String)

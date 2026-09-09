@@ -14,12 +14,15 @@ import com.tom_roush.pdfbox.pdmodel.graphics.color.PDDeviceRGB
  * direct port of docs/crs/render_sample.py's layout logic (the sample PDFs' own source),
  * onto PdfBox-Android in place of reportlab.
  *
- * Not yet implemented: the SIGNED_LOCAL/SIGNED_QES signature widget (a visible annotation
- * naming the method, time and certificate subject) and PDF/A output. Both need pieces that
- * don't exist yet — a real [nl.part66l.logbook.signing.CrsSigner] to describe, and PDF/A
- * metadata/output-intent machinery neither this port nor the Python reference attempts.
- * What's here matches the "blank signature area, for print and wet-signing"
- * (`ISSUED_UNSIGNED_PRINT`) case in both samples.
+ * The SIGNED_LOCAL/SIGNED_QES signature widget (a visible annotation naming the method,
+ * time and certificate subject) is rendered here — see [CrsRenderData.signatureBlock] —
+ * once a [nl.part66l.logbook.signing.CrsSigner] has something to describe; the raw
+ * cryptographic embedding itself happens afterward, on the already-saved file (see
+ * [nl.part66l.logbook.signing.CrsPdfSigningSupport]), so it never touches this content.
+ * Not yet implemented: PDF/A output — needs metadata/output-intent machinery neither this
+ * port nor the Python reference attempts. With no [CrsRenderData.signatureBlock], this
+ * matches the "blank signature area, for print and wet-signing" (`ISSUED_UNSIGNED_PRINT`)
+ * case in both samples.
  */
 class CrsPdfRenderer {
 
@@ -81,7 +84,7 @@ class CrsPdfRenderer {
 
         // -- certification, kept together ---------------------------------
         val statementLine = "${data.issuer}, holder of aircraft maintenance licence ${data.licenceNumber}, ${data.statement}"
-        w.need(certificationHeight(w, statementLine, data.regulationFooter))
+        w.need(certificationHeight(w, statementLine, data.regulationFooter, data.signatureBlock))
         w.y -= 4f * MM
         w.rule(6f, weight = 1.0f, dark = true)
         w.text(L, w.y, "CERTIFICATION", HELVETICA_BOLD, 8f, BLACK)
@@ -90,10 +93,22 @@ class CrsPdfRenderer {
         w.y -= 2f * MM
         w.fields(listOf("Licence number" to data.licenceNumber, "Date of issue" to data.issuedDate))
         w.y -= 5f * MM
-        w.strokeLine(L, w.y, L + 75f * MM, w.y, RULE_GREY, 0.4f)
-        w.y -= 3.5f * MM
-        w.text(L, w.y, "SIGNATURE", HELVETICA, 6.5f, GREY)
-        w.y -= 5.5f * MM
+        val signatureBlock = data.signatureBlock
+        if (signatureBlock == null) {
+            w.strokeLine(L, w.y, L + 75f * MM, w.y, RULE_GREY, 0.4f)
+            w.y -= 3.5f * MM
+            w.text(L, w.y, "SIGNATURE", HELVETICA, 6.5f, GREY)
+            w.y -= 5.5f * MM
+        } else {
+            w.text(L, w.y, "DIGITALLY SIGNED", HELVETICA, 6.5f, GREY)
+            w.y -= 4.4f * MM
+            w.text(L, w.y, signatureBlock.method, HELVETICA_BOLD, 9f, BLACK)
+            w.y -= 4.4f * MM
+            w.text(L, w.y, "Signed ${signatureBlock.signedAtLabel} — ${signatureBlock.certificateSubject}", HELVETICA, 7.5f, BLACK)
+            w.y -= 4f * MM
+            w.text(L, w.y, "Certificate fingerprint: ${signatureBlock.fingerprint}", HELVETICA, 6.8f, GREY)
+            w.y -= 5.5f * MM
+        }
         w.para(data.regulationFooter, size = 6.8f, leadingMm = 3.4f, color = GREY)
 
         // -- after the release ----------------------------------------------
@@ -149,10 +164,11 @@ class CrsPdfRenderer {
     }
 
     /** Height of the whole certification block, so [PageWriter.need] can keep it together. */
-    private fun certificationHeight(w: PageWriter, statementLine: String, regulationFooter: String): Float {
+    private fun certificationHeight(w: PageWriter, statementLine: String, regulationFooter: String, signatureBlock: SignatureBlockData?): Float {
         val lines = w.wrap(statementLine, HELVETICA, 9.5f).size
         val regLines = w.wrap(regulationFooter, HELVETICA, 6.8f).size
-        return 4f + 6f + 6f + lines * 4.8f + 2f + 9.5f + 5f + 3.5f + 5.5f + regLines * 3.4f + 3f
+        val signatureHeight = if (signatureBlock == null) 3.5f + 5.5f else 4.4f + 4.4f + 4f + 5.5f
+        return 4f + 6f + 6f + lines * 4.8f + 2f + 9.5f + 5f + signatureHeight + regLines * 3.4f + 3f
     }
 
     companion object {

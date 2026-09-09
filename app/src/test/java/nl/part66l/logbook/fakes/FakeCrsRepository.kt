@@ -9,8 +9,16 @@ import nl.part66l.logbook.data.CrsEntity
 import nl.part66l.logbook.data.CrsRepository
 import nl.part66l.logbook.domain.CertificationBasis
 import nl.part66l.logbook.domain.SignatureState
+import nl.part66l.logbook.signing.LocalKeystoreSigner
 
 data class GenerateCrsCall(
+    val entryId: String,
+    val limitations: String?,
+    val maintenanceIncomplete: Boolean,
+    val deferredItemDescriptions: List<String> = emptyList(),
+)
+
+data class SignLocalCall(
     val entryId: String,
     val limitations: String?,
     val maintenanceIncomplete: Boolean,
@@ -20,6 +28,10 @@ data class GenerateCrsCall(
 class FakeCrsRepository(initial: List<CrsEntity> = emptyList()) : CrsRepository {
     private val entries = MutableStateFlow(initial)
     val generateCalls = mutableListOf<GenerateCrsCall>()
+    val signLocalCalls = mutableListOf<SignLocalCall>()
+
+    /** Configurable per test: null (default) succeeds and adds a SIGNED_LOCAL row; set to make [signLocal] fail without touching the entry list. */
+    var signLocalFailure: Throwable? = null
 
     override fun forEntry(entryId: String): Flow<List<CrsEntity>> =
         entries.map { list -> list.filter { it.entryId == entryId } }
@@ -51,6 +63,37 @@ class FakeCrsRepository(initial: List<CrsEntity> = emptyList()) : CrsRepository 
         )
         entries.value = entries.value + crs
         return crs
+    }
+
+    override suspend fun signLocal(
+        entryId: String,
+        limitations: String?,
+        maintenanceIncomplete: Boolean,
+        deferredItemDescriptions: List<String>,
+        signer: LocalKeystoreSigner,
+    ): Result<CrsEntity>? {
+        signLocalCalls += SignLocalCall(entryId, limitations, maintenanceIncomplete, deferredItemDescriptions)
+        signLocalFailure?.let { return Result.failure(it) }
+        val sequence = entries.value.count { it.entryId == entryId } + 1
+        val crs = CrsEntity(
+            id = UUID.randomUUID().toString(),
+            entryId = entryId,
+            number = "TEST-SIGNED-$sequence",
+            numberNormalised = "TESTSIGNED$sequence",
+            sequence = sequence,
+            year = 2026,
+            basis = CertificationBasis.ML_A_801_B2_INDEPENDENT,
+            statementVersion = "test",
+            completionDate = LocalDate.now(),
+            limitations = limitations,
+            maintenanceIncomplete = maintenanceIncomplete,
+            signatureState = SignatureState.SIGNED_LOCAL,
+            snapshotJson = "{}",
+            pdfLocalPath = "/fake/signed-$sequence.pdf",
+            pdfSha256 = "fake-signed-sha",
+        )
+        entries.value = entries.value + crs
+        return Result.success(crs)
     }
 
     override suspend fun setSignedPhoto(id: String, path: String?) {

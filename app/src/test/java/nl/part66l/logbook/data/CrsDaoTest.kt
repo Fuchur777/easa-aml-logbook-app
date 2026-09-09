@@ -112,4 +112,49 @@ class CrsDaoTest {
         db.crs().setSignedPhoto("c1", null)
         assertEquals(null, db.crs().byId("c1")!!.signedPhotoLocalPath)
     }
+
+    private fun finalize(id: String, signedAt: Instant = Instant.EPOCH) = runBlocking {
+        db.crs().finalizeSigned(
+            id = id,
+            state = SignatureState.SIGNED_LOCAL,
+            signedAt = signedAt,
+            signedDevice = "Pixel 8",
+            signedAuthMethod = "Class 3 biometric",
+            signedAppVersion = "1.0",
+            signingCertificatePem = "-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----\n",
+            signingCertificateFingerprint = "AA:BB:CC",
+            pdfLocalPath = "/data/crs/$id.pdf",
+            pdfSha256 = "fake-sha",
+        )
+    }
+
+    @Test
+    fun `finalizeSigned writes every signing column and transitions a draft to signed`() = runBlocking {
+        seedEntry()
+        db.crs().insert(crs("c1", "CRS-2026-0001", 1, SignatureState.DRAFT))
+
+        val changed = finalize("c1", signedAt = Instant.ofEpochSecond(1_700_000_000))
+
+        assertEquals(1, changed)
+        val signed = db.crs().byId("c1")!!
+        assertEquals(SignatureState.SIGNED_LOCAL, signed.signatureState)
+        assertEquals(Instant.ofEpochSecond(1_700_000_000), signed.signedAt)
+        assertEquals("Pixel 8", signed.signedDevice)
+        assertEquals("Class 3 biometric", signed.signedAuthMethod)
+        assertEquals("1.0", signed.signedAppVersion)
+        assertEquals("AA:BB:CC", signed.signingCertificateFingerprint)
+        assertEquals("/data/crs/c1.pdf", signed.pdfLocalPath)
+        assertEquals("fake-sha", signed.pdfSha256)
+    }
+
+    @Test
+    fun `finalizeSigned is a no-op from any state other than draft`() = runBlocking {
+        seedEntry()
+        db.crs().insert(crs("c1", "CRS-2026-0001", 1, SignatureState.SIGNED_LOCAL))
+
+        val changed = finalize("c1")
+
+        assertEquals(0, changed)
+        assertEquals(null, db.crs().byId("c1")!!.pdfLocalPath)
+    }
 }

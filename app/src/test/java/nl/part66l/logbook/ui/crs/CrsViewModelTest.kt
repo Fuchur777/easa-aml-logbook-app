@@ -14,6 +14,7 @@ import nl.part66l.logbook.domain.CertificationBasis
 import nl.part66l.logbook.domain.SignatureState
 import nl.part66l.logbook.fakes.FakeCrsRepository
 import nl.part66l.logbook.fakes.FakeDeferredItemRepository
+import nl.part66l.logbook.fakes.FakeLocalKeystoreSigner
 import nl.part66l.logbook.fakes.GenerateCrsCall
 import nl.part66l.logbook.ui.navigation.Destination
 import org.junit.After
@@ -140,5 +141,70 @@ class CrsViewModelTest {
         assertEquals(2, raised.size)
         assertEquals(setOf("Transponder recal outstanding", "Wing tip wheel bearing worn"), raised.map { it.description }.toSet())
         assertTrue(raised.all { it.raisedByCrsId == viewModel.issued.value.first().id })
+    }
+
+    @Test
+    fun `signNow signs via the repository and resets the form on success`() {
+        val repository = FakeCrsRepository()
+        val viewModel = viewModel("e1", repository)
+        viewModel.onLimitationsChange("None.")
+
+        viewModel.signNow(FakeLocalKeystoreSigner())
+
+        assertEquals(1, repository.signLocalCalls.size)
+        assertEquals("None.", repository.signLocalCalls.first().limitations)
+        assertEquals(CrsFormState(), viewModel.state.value)
+        assertEquals(1, viewModel.issued.value.size)
+        assertEquals(SignatureState.SIGNED_LOCAL, viewModel.issued.value.first().signatureState)
+    }
+
+    @Test
+    fun `signNow surfaces a repository failure as an error and clears the signing flag`() {
+        val repository = FakeCrsRepository()
+        repository.signLocalFailure = IllegalStateException("StrongBox unavailable")
+        val viewModel = viewModel("e1", repository)
+
+        viewModel.signNow(FakeLocalKeystoreSigner())
+
+        assertEquals(false, viewModel.state.value.signing)
+        assertEquals(CrsGenerationError.Other("StrongBox unavailable"), viewModel.state.value.error)
+        assertEquals(0, viewModel.issued.value.size)
+    }
+
+    @Test
+    fun `signNow raises queued deferred items against the newly signed certificate`() = runBlocking {
+        val crsRepository = FakeCrsRepository()
+        val deferredItemRepository = FakeDeferredItemRepository()
+        val viewModel = viewModel("e1", crsRepository, deferredItemRepository)
+        viewModel.onMaintenanceIncompleteChange(true)
+        viewModel.onDeferredItemAdd("Transponder recal outstanding")
+
+        viewModel.signNow(FakeLocalKeystoreSigner())
+
+        val raised = deferredItemRepository.open().first()
+        assertEquals(1, raised.size)
+        assertEquals(viewModel.issued.value.first().id, raised.first().raisedByCrsId)
+    }
+
+    @Test
+    fun `onSignAuthorizationFailed sets the error without touching the repository`() {
+        val repository = FakeCrsRepository()
+        val viewModel = viewModel("e1", repository)
+
+        viewModel.onSignAuthorizationFailed(RuntimeException("cancelled"))
+
+        assertEquals(false, viewModel.state.value.signing)
+        assertEquals(CrsGenerationError.Other("cancelled"), viewModel.state.value.error)
+        assertEquals(0, repository.signLocalCalls.size)
+    }
+
+    @Test
+    fun `dismissError clears a surfaced error`() {
+        val viewModel = viewModel("e1")
+        viewModel.onSignAuthorizationFailed(RuntimeException("cancelled"))
+
+        viewModel.dismissError()
+
+        assertEquals(null, viewModel.state.value.error)
     }
 }
