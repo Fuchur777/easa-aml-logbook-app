@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,7 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import nl.part66l.logbook.domain.Subcategory
 import nl.part66l.logbook.ui.components.DatePickerField
 import nl.part66l.logbook.ui.components.UnsavedChangesDialog
-import nl.part66l.logbook.ui.theme.Part66ConfirmGreen
+import nl.part66l.logbook.ui.theme.part66ConfirmButtonColors
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 
 /**
@@ -183,7 +182,7 @@ fun ProfileFormScreen(
             Button(
                 onClick = viewModel::save,
                 enabled = state.canSave,
-                colors = ButtonDefaults.buttonColors(containerColor = Part66ConfirmGreen),
+                colors = part66ConfirmButtonColors(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(if (state.saving) "Saving…" else "Save")

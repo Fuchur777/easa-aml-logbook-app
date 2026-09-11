@@ -27,6 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import nl.part66l.logbook.ui.theme.linkBlue
 import nl.part66l.logbook.data.SigningKeyEntity
 import nl.part66l.logbook.ui.documents.openPdf
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
@@ -122,7 +123,7 @@ private fun KeyHistoryRow(key: SigningKeyEntity) {
         Text(
             if (key.retiredAt == null) "Current — ${key.keyStorage}" else key.keyStorage,
             style = MaterialTheme.typography.labelLarge,
-            color = if (key.retiredAt == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            color = if (key.retiredAt == null) linkBlue() else MaterialTheme.colorScheme.onSurface,
         )
         SelectionContainer {
             Text(key.fingerprint, style = MaterialTheme.typography.bodySmall)

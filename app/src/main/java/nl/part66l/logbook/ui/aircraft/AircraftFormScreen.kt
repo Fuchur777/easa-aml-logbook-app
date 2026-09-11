@@ -38,7 +38,7 @@ import nl.part66l.logbook.domain.Subcategory
 import nl.part66l.logbook.ui.components.DatePickerField
 import nl.part66l.logbook.ui.components.RadioGroupField
 import nl.part66l.logbook.ui.components.UnsavedChangesDialog
-import nl.part66l.logbook.ui.theme.Part66ConfirmGreen
+import nl.part66l.logbook.ui.theme.part66ConfirmButtonColors
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -174,7 +174,7 @@ fun AircraftFormScreen(
             Button(
                 onClick = viewModel::save,
                 enabled = state.canSave,
-                colors = ButtonDefaults.buttonColors(containerColor = Part66ConfirmGreen),
+                colors = part66ConfirmButtonColors(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(if (state.saving) "Saving…" else "Save")

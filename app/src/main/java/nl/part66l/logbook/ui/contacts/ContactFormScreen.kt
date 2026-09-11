@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import nl.part66l.logbook.ui.components.UnsavedChangesDialog
-import nl.part66l.logbook.ui.theme.Part66ConfirmGreen
+import nl.part66l.logbook.ui.theme.part66ConfirmButtonColors
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -121,7 +121,7 @@ fun ContactFormScreen(
             Button(
                 onClick = viewModel::save,
                 enabled = state.canSave,
-                colors = ButtonDefaults.buttonColors(containerColor = Part66ConfirmGreen),
+                colors = part66ConfirmButtonColors(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(if (state.saving) "Saving…" else "Save")

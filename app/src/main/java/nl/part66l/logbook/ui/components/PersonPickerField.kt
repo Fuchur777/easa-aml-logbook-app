@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import nl.part66l.logbook.ui.theme.linkBlue
 
 /**
  * Search-or-add picker for helper names, backed by an existing name directory. Selected
@@ -114,7 +115,7 @@ fun PersonPickerField(
                     if (!exactMatch) {
                         Text(
                             "+ Add \"$trimmed\" as new",
-                            color = MaterialTheme.colorScheme.primary,
+                            color = linkBlue(),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { pendingNewName = trimmed }
