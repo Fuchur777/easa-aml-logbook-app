@@ -71,6 +71,22 @@ class AircraftListViewModelTest {
     }
 
     @Test
+    fun `the archived toggle on the list drives the same persisted setting`() {
+        val repository = FakeAircraftRepository()
+        val settings = FakeSettingsRepository()
+        val viewModel = AircraftListViewModel(repository, settings)
+        create(repository, "Visible")
+        create(repository, "Hidden", archived = true)
+
+        assertEquals(1, viewModel.aircraft.value.size)
+
+        viewModel.onShowArchivedChange(true)
+
+        assertTrue(viewModel.showArchived.value)
+        assertEquals(2, viewModel.aircraft.value.size)
+    }
+
+    @Test
     fun `reorder persists the new order`() {
         val repository = FakeAircraftRepository()
         val viewModel = AircraftListViewModel(repository, FakeSettingsRepository())

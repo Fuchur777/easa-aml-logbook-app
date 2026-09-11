@@ -16,6 +16,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -38,6 +39,7 @@ fun ContactListScreen(
     viewModel: ContactListViewModel = hiltViewModel(),
 ) {
     val contacts by viewModel.contacts.collectAsStateWithLifecycle()
+    val showArchived by viewModel.showArchived.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -45,6 +47,14 @@ fun ContactListScreen(
                 title = { Text("Contacts") },
                 navigationIcon = {
                     IconButton(onClick = onClose) { Text("✕") }
+                },
+                actions = {
+                    Text("Archived", style = MaterialTheme.typography.labelMedium, color = Color.White)
+                    Switch(
+                        checked = showArchived,
+                        onCheckedChange = viewModel::onShowArchivedChange,
+                        modifier = Modifier.padding(start = 8.dp, end = 4.dp),
+                    )
                 },
                 colors = part66TopAppBarColors(),
                 expandedHeight = 48.dp,

@@ -15,6 +15,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -46,6 +47,7 @@ fun AircraftListScreen(
     viewModel: AircraftListViewModel = hiltViewModel(),
 ) {
     val aircraft by viewModel.aircraft.collectAsStateWithLifecycle()
+    val showArchived by viewModel.showArchived.collectAsStateWithLifecycle()
 
     // Optimistic local order while a drag is in progress; kept in sync with the
     // repository otherwise, and committed back to it once a drag ends.
@@ -60,6 +62,18 @@ fun AircraftListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Aircraft") },
+                actions = {
+                    Text(
+                        "Archived",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                    )
+                    Switch(
+                        checked = showArchived,
+                        onCheckedChange = viewModel::onShowArchivedChange,
+                        modifier = Modifier.padding(start = 8.dp, end = 4.dp),
+                    )
+                },
                 colors = part66TopAppBarColors(),
                 expandedHeight = 48.dp,
             )

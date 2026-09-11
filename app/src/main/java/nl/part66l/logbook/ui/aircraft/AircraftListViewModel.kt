@@ -16,8 +16,16 @@ import nl.part66l.logbook.data.SettingsRepository
 @HiltViewModel
 class AircraftListViewModel @Inject constructor(
     private val aircraftRepository: AircraftRepository,
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
+
+    /** Toggled in the list's own header rather than Settings — it's a view filter, not a preference you set once and forget. */
+    val showArchived: StateFlow<Boolean> = settingsRepository.showArchivedAircraft
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun onShowArchivedChange(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowArchivedAircraft(value) }
+    }
 
     // Eagerly, not WhileSubscribed: this is a small table for a single-user app,
     // and always-fresh state is simpler to reason about (and to test) than a

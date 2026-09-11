@@ -6,6 +6,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import nl.part66l.logbook.fakes.FakePersonRepository
+import nl.part66l.logbook.fakes.FakeSettingsRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -24,7 +25,7 @@ class ContactListViewModelTest {
     }
 
     @Test
-    fun `contacts includes archived ones, same as the document directory`() {
+    fun `archived contacts are hidden until the toggle asks for them, same as the other directories`() {
         val repository = FakePersonRepository()
         runBlocking {
             repository.create("Jan de Vries", null, null)
@@ -32,7 +33,11 @@ class ContactListViewModelTest {
             repository.setArchived(archivedId, true)
         }
 
-        val viewModel = ContactListViewModel(repository)
+        val viewModel = ContactListViewModel(repository, FakeSettingsRepository())
+
+        assertEquals(1, viewModel.contacts.value.size)
+
+        viewModel.onShowArchivedChange(true)
 
         assertEquals(2, viewModel.contacts.value.size)
     }
