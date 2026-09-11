@@ -10,7 +10,18 @@ data class CrsFormState(
     /** Set only while [signNow][CrsViewModel.signNow] (§9.3) is running — the biometric prompt itself happens before this, at the Compose layer. */
     val signing: Boolean = false,
     val error: CrsGenerationError? = null,
-)
+) {
+
+    /**
+     * Whether anything has been typed that would be lost on leaving.
+     *
+     * Unlike the other forms there is nothing to save here — this state is only ever
+     * consumed by generating a certificate, and reset once one is issued. So leaving is
+     * always a discard, and the prompt offers to stay rather than to save.
+     */
+    val hasUnissuedInput: Boolean
+        get() = limitations.isNotBlank() || maintenanceIncomplete || deferredItemDescriptions.isNotEmpty()
+}
 
 /** What can stop [CrsViewModel.generate] or [CrsViewModel.signNow] from producing a certificate. */
 sealed interface CrsGenerationError {

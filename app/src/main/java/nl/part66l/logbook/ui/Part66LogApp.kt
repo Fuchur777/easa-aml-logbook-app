@@ -104,25 +104,42 @@ private fun AppNavHost(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination
+    /**
+     * Screens that suppress the bottom bar: the first-run gate, the restore flow, and every
+     * form.
+     *
+     * Forms are the important case. A form guards unsaved work through its X button and
+     * through BackHandler, but a bottom-bar tab calls navigate() directly and goes through
+     * neither — so a bar here would let one reflexive tap discard a half-written entry with
+     * no prompt. Hiding it also frees the ~80dp these long forms would rather spend on
+     * fields, and makes "no bar" mean "you are editing something".
+     *
+     * Everything else — Documents, Contacts, the CRS Library, Settings — is a place you
+     * browse, a peer of the three tabs, and keeps the bar.
+     */
     val noBottomBarRoutes = setOf(
         Destination.ProfileSetup.route,
+        Destination.DriveRestore.route,
+        Destination.Profile.route,
         Destination.AircraftForm.route,
         Destination.AircraftEdit.ROUTE_PATTERN,
-        Destination.Profile.route,
-        Destination.Settings.route,
         Destination.WorkEntryForm.route,
         Destination.WorkEntryEdit.ROUTE_PATTERN,
         Destination.Crs.ROUTE_PATTERN,
-        Destination.Documents.route,
         Destination.DocumentForm.route,
         Destination.DocumentEdit.ROUTE_PATTERN,
-        Destination.Contacts.route,
         Destination.ContactForm.route,
         Destination.ContactEdit.ROUTE_PATTERN,
+    )
+
+    /** The menu's own destinations — the hamburger lights up while you are on one of them. */
+    val menuRoutes = setOf(
+        Destination.IssuedCrs.route,
+        Destination.Documents.route,
+        Destination.Contacts.route,
+        Destination.Settings.route,
         Destination.SigningInfo.route,
         Destination.DriveSync.route,
-        Destination.DriveRestore.route,
-        Destination.IssuedCrs.route,
         Destination.About.route,
     )
     val showBottomBar = currentRoute?.hierarchy?.none { it.route in noBottomBarRoutes } ?: false
@@ -149,7 +166,7 @@ private fun AppNavHost(
                         )
                     }
                     NavigationBarItem(
-                        selected = false,
+                        selected = currentRoute?.hierarchy?.any { it.route in menuRoutes } == true,
                         onClick = { menuExpanded = true },
                         icon = {
                             Text("☰")

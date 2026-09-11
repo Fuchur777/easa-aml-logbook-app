@@ -1,5 +1,6 @@
 package nl.part66l.logbook.ui.crs
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -71,11 +72,20 @@ fun CrsScreen(
         EntryPointAccessors.fromApplication(context.applicationContext, LocalKeystoreSignerEntryPoint::class.java).localKeystoreSigner()
     }
 
+    var showDiscardDialog by remember { mutableStateOf(false) }
+
+    // Nothing here is ever saved — the fields exist only to be consumed by generating a
+    // certificate — so backing out with something typed loses it silently. Guard both ways
+    // out, the same as the entry forms do.
+    fun leave() = if (state.hasUnissuedInput) { showDiscardDialog = true } else onClose()
+
+    BackHandler(enabled = state.hasUnissuedInput) { showDiscardDialog = true }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Certificate of Release to Service") },
-                navigationIcon = { IconButton(onClick = onClose) { Text("✕") } },
+                navigationIcon = { IconButton(onClick = { leave() }) { Text("✕") } },
                 colors = part66TopAppBarColors(),
                 expandedHeight = 48.dp,
             )
@@ -166,6 +176,21 @@ fun CrsScreen(
             title = { Text("Signing failed") },
             text = { Text(error.displayMessage()) },
             confirmButton = { TextButton(onClick = viewModel::dismissError) { Text("OK") } },
+        )
+    }
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = { Text("Discard this certificate?") },
+            text = {
+                Text(
+                    "The limitations and deferred items you've entered aren't saved anywhere " +
+                        "until a certificate is issued. Leaving now discards them.",
+                )
+            },
+            confirmButton = { TextButton(onClick = { showDiscardDialog = false; onClose() }) { Text("Discard") } },
+            dismissButton = { TextButton(onClick = { showDiscardDialog = false }) { Text("Keep editing") } },
         )
     }
 }
