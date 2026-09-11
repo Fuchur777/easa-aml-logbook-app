@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -22,11 +24,41 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    /*
+     * Release signing.
+     *
+     * The keystore and its passwords never enter the repository — they live in
+     * keystore.properties, which .gitignore covers. Without that file the release build
+     * still assembles (unsigned), so a fresh checkout is never broken; it just can't
+     * produce something uploadable. See docs/release.md.
+     */
+    val keystorePropertiesFile = rootProject.file("keystore.properties")
+    val keystoreProperties = Properties().apply {
+        if (keystorePropertiesFile.exists()) keystorePropertiesFile.inputStream().use(::load)
+    }
+
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // R8 stays off for now. PdfBox-Android and BouncyCastle both reach for classes
+            // reflectively, and a keep rule missed there fails at runtime when a certificate
+            // is generated, not at build time. Size is irrelevant on a test track, so this
+            // trades bytes for not shipping a build that can't issue a CRS. Turn it on once
+            // there's a tester who can exercise generate-and-sign on a minified build.
             optimization {
                 enable = false
             }
+            signingConfig = signingConfigs.findByName("release")
         }
     }
     compileOptions {

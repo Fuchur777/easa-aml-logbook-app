@@ -12,6 +12,21 @@
     <!-- For Google Drive backup (§10) — the app is fully functional offline without it; this only gates the optional sync feature. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!--
+      allowBackup is still the template default, and is an open decision before publishing.
+
+      Left on, Android Auto Backup copies filesDir and the Room database — signed
+      certificates, work photos, the connected Drive account — into the user's Google
+      backup. That sits awkwardly beside the spec's "no server holds user data, ever",
+      and beside the app's own explicit Drive backup, which the user controls and can see.
+
+      It also restores oddly: Android Keystore keys are non-exportable and never travel, so
+      a restored install has certificates signed by a key alias that no longer exists on
+      that device.
+
+      Turning it off means a user who loses their phone without having run a Drive backup
+      loses everything — which is the honest trade, but it should be Frank's call.
+    -->
     <application
         android:name=".Part66LogApplication"
         android:allowBackup="true"
