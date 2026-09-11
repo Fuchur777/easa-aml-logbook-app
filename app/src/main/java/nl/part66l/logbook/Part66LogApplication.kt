@@ -7,14 +7,19 @@ import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nl.part66l.logbook.data.CatalogueSeeder
+import nl.part66l.logbook.data.SettingsRepository
 import nl.part66l.logbook.di.ApplicationScope
+import nl.part66l.logbook.drive.DriveSyncScheduler
 
 @HiltAndroidApp
 class Part66LogApplication : Application(), Configuration.Provider {
 
     @Inject lateinit var catalogueSeeder: CatalogueSeeder
+
+    @Inject lateinit var settingsRepository: SettingsRepository
 
     @Inject
     @ApplicationScope
@@ -30,5 +35,15 @@ class Part66LogApplication : Application(), Configuration.Provider {
         super.onCreate()
         PDFBoxResourceLoader.init(applicationContext)
         applicationScope.launch { catalogueSeeder.seedIfNeeded() }
+        applicationScope.launch {
+            // Re-arm auto-sync if the preference says it should be on but WorkManager has no
+            // record of it. The two live in different places — the flag in DataStore, the work in
+            // WorkManager's own database — so a restore brings the flag back without the job, and
+            // the switch would read "on" while nothing ever ran. enqueueUniquePeriodicWork with
+            // the UPDATE policy is idempotent, so doing this on every start is harmless.
+            if (settingsRepository.driveAutoSyncEnabled.first()) {
+                DriveSyncScheduler.schedule(this@Part66LogApplication)
+            }
+        }
     }
 }

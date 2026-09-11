@@ -245,6 +245,9 @@ class DriveBackupRepositoryImpl @Inject constructor(
         // case is enough to make the leftover content inert even when the file can't be unlinked.
         clearFile(File(dbFile.path + "-wal"))
         clearFile(File(dbFile.path + "-shm"))
+        // Includes datastore/. DataStore caches in memory and would write its stale copy back over
+        // the restored file on the next write, which is the same reason Room needs a restart — the
+        // UI goes to a static "close and reopen" screen from here, so nothing writes in between.
         for (folder in CONTENT_FOLDER_NAMES) File(context.filesDir, folder).deleteRecursively()
 
         // Moved rather than copied over in place: a crash midway through an in-place overwrite
@@ -271,6 +274,22 @@ class DriveBackupRepositoryImpl @Inject constructor(
     companion object {
         /** Must match the name `DatabaseModule.provideDatabase` passes to `Room.databaseBuilder`. */
         private const val DATABASE_FILE_NAME = "part66log.db"
-        private val CONTENT_FOLDER_NAMES = listOf("crs", "attachments", "documents")
+        /**
+         * Everything under filesDir that a restore has to bring back.
+         *
+         * `datastore` holds the DataStore preferences, and leaving it out made "a complete copy
+         * of everything on this device" untrue in a way that mattered: the CRS number template
+         * lives there, and CrsNumberFormat.nextSequence only counts numbers the *current*
+         * template could have produced. Restoring onto a fresh install therefore reverted the
+         * template to its default, matched none of the restored numbers, and allocated the next
+         * certificate sequence 1 — a logbook silently renumbering from 0001 after a phone
+         * migration. The warning thresholds, the CRS contact-details switch and the Drive folder
+         * IDs went the same way.
+         *
+         * Deliberately not listed: crs-export, recency-export and signing, which hold
+         * regenerable share artefacts, and backup-export, which is this process's own scratch
+         * space.
+         */
+        private val CONTENT_FOLDER_NAMES = listOf("crs", "attachments", "documents", "datastore")
     }
 }
