@@ -65,6 +65,13 @@ data class WorkEntryFormState(
 ) {
     val isEditing: Boolean get() = entryId != null
 
+    /** True when this entry actually records a workorder — an all-empty block is worth collapsing out of the way. */
+    val hasWorkorderContent: Boolean
+        get() = workorderIssuerName.isNotBlank() ||
+            workorderDate != null ||
+            workorderRequestedWork.isNotBlank() ||
+            workorderReference.isNotBlank()
+
     val descriptionError: String? get() = if (description.isBlank()) "Description of work done is required" else null
     val activityTypesError: String? get() = if (activityTypes.isEmpty()) "Select at least one activity" else null
     val aircraftSelectionError: String?

@@ -98,6 +98,14 @@ class WorkEntryFormViewModel @Inject constructor(
     val collapsedCatalogueSections: StateFlow<Set<String>> = settingsRepository.collapsedCatalogueSections
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
+    /** Remembered fold state for the workorder block — see [SettingsRepository.workorderSectionCollapsed]. */
+    val workorderSectionCollapsed: StateFlow<Boolean> = settingsRepository.workorderSectionCollapsed
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun onWorkorderSectionCollapsedChange(collapsed: Boolean) {
+        viewModelScope.launch { settingsRepository.setWorkorderSectionCollapsed(collapsed) }
+    }
+
     /** Non-archived documents from the directory — backs the "Documentation used" picker. */
     val documentOptions: StateFlow<List<DocumentEntity>> = documentRepository.observeAll(includeArchived = false)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())

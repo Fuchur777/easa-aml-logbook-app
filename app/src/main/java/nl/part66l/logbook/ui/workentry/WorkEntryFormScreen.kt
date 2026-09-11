@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -25,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -49,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,6 +69,7 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import nl.part66l.logbook.R
 import nl.part66l.logbook.data.DocumentEntity
 import nl.part66l.logbook.data.DocumentationRefInput
 import nl.part66l.logbook.data.PartUsedInput
@@ -78,7 +82,7 @@ import nl.part66l.logbook.ui.components.PersonAutocompleteField
 import nl.part66l.logbook.ui.components.PersonPickerField
 import nl.part66l.logbook.ui.components.UnsavedChangesDialog
 import nl.part66l.logbook.ui.documents.displayLabel
-import nl.part66l.logbook.ui.theme.Part66ConfirmGreen
+import nl.part66l.logbook.ui.theme.part66ConfirmButtonColors
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -106,7 +110,13 @@ fun WorkEntryFormScreen(
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showTaskPicker by remember { mutableStateOf(false) }
-    var workorderExpanded by remember { mutableStateOf(true) }
+    val workorderCollapsedPreference by viewModel.workorderSectionCollapsed.collectAsStateWithLifecycle()
+    // Starts open only for an entry that actually records a workorder, and only when it wasn't
+    // explicitly folded away last time. An all-empty block stays out of the way until asked for.
+    // Keyed on load so an entry being fetched doesn't settle the state before its fields arrive.
+    var workorderExpanded by remember(state.entryId, state.loading) {
+        mutableStateOf(state.hasWorkorderContent && !workorderCollapsedPreference)
+    }
     val dirty by viewModel.isDirty.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
@@ -160,7 +170,10 @@ fun WorkEntryFormScreen(
             Card {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().clickable { workorderExpanded = !workorderExpanded },
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            workorderExpanded = !workorderExpanded
+                            viewModel.onWorkorderSectionCollapsedChange(!workorderExpanded)
+                        },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(if (workorderExpanded) "▼" else "▶", modifier = Modifier.padding(end = 8.dp))
@@ -401,7 +414,7 @@ fun WorkEntryFormScreen(
             Button(
                 onClick = viewModel::save,
                 enabled = state.canSave && (dirty || !state.isEditing),
-                colors = ButtonDefaults.buttonColors(containerColor = Part66ConfirmGreen),
+                colors = part66ConfirmButtonColors(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
@@ -576,7 +589,7 @@ private fun DocumentationRefEditor(
             options = documentOptions,
             optionLabel = { it.pickerLabel },
             onValueChange = { document ->
-                onAdd(DocumentationRefInput(document.name, document.revision, document.revisionDate, document.category))
+                onAdd(DocumentationRefInput(document.name, document.revision, document.revisionDate, document.category, document.id))
             },
             modifier = Modifier.fillMaxWidth(),
         )
@@ -679,14 +692,8 @@ private fun PartUsedEditor(
         Text("Parts and materials used", style = MaterialTheme.typography.titleMedium)
         parts.forEachIndexed { index, part ->
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val details = listOfNotNull(
-                    part.description?.takeIf { it.isNotBlank() },
-                    part.batchOrSerial?.takeIf { it.isNotBlank() }?.let { "batch/serial $it" },
-                    part.formOneRef?.takeIf { it.isNotBlank() }?.let { "Form 1 $it" },
-                    part.quantity?.takeIf { it.isNotBlank() }?.let { "qty $it" },
-                ).joinToString(", ")
                 Text(
-                    part.partNumber + if (details.isNotEmpty()) " ($details)" else "",
+                    part.rowLabel,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f),
                 )
@@ -748,8 +755,10 @@ private fun PartUsedEditor(
                 formOneRef = ""
                 quantity = ""
             },
-            enabled = partNumber.isNotBlank(),
-            colors = ButtonDefaults.buttonColors(containerColor = Part66ConfirmGreen),
+            // Description and quantity are what every entry has; a part number doesn't exist for
+            // consumables like sealant or cable ties, so it can't be what gates adding one.
+            enabled = description.isNotBlank() && quantity.isNotBlank(),
+            colors = part66ConfirmButtonColors(),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("+ Add part")
@@ -820,13 +829,17 @@ private fun PhotosEditor(
                 },
                 modifier = Modifier.weight(1f),
             ) {
-                Text("📷 Camera")
+                Icon(painterResource(R.drawable.ic_camera), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                Text("Camera")
             }
             OutlinedButton(
                 onClick = { galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 modifier = Modifier.weight(1f),
             ) {
-                Text("🖼️ Gallery")
+                Icon(painterResource(R.drawable.ic_photo), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                Text("Gallery")
             }
         }
     }
