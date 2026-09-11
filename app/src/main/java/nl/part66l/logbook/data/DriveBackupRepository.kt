@@ -256,10 +256,23 @@ class DriveBackupRepositoryImpl @Inject constructor(
         // case is enough to make the leftover content inert even when the file can't be unlinked.
         clearFile(File(dbFile.path + "-wal"))
         clearFile(File(dbFile.path + "-shm"))
-        // Includes datastore/. DataStore caches in memory and would write its stale copy back over
-        // the restored file on the next write, which is the same reason Room needs a restart — the
-        // UI goes to a static "close and reopen" screen from here, so nothing writes in between.
-        for (folder in CONTENT_FOLDER_NAMES) File(context.filesDir, folder).deleteRecursively()
+
+        /*
+         * Only folders the archive actually carries are replaced. A folder the archive does not
+         * mention is left alone rather than deleted.
+         *
+         * That distinction matters for archives written by an older build. `datastore` was added
+         * to this list after the first releases, so a backup taken before it exists says nothing
+         * about the settings — and deleting them on its behalf would reset the CRS number
+         * template, which is the exact damage including datastore here was meant to prevent. The
+         * same rule makes the restore forward-compatible with any folder added later.
+         *
+         * Deleting datastore at all is safe only because the UI goes straight to a static "close
+         * and reopen" screen: DataStore caches in memory and would otherwise write its stale copy
+         * back over the restored file, which is the same reason Room needs the restart.
+         */
+        val covered = CONTENT_FOLDER_NAMES.filter { File(staging, it).isDirectory }
+        for (folder in covered) File(context.filesDir, folder).deleteRecursively()
 
         // Moved rather than copied over in place: a crash midway through an in-place overwrite
         // would leave a half-written database where the old one used to be.
@@ -268,9 +281,8 @@ class DriveBackupRepositoryImpl @Inject constructor(
             dbFile.toPath(),
             java.nio.file.StandardCopyOption.REPLACE_EXISTING,
         )
-        for (folder in CONTENT_FOLDER_NAMES) {
-            val source = File(staging, folder)
-            if (source.isDirectory) source.copyRecursively(File(context.filesDir, folder), overwrite = true)
+        for (folder in covered) {
+            File(staging, folder).copyRecursively(File(context.filesDir, folder), overwrite = true)
         }
     }
 
