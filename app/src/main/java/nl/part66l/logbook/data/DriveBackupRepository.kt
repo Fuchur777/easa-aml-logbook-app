@@ -15,12 +15,10 @@ import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import nl.part66l.logbook.drive.DriveApiClient
 import nl.part66l.logbook.drive.DriveAuthManager
 import nl.part66l.logbook.drive.DriveManifest
+import nl.part66l.logbook.drive.DriveManifestStore
 
 /** One backup listed in Drive's "Backups" folder. */
 data class DriveBackupEntry(val fileId: String, val name: String, val createdAt: Instant)
@@ -55,9 +53,9 @@ class DriveBackupRepositoryImpl @Inject constructor(
     private val driveAuthManager: DriveAuthManager,
     private val driveApiClient: DriveApiClient,
     private val settingsRepository: SettingsRepository,
+    private val driveManifestStore: DriveManifestStore,
 ) : DriveBackupRepository {
 
-    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun createBackup(activity: FragmentActivity): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
@@ -92,15 +90,22 @@ class DriveBackupRepositoryImpl @Inject constructor(
         runCatching {
             val token = driveAuthManager.authorize(activity).getOrThrow()
             val tempZip = File.createTempFile("restore-", ".zip", context.cacheDir)
+            val staging = File(context.cacheDir, "restore-staging")
             try {
                 driveApiClient.downloadFile(token, backup.fileId, tempZip).getOrThrow()
-                // Closing here means any other screen still observing a Room Flow can throw once
-                // this call returns — acceptable only because the caller immediately replaces the
-                // UI with a static "restore complete, please restart" screen (see DriveRestoreScreen).
+                // Everything that can fail happens here, against a scratch directory, while the
+                // live data is still untouched: a truncated download, a corrupt archive, a full
+                // disk. Only once the whole archive has been extracted and found to contain a
+                // database do we close Room and start replacing files. Before this, extraction
+                // ran directly over the live folders after deleting them, so a half-downloaded
+                // zip destroyed the user's certificates and photos and left the app holding a
+                // closed database with nothing to restore from.
+                val stagedDatabase = extractToStaging(tempZip, staging)
                 appDatabase.close()
-                replaceLocalContentWith(tempZip)
+                swapIn(staging, stagedDatabase)
             } finally {
                 tempZip.delete()
+                staging.deleteRecursively()
             }
         }
     }
@@ -156,20 +161,21 @@ class DriveBackupRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Same manifest [DriveSyncRepositoryImpl] writes (see its own doc comment) — refreshed here
-     * too so a backup-only user (who never runs "Sync now") still leaves a manifest a fresh
-     * install can read. `aircraftFolderIds` is left empty: this repository doesn't track those,
-     * and a later regular sync's own manifest write fills it back in.
+     * Refreshed on every backup so a backup-only user — who never runs "Sync now" — still leaves a
+     * manifest a fresh install can read. Merges rather than overwrites; see [DriveManifestStore].
      */
     private suspend fun writeManifest(token: String, rootFolderId: String, backupsFolderId: String) {
-        val manifest = DriveManifest(
-            rootFolderId = rootFolderId,
-            benchFolderId = settingsRepository.driveBenchFolderId.first(),
-            backupsFolderId = backupsFolderId,
-            aircraftFolderIds = emptyMap(),
-            updatedAt = Instant.now().toEpochMilli(),
-        )
-        driveApiClient.uploadAppDataFile(token, "manifest.json", json.encodeToString(manifest).toByteArray()).getOrThrow()
+        driveManifestStore.update(token) { existing ->
+            DriveManifest(
+                rootFolderId = rootFolderId,
+                // Neither of these is ours. They belong to the file-mirror sync, and blanking them
+                // here would make a fresh install re-create folders that already exist in Drive.
+                benchFolderId = settingsRepository.driveBenchFolderId.first() ?: existing?.benchFolderId,
+                backupsFolderId = backupsFolderId,
+                aircraftFolderIds = existing?.aircraftFolderIds ?: emptyMap(),
+                updatedAt = Instant.now().toEpochMilli(),
+            )
+        }
     }
 
     /**
@@ -180,19 +186,55 @@ class DriveBackupRepositoryImpl @Inject constructor(
      */
     private suspend fun resolveBackupsFolderId(token: String): String {
         settingsRepository.driveBackupsFolderId.first()?.let { return it }
-        val manifestFile = driveApiClient.listFiles(token, spaces = "appDataFolder", nameEquals = "manifest.json").getOrThrow().firstOrNull()
+        val manifest = driveManifestStore.read(token)
             ?: throw IllegalStateException("No backups found for this Google account.")
-        val manifestBytes = driveApiClient.downloadBytes(token, manifestFile.id).getOrThrow()
-        val manifest = json.decodeFromString<DriveManifest>(String(manifestBytes))
         settingsRepository.setDriveRootFolderId(manifest.rootFolderId)
-        settingsRepository.setDriveBenchFolderId(manifest.benchFolderId)
+        // Only overwrite a local bench ID when the manifest actually carries one — a manifest last
+        // written by a device that never synced has none, and clearing a good local value would
+        // split bench work across two Drive folders.
+        manifest.benchFolderId?.let { settingsRepository.setDriveBenchFolderId(it) }
         val backupsFolderId = manifest.backupsFolderId
             ?: throw IllegalStateException("No backup has ever been created for this Google account.")
         settingsRepository.setDriveBackupsFolderId(backupsFolderId)
         return backupsFolderId
     }
 
-    private fun replaceLocalContentWith(zipFile: File) {
+    /**
+     * Unpacks [zipFile] into a scratch [staging] directory and returns the extracted database
+     * file, or throws if the archive doesn't contain one. Nothing live is touched here.
+     */
+    private fun extractToStaging(zipFile: File, staging: File): File {
+        staging.deleteRecursively()
+        staging.mkdirs()
+        val stagingRoot = staging.canonicalPath
+        ZipInputStream(zipFile.inputStream()).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                if (!entry.isDirectory) {
+                    val destination = File(staging, entry.name)
+                    // An entry name is attacker-controlled data, not a trusted path: "../.." in one
+                    // would otherwise resolve outside the directory we are extracting into. The
+                    // archive comes from a Drive folder the user can share, so this is cheap
+                    // insurance rather than a theoretical concern.
+                    if (!destination.canonicalPath.startsWith(stagingRoot + File.separator)) {
+                        throw IllegalStateException("Backup contains an entry outside the archive root: ${entry.name}")
+                    }
+                    destination.parentFile?.mkdirs()
+                    destination.outputStream().use { out -> zip.copyTo(out) }
+                }
+                zip.closeEntry()
+                entry = zip.nextEntry
+            }
+        }
+        return File(staging, "db/$DATABASE_FILE_NAME").takeIf { it.isFile && it.length() > 0 }
+            ?: throw IllegalStateException("Backup contains no database — nothing was changed.")
+    }
+
+    /**
+     * Moves the staged contents over the live ones. Everything destructive lives here, after
+     * [extractToStaging] has already proved the archive is complete.
+     */
+    private fun swapIn(staging: File, stagedDatabase: File) {
         val dbFile = context.getDatabasePath(DATABASE_FILE_NAME)
         // The backup zip has no -wal/-shm entries (createBackup checkpoints before zipping, so
         // part66log.db alone is already complete) — nothing below re-touches these two paths, so
@@ -205,30 +247,16 @@ class DriveBackupRepositoryImpl @Inject constructor(
         clearFile(File(dbFile.path + "-shm"))
         for (folder in CONTENT_FOLDER_NAMES) File(context.filesDir, folder).deleteRecursively()
 
-        ZipInputStream(zipFile.inputStream()).use { zip ->
-            var entry = zip.nextEntry
-            while (entry != null) {
-                if (!entry.isDirectory) {
-                    if (entry.name.startsWith("db/")) {
-                        // Written to a temp file and moved into place rather than truncating the
-                        // live file: a crash midway through an in-place overwrite would leave a
-                        // half-written database where the old one used to be.
-                        val temp = File.createTempFile("restored-db-", ".tmp", dbFile.parentFile)
-                        temp.outputStream().use { out -> zip.copyTo(out) }
-                        java.nio.file.Files.move(
-                            temp.toPath(),
-                            dbFile.toPath(),
-                            java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                        )
-                    } else {
-                        val destination = File(context.filesDir, entry.name)
-                        destination.parentFile?.mkdirs()
-                        destination.outputStream().use { out -> zip.copyTo(out) }
-                    }
-                }
-                zip.closeEntry()
-                entry = zip.nextEntry
-            }
+        // Moved rather than copied over in place: a crash midway through an in-place overwrite
+        // would leave a half-written database where the old one used to be.
+        java.nio.file.Files.move(
+            stagedDatabase.toPath(),
+            dbFile.toPath(),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+        )
+        for (folder in CONTENT_FOLDER_NAMES) {
+            val source = File(staging, folder)
+            if (source.isDirectory) source.copyRecursively(File(context.filesDir, folder), overwrite = true)
         }
     }
 

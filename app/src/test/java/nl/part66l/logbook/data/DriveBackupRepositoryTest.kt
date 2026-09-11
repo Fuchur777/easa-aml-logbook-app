@@ -16,6 +16,7 @@ import nl.part66l.logbook.domain.SignatureState
 import nl.part66l.logbook.fakes.FakeDriveApiClient
 import nl.part66l.logbook.fakes.FakeDriveAuthManager
 import nl.part66l.logbook.fakes.FakeSettingsRepository
+import nl.part66l.logbook.drive.DriveManifestStore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -50,7 +51,7 @@ class DriveBackupRepositoryTest {
         apiClient = FakeDriveApiClient()
         authManager = FakeDriveAuthManager()
         settingsRepository = FakeSettingsRepository()
-        repository = DriveBackupRepositoryImpl(context, db, authManager, apiClient, settingsRepository)
+        repository = DriveBackupRepositoryImpl(context, db, authManager, apiClient, settingsRepository, DriveManifestStore(apiClient))
         activity = Robolectric.buildActivity(FragmentActivity::class.java).create().get()
     }
 
@@ -147,7 +148,7 @@ class DriveBackupRepositoryTest {
         repository.createBackup(activity).getOrThrow()
         // Simulate a fresh install: nothing cached locally, even though Drive itself still has everything.
         val freshSettings = FakeSettingsRepository()
-        val freshRepository = DriveBackupRepositoryImpl(context, db, authManager, apiClient, freshSettings)
+        val freshRepository = DriveBackupRepositoryImpl(context, db, authManager, apiClient, freshSettings, DriveManifestStore(apiClient))
 
         val backups = freshRepository.listBackups(activity).getOrThrow()
 
