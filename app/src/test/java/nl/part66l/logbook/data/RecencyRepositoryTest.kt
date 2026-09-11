@@ -6,7 +6,6 @@ import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
 import nl.part66l.logbook.domain.ActivityType
-import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.RecencyRoute
 import nl.part66l.logbook.domain.Structure
@@ -71,7 +70,6 @@ class RecencyRepositoryTest {
 
     private fun entry(id: String, aircraftId: String?) = WorkEntryEntity(
         id = id, aircraftId = aircraftId, description = "test entry",
-        role = EntryRole.CERTIFIED_BY_ME_IN_APP,
         createdAt = Instant.EPOCH, updatedAt = Instant.EPOCH,
     )
 
@@ -209,5 +207,64 @@ class RecencyRepositoryTest {
         val results = repository.evaluate(today, catalogueVersion = "none")
 
         assertEquals(1, results.first { it.subcategory == Subcategory.L1 }.routes.first { it.route == RecencyRoute.DAYS }.have)
+    }
+
+    @Test
+    fun `evidenceForExport carries one row per record per subcategory it credits, with the entry's own description and the aircraft's registration`() = runBlocking {
+        db.profile().upsert(profile(holdsL1 = true, holdsL2 = true))
+        db.aircraft().insert(aircraft("a1", Propulsion.UNPOWERED, Structure.WOOD_AND_FABRIC)) // -> L1
+        db.aircraft().insertRegistration(
+            AircraftRegistrationEntity(
+                id = "reg1", aircraftId = "a1", registration = "PH-1234", registrationNormalised = "PH1234",
+                validFrom = LocalDate.of(2020, 1, 1), validTo = null,
+            ),
+        )
+        db.workEntries().insert(WorkEntryEntity(id = "e1", aircraftId = "a1", description = "Annual inspection", createdAt = Instant.EPOCH, updatedAt = Instant.EPOCH))
+        db.workSessions().insert(session("s1", "e1", LocalDate.of(2025, 1, 1)))
+        db.workEntries().insert(entry("e2", aircraftId = null)) // bench work, credits both L1 and L2
+        db.workSessions().insert(session("s2", "e2", LocalDate.of(2025, 2, 1)))
+
+        val evidence = repository.evidenceForExport(today)
+
+        val aircraftRow = evidence.single { it.subcategory == Subcategory.L1 && it.date == LocalDate.of(2025, 1, 1) }
+        assertEquals(RecencyRoute.DAYS, aircraftRow.route)
+        assertEquals("PH-1234", aircraftRow.aircraftRegistration)
+        assertEquals("Annual inspection", aircraftRow.detail)
+
+        val benchRowL1 = evidence.single { it.subcategory == Subcategory.L1 && it.date == LocalDate.of(2025, 2, 1) }
+        val benchRowL2 = evidence.single { it.subcategory == Subcategory.L2 && it.date == LocalDate.of(2025, 2, 1) }
+        assertEquals(null, benchRowL1.aircraftRegistration)
+        assertEquals("test entry", benchRowL1.detail)
+        assertEquals("test entry", benchRowL2.detail)
+    }
+
+    @Test
+    fun `evidenceForExport reports a task completion's substitute text when it has one, otherwise the snapshotted task text`() = runBlocking {
+        db.profile().upsert(profile(holdsL1 = true))
+        db.workEntries().insert(entry("e1", aircraftId = null))
+        db.workSessions().insert(session("s1", "e1", LocalDate.of(2025, 1, 1)))
+        db.catalogue().upsertAll(listOf(
+            CatalogueTaskEntity(
+                id = "T1", catalogueVersion = "2026.1", table = "B",
+                section = "General activities", sectionCode = "GEN", text = "Weighing, weight & balance sheet",
+                reference = "ref", appliesToL1 = true, appliesToL1C = false, appliesToL2 = false, appliesToL2C = false,
+            ),
+        ))
+        db.taskCompletions().insert(
+            TaskCompletionEntity(
+                id = "c1", entryId = "e1", taskId = "T1", catalogueVersion = "2026.1",
+                taskTextSnapshot = "Weighing, weight & balance sheet", substituteText = "Equivalent local procedure used instead",
+            ),
+        )
+
+        val evidence = repository.evidenceForExport(today)
+
+        val row = evidence.single { it.route == RecencyRoute.TASKS }
+        assertEquals("Equivalent local procedure used instead", row.detail)
+    }
+
+    @Test
+    fun `evidenceForExport returns nothing when no profile has been recorded`() = runBlocking {
+        assertTrue(repository.evidenceForExport(today).isEmpty())
     }
 }

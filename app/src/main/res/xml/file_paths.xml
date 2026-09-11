@@ -10,4 +10,6 @@
     <files-path name="attachments" path="attachments/" />
     <!-- Matches CrsExport.kt's zip destination: context.filesDir/crs-export/. -->
     <files-path name="crs-export" path="crs-export/" />
+    <!-- Matches RecencyExport.kt's CSV destination: context.filesDir/recency-export/. -->
+    <files-path name="recency-export" path="recency-export/" />
 </paths>

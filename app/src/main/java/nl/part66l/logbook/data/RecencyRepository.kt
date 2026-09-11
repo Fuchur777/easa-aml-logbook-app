@@ -5,8 +5,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
 import nl.part66l.logbook.domain.RecencyEvaluator
+import nl.part66l.logbook.domain.RecencyRoute
 import nl.part66l.logbook.domain.Subcategory
 import nl.part66l.logbook.domain.SubcategoryResolver
+
+/** One contributing record behind a recency figure — the "download the evidence" export's own row. */
+data class RecencyEvidenceRow(
+    val subcategory: Subcategory,
+    val route: RecencyRoute,
+    val date: LocalDate,
+    val aircraftRegistration: String?,
+    val detail: String,
+)
 
 interface RecencyRepository {
     suspend fun evaluate(
@@ -20,6 +30,15 @@ interface RecencyRepository {
         today: LocalDate,
         windowMonths: Long = 24,
     ): List<RecencyEvaluator.SubcategoryResult>
+
+    /**
+     * Every individual record behind [evaluateCurrent]'s numbers — one row per (record,
+     * subcategory it credits), same resolution rules as the evaluation itself (bench work
+     * credits every held subcategory; an unresolved MIXED aircraft credits none). What the
+     * Recency screen's download button exports, so a reader can check the app's "current
+     * until" claim against the actual underlying entries rather than taking it on faith.
+     */
+    suspend fun evidenceForExport(today: LocalDate, windowMonths: Long = 24): List<RecencyEvidenceRow>
 }
 
 /**
@@ -124,6 +143,66 @@ class RecencyRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun evidenceForExport(today: LocalDate, windowMonths: Long): List<RecencyEvidenceRow> {
+        val profileEntity = profileDao.get() ?: return emptyList()
+        val heldSubcategories = buildSet {
+            if (profileEntity.holdsL1) add(Subcategory.L1)
+            if (profileEntity.holdsL1C) add(Subcategory.L1C)
+            if (profileEntity.holdsL2) add(Subcategory.L2)
+            if (profileEntity.holdsL2C) add(Subcategory.L2C)
+        }
+        if (heldSubcategories.isEmpty()) return emptyList()
+
+        val windowStart = today.minusMonths(windowMonths)
+        val aircraft = aircraftDao.observeAll(includeArchived = true).first()
+        val aircraftSubcategory = aircraft.associate { a ->
+            a.id to (a.subcategoryOverride ?: SubcategoryResolver.resolve(a.propulsion, a.structure))
+        }
+        // Today's registration is good enough for a reader cross-checking current records —
+        // this isn't the certified "registration at the time" the CRS itself prints.
+        val registrationByAircraftId = aircraft.associate { a -> a.id to aircraftDao.registrationOn(a.id, today) }
+
+        val rows = mutableListOf<RecencyEvidenceRow>()
+
+        recencyDao.sessionsForExport(windowStart, profileEntity.researchCountsTowardRecency).forEach { row ->
+            subcategoriesFor(row.aircraftId, aircraftSubcategory, heldSubcategories).forEach { sub ->
+                rows += RecencyEvidenceRow(
+                    subcategory = sub,
+                    route = RecencyRoute.DAYS,
+                    date = row.date,
+                    aircraftRegistration = row.aircraftId?.let { registrationByAircraftId[it] },
+                    detail = row.description,
+                )
+            }
+        }
+
+        recencyDao.annualSessionsForExport(windowStart).forEach { row ->
+            subcategoriesFor(row.aircraftId, aircraftSubcategory, heldSubcategories).forEach { sub ->
+                rows += RecencyEvidenceRow(
+                    subcategory = sub,
+                    route = RecencyRoute.ANNUAL_INSPECTIONS,
+                    date = row.date,
+                    aircraftRegistration = row.aircraftId?.let { registrationByAircraftId[it] },
+                    detail = row.description,
+                )
+            }
+        }
+
+        recencyDao.taskCompletionsForExport(windowStart).forEach { row ->
+            heldSubcategories.filter { row.appliesTo(it) }.forEach { sub ->
+                rows += RecencyEvidenceRow(
+                    subcategory = sub,
+                    route = RecencyRoute.TASKS,
+                    date = row.date,
+                    aircraftRegistration = row.aircraftId?.let { registrationByAircraftId[it] },
+                    detail = row.substituteText ?: row.taskTextSnapshot,
+                )
+            }
+        }
+
+        return rows.sortedWith(compareBy({ it.subcategory }, { it.route }, { it.date }))
+    }
+
     private fun subcategoriesFor(
         aircraftId: String?,
         aircraftSubcategory: Map<String, Subcategory?>,
@@ -134,6 +213,13 @@ class RecencyRepositoryImpl @Inject constructor(
     }
 
     private fun TaskCompletionRow.appliesTo(sub: Subcategory) = when (sub) {
+        Subcategory.L1 -> appliesToL1
+        Subcategory.L1C -> appliesToL1C
+        Subcategory.L2 -> appliesToL2
+        Subcategory.L2C -> appliesToL2C
+    }
+
+    private fun TaskCompletionDetailRow.appliesTo(sub: Subcategory) = when (sub) {
         Subcategory.L1 -> appliesToL1
         Subcategory.L1C -> appliesToL1C
         Subcategory.L2 -> appliesToL2

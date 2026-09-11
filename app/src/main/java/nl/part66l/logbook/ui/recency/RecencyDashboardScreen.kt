@@ -1,5 +1,6 @@
 package nl.part66l.logbook.ui.recency
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -22,9 +24,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,6 +49,8 @@ fun RecencyDashboardScreen(
 ) {
     val results by viewModel.results.collectAsStateWithLifecycle()
     val loading by viewModel.loading.collectAsStateWithLifecycle()
+    val exporting by viewModel.exporting.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.refresh()
@@ -52,7 +60,16 @@ fun RecencyDashboardScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Recency") },
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.exportEvidence { csv -> shareRecencyCsv(context, csv) } },
+                        enabled = !loading && !exporting && results.isNotEmpty(),
+                    ) {
+                        Text(if (exporting) "…" else "⬇️", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                    }
+                },
                 colors = part66TopAppBarColors(),
+                expandedHeight = 48.dp,
             )
         },
     ) { padding ->
@@ -78,6 +95,8 @@ fun RecencyDashboardScreen(
 
 @Composable
 private fun SubcategoryCard(result: RecencyEvaluator.SubcategoryResult) {
+    var expanded by remember(result.subcategory) { mutableStateOf(true) }
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
@@ -94,9 +113,22 @@ private fun SubcategoryCard(result: RecencyEvaluator.SubcategoryResult) {
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            HorizontalDivider()
-            result.routes.forEach { route ->
-                RouteRow(route)
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                HorizontalDivider(modifier = Modifier.weight(1f))
+                Text(
+                    if (expanded) "▼ Hide routes" else "▶ Show routes",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+            }
+            if (expanded) {
+                result.routes.forEachIndexed { index, route ->
+                    RouteRow(index + 1, route)
+                }
             }
         }
     }
@@ -116,13 +148,13 @@ private fun StatusBadge(current: Boolean) {
 }
 
 @Composable
-private fun RouteRow(route: RecencyEvaluator.RouteResult) {
+private fun RouteRow(number: Int, route: RecencyEvaluator.RouteResult) {
     val proposed = route.status == RuleStatus.PROPOSED
     val labelColor = if (proposed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
 
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(route.route.displayLabel, style = MaterialTheme.typography.labelLarge, color = labelColor)
+            Text("$number. ${route.route.displayLabel}", style = MaterialTheme.typography.labelLarge, color = labelColor)
             when {
                 proposed -> Text("Proposed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 route.satisfied -> Text("✓", color = Part66ConfirmGreen, style = MaterialTheme.typography.labelLarge)

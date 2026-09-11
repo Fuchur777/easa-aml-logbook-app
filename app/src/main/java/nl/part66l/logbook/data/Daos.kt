@@ -268,11 +268,77 @@ interface RecencyDao {
         WHERE s.date >= :windowStart
     """)
     suspend fun taskCompletionsInWindow(windowStart: LocalDate): List<TaskCompletionRow>
+
+    /**
+     * As [sessionsInWindow], but for the recency evidence export (§10-adjacent "show your
+     * work" download) rather than the evaluator itself — one row per contributing session,
+     * carrying the entry's own description along so a reader can trace a date back to what was
+     * actually done, not deduplicated down to distinct dates the way the evaluator's own input
+     * is (that collapsing is a Route A counting rule, not a property of the evidence itself).
+     */
+    @Query("""
+        SELECT s.date AS date, e.aircraftId AS aircraftId, e.description AS description
+        FROM work_session s
+        JOIN work_entry e ON e.id = s.entryId
+        WHERE s.date >= :windowStart
+          AND (
+            :includeResearchOnlyDays = 1
+            OR (SELECT COUNT(*) FROM work_entry_activity_type wat WHERE wat.entryId = e.id) != 1
+            OR NOT EXISTS (
+                SELECT 1 FROM work_entry_activity_type wat2
+                WHERE wat2.entryId = e.id AND wat2.activityType = 'RESEARCH_AND_PAPERWORK'
+            )
+          )
+        ORDER BY s.date
+    """)
+    suspend fun sessionsForExport(windowStart: LocalDate, includeResearchOnlyDays: Boolean): List<SessionDetailRow>
+
+    /** As [sessionsForExport], restricted to annual-inspection entries, for the Route C evidence export. */
+    @Query("""
+        SELECT s.date AS date, e.aircraftId AS aircraftId, e.description AS description
+        FROM work_session s
+        JOIN work_entry e ON e.id = s.entryId
+        WHERE s.date >= :windowStart
+          AND e.annualInspection = 1
+        ORDER BY s.date
+    """)
+    suspend fun annualSessionsForExport(windowStart: LocalDate): List<SessionDetailRow>
+
+    /** As [taskCompletionsInWindow], plus the task's own snapshotted text and the entry's aircraft — the export's evidence line for a Route B completion. */
+    @Query("""
+        SELECT c.taskId AS taskId, t.sectionCode AS sectionCode, s.date AS date,
+               t.appliesToL1 AS appliesToL1, t.appliesToL1C AS appliesToL1C,
+               t.appliesToL2 AS appliesToL2, t.appliesToL2C AS appliesToL2C,
+               c.substituteText AS substituteText, c.taskTextSnapshot AS taskTextSnapshot,
+               e.aircraftId AS aircraftId
+        FROM task_completion c
+        JOIN catalogue_task t ON t.id = c.taskId
+        JOIN work_entry e ON e.id = c.entryId
+        JOIN work_session s ON s.entryId = e.id
+        WHERE s.date >= :windowStart
+        ORDER BY s.date
+    """)
+    suspend fun taskCompletionsForExport(windowStart: LocalDate): List<TaskCompletionDetailRow>
 }
 
 data class SectionCount(val sectionCode: String, val completed: Int)
 
 data class SessionAircraftRow(val date: LocalDate, val aircraftId: String?)
+
+data class SessionDetailRow(val date: LocalDate, val aircraftId: String?, val description: String)
+
+data class TaskCompletionDetailRow(
+    val taskId: String,
+    val sectionCode: String,
+    val date: LocalDate,
+    val appliesToL1: Boolean,
+    val appliesToL1C: Boolean,
+    val appliesToL2: Boolean,
+    val appliesToL2C: Boolean,
+    val substituteText: String?,
+    val taskTextSnapshot: String,
+    val aircraftId: String?,
+)
 
 data class TaskCompletionRow(
     val taskId: String,
