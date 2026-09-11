@@ -9,7 +9,7 @@ a blank placeholder in the store until these are uploaded.
 | --- | --- | --- |
 | App icon | 512 × 512 PNG, 32-bit, ≤ 1 MB, no transparency | `play-icon-512.png` |
 | Feature graphic | 1024 × 500 PNG or JPG, no transparency | `play-feature-graphic-1024x500.png` |
-| Phone screenshots | at least 2, 16:9 or 9:16, 320–3840 px per side | not made |
+| Phone screenshots | at least 4, minimum 1080 px per side, for promotion eligibility | `screenshots/` — 4 at 1080 × 2400 |
 | Short description | ≤ 80 characters | `listing.md` — 71 used |
 | Full description | ≤ 4000 characters | `listing.md` — 2999 used |
 
@@ -26,3 +26,24 @@ first attempt ran off the right edge.
 
 Play crops the feature graphic differently across surfaces and overlays a play button on it
 if a promo video is ever added, so nothing important sits near an edge or dead centre.
+
+## Screenshots
+
+Captured from the emulator at 1080 × 2400 against the demo data in `demo-seed.sql` —
+never against real records, because Play screenshots are public and the app carries a
+licence holder's name and licence number. The demo profile is "A. Engineer" with a
+fictional number, and the aircraft are club composite gliders.
+
+To reproduce: install the debug build, launch it once so Room creates the schema and the
+task catalogue seeds, then
+
+```
+adb shell am force-stop nl.schellenberg.amlog
+adb exec-out run-as nl.schellenberg.amlog cat databases/part66log.db > local.db
+sqlite3 local.db ".read docs/store/demo-seed.sql"
+adb push local.db /data/local/tmp/seed.db
+adb shell "run-as nl.schellenberg.amlog sh -c 'rm -f databases/part66log.db-wal databases/part66log.db-shm; cp /data/local/tmp/seed.db databases/part66log.db'"
+```
+
+`exec-out`, not `shell` — `adb shell` translates line endings and corrupts the database.
+The profile row's id must be `self`; the DAO looks it up by that literal.
