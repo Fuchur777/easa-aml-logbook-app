@@ -4,11 +4,17 @@ import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import nl.part66l.logbook.data.SettingsRepository
+import nl.part66l.logbook.domain.WarningThresholds
 
 class FakeSettingsRepository(
     initialShowArchivedAircraft: Boolean = false,
+    initialShowArchivedDocuments: Boolean = false,
+    initialShowArchivedContacts: Boolean = false,
     initialCatalogueSectionOrder: List<String> = emptyList(),
     initialCollapsedCatalogueSections: Set<String> = emptySet(),
+    initialCollapsedRecencySubcategories: Set<String> = emptySet(),
+    initialWorkorderSectionCollapsed: Boolean = false,
+    initialWarningThresholds: WarningThresholds = WarningThresholds(),
     initialCrsNumberTemplate: String = "{REG}-{YYYY}-{SEQ:4}",
     initialCrsAnnualReset: Boolean = true,
     initialCrsStartAt: Int = 1,
@@ -22,8 +28,13 @@ class FakeSettingsRepository(
     initialDriveAutoSyncEnabled: Boolean = false,
 ) : SettingsRepository {
     private val showArchived = MutableStateFlow(initialShowArchivedAircraft)
+    private val showArchivedDocs = MutableStateFlow(initialShowArchivedDocuments)
+    private val showArchivedPeople = MutableStateFlow(initialShowArchivedContacts)
     private val sectionOrder = MutableStateFlow(initialCatalogueSectionOrder)
     private val collapsedSections = MutableStateFlow(initialCollapsedCatalogueSections)
+    private val collapsedRecency = MutableStateFlow(initialCollapsedRecencySubcategories)
+    private val workorderCollapsed = MutableStateFlow(initialWorkorderSectionCollapsed)
+    private val warningThresholdsFlow = MutableStateFlow(initialWarningThresholds)
     private val crsNumberTemplateFlow = MutableStateFlow(initialCrsNumberTemplate)
     private val crsAnnualResetFlow = MutableStateFlow(initialCrsAnnualReset)
     private val crsStartAtFlow = MutableStateFlow(initialCrsStartAt)
@@ -42,6 +53,18 @@ class FakeSettingsRepository(
         showArchived.value = value
     }
 
+    override val showArchivedDocuments: Flow<Boolean> = showArchivedDocs
+
+    override suspend fun setShowArchivedDocuments(value: Boolean) {
+        showArchivedDocs.value = value
+    }
+
+    override val showArchivedContacts: Flow<Boolean> = showArchivedPeople
+
+    override suspend fun setShowArchivedContacts(value: Boolean) {
+        showArchivedPeople.value = value
+    }
+
     override val catalogueSectionOrder: Flow<List<String>> = sectionOrder
 
     override suspend fun setCatalogueSectionOrder(order: List<String>) {
@@ -52,6 +75,18 @@ class FakeSettingsRepository(
 
     override suspend fun setCatalogueSectionCollapsed(section: String, collapsed: Boolean) {
         collapsedSections.value = if (collapsed) collapsedSections.value + section else collapsedSections.value - section
+    }
+
+    override val workorderSectionCollapsed: Flow<Boolean> = workorderCollapsed
+
+    override suspend fun setWorkorderSectionCollapsed(value: Boolean) {
+        workorderCollapsed.value = value
+    }
+
+    override val collapsedRecencySubcategories: Flow<Set<String>> = collapsedRecency
+
+    override suspend fun setRecencySubcategoryCollapsed(subcategory: String, collapsed: Boolean) {
+        collapsedRecency.value = if (collapsed) collapsedRecency.value + subcategory else collapsedRecency.value - subcategory
     }
 
     override val crsNumberTemplate: Flow<String> = crsNumberTemplateFlow
@@ -76,6 +111,12 @@ class FakeSettingsRepository(
 
     override suspend fun setCrsShowCertifyingStaffContact(value: Boolean) {
         crsShowCertifyingStaffContactFlow.value = value
+    }
+
+    override val warningThresholds: Flow<WarningThresholds> = warningThresholdsFlow
+
+    override suspend fun setWarningThresholds(value: WarningThresholds) {
+        warningThresholdsFlow.value = value
     }
 
     override val connectedGoogleAccountEmail: Flow<String?> = connectedGoogleAccountEmailFlow

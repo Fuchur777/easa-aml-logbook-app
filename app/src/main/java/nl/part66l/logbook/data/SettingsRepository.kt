@@ -13,10 +13,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import nl.part66l.logbook.domain.WarningThresholds
 
 interface SettingsRepository {
+    /** Archived-row visibility, one per directory screen. Each is toggled on the list itself and remembered, so the choice survives leaving the screen. */
     val showArchivedAircraft: Flow<Boolean>
     suspend fun setShowArchivedAircraft(value: Boolean)
+
+    val showArchivedDocuments: Flow<Boolean>
+    suspend fun setShowArchivedDocuments(value: Boolean)
+
+    val showArchivedContacts: Flow<Boolean>
+    suspend fun setShowArchivedContacts(value: Boolean)
 
     /** User's chosen section order for the Appendix II task picker. Sections not listed fall back to alphabetical, after the ones that are. */
     val catalogueSectionOrder: Flow<List<String>>
@@ -25,6 +33,17 @@ interface SettingsRepository {
     /** Sections folded closed in the Appendix II task picker. */
     val collapsedCatalogueSections: Flow<Set<String>>
     suspend fun setCatalogueSectionCollapsed(section: String, collapsed: Boolean)
+
+    /**
+     * Whether the work entry form's workorder block starts folded closed. Remembered from the
+     * last time it was toggled — an entry that records no workorder keeps it closed regardless.
+     */
+    val workorderSectionCollapsed: Flow<Boolean>
+    suspend fun setWorkorderSectionCollapsed(value: Boolean)
+
+    /** Subcategories whose per-route breakdown is folded closed on the recency dashboard. */
+    val collapsedRecencySubcategories: Flow<Set<String>>
+    suspend fun setRecencySubcategoryCollapsed(subcategory: String, collapsed: Boolean)
 
     /** CRS numbering template (§9.2), e.g. `{REG}-{YYYY}-{SEQ:4}`. Default matches the worked example. */
     val crsNumberTemplate: Flow<String>
@@ -39,6 +58,10 @@ interface SettingsRepository {
     /** Off by default — the certifying staff's phone/email are personal data, printed on the CRS only when opted in. */
     val crsShowCertifyingStaffContact: Flow<Boolean>
     suspend fun setCrsShowCertifyingStaffContact(value: Boolean)
+
+    /** How far ahead a licence expiry or recency lapse starts showing amber/red. Colour only — nothing is ever gated on it. */
+    val warningThresholds: Flow<WarningThresholds>
+    suspend fun setWarningThresholds(value: WarningThresholds)
 
     /** Google Drive backup (§10). Null means "not connected" — the app is fully functional offline without any of these. */
     val connectedGoogleAccountEmail: Flow<String?>
@@ -75,12 +98,20 @@ class SettingsRepositoryImpl @Inject constructor(
 
     private object Keys {
         val SHOW_ARCHIVED_AIRCRAFT = booleanPreferencesKey("show_archived_aircraft")
+        val SHOW_ARCHIVED_DOCUMENTS = booleanPreferencesKey("show_archived_documents")
+        val SHOW_ARCHIVED_CONTACTS = booleanPreferencesKey("show_archived_contacts")
         val CATALOGUE_SECTION_ORDER = stringPreferencesKey("catalogue_section_order")
         val COLLAPSED_CATALOGUE_SECTIONS = stringSetPreferencesKey("collapsed_catalogue_sections")
+        val COLLAPSED_RECENCY_SUBCATEGORIES = stringSetPreferencesKey("collapsed_recency_subcategories")
+        val WORKORDER_SECTION_COLLAPSED = booleanPreferencesKey("workorder_section_collapsed")
         val CRS_NUMBER_TEMPLATE = stringPreferencesKey("crs_number_template")
         val CRS_ANNUAL_RESET = booleanPreferencesKey("crs_annual_reset")
         val CRS_START_AT = intPreferencesKey("crs_start_at")
         val CRS_SHOW_CERTIFYING_STAFF_CONTACT = booleanPreferencesKey("crs_show_certifying_staff_contact")
+        val LICENCE_AMBER_DAYS = intPreferencesKey("licence_amber_days")
+        val LICENCE_RED_DAYS = intPreferencesKey("licence_red_days")
+        val RECENCY_AMBER_DAYS = intPreferencesKey("recency_amber_days")
+        val RECENCY_RED_DAYS = intPreferencesKey("recency_red_days")
         val CONNECTED_GOOGLE_ACCOUNT_EMAIL = stringPreferencesKey("connected_google_account_email")
         val DRIVE_ROOT_FOLDER_ID = stringPreferencesKey("drive_root_folder_id")
         val DRIVE_BENCH_FOLDER_ID = stringPreferencesKey("drive_bench_folder_id")
@@ -100,6 +131,20 @@ class SettingsRepositoryImpl @Inject constructor(
         dataStore.edit { it[Keys.SHOW_ARCHIVED_AIRCRAFT] = value }
     }
 
+    override val showArchivedDocuments: Flow<Boolean> =
+        dataStore.data.map { it[Keys.SHOW_ARCHIVED_DOCUMENTS] ?: false }
+
+    override suspend fun setShowArchivedDocuments(value: Boolean) {
+        dataStore.edit { it[Keys.SHOW_ARCHIVED_DOCUMENTS] = value }
+    }
+
+    override val showArchivedContacts: Flow<Boolean> =
+        dataStore.data.map { it[Keys.SHOW_ARCHIVED_CONTACTS] ?: false }
+
+    override suspend fun setShowArchivedContacts(value: Boolean) {
+        dataStore.edit { it[Keys.SHOW_ARCHIVED_CONTACTS] = value }
+    }
+
     override val catalogueSectionOrder: Flow<List<String>> =
         dataStore.data.map { prefs ->
             prefs[Keys.CATALOGUE_SECTION_ORDER]?.split(sectionOrderDelimiter)?.filter { it.isNotEmpty() } ?: emptyList()
@@ -116,6 +161,23 @@ class SettingsRepositoryImpl @Inject constructor(
         dataStore.edit { prefs ->
             val current = prefs[Keys.COLLAPSED_CATALOGUE_SECTIONS] ?: emptySet()
             prefs[Keys.COLLAPSED_CATALOGUE_SECTIONS] = if (collapsed) current + section else current - section
+        }
+    }
+
+    override val workorderSectionCollapsed: Flow<Boolean> =
+        dataStore.data.map { it[Keys.WORKORDER_SECTION_COLLAPSED] ?: false }
+
+    override suspend fun setWorkorderSectionCollapsed(value: Boolean) {
+        dataStore.edit { it[Keys.WORKORDER_SECTION_COLLAPSED] = value }
+    }
+
+    override val collapsedRecencySubcategories: Flow<Set<String>> =
+        dataStore.data.map { it[Keys.COLLAPSED_RECENCY_SUBCATEGORIES] ?: emptySet() }
+
+    override suspend fun setRecencySubcategoryCollapsed(subcategory: String, collapsed: Boolean) {
+        dataStore.edit { prefs ->
+            val current = prefs[Keys.COLLAPSED_RECENCY_SUBCATEGORIES] ?: emptySet()
+            prefs[Keys.COLLAPSED_RECENCY_SUBCATEGORIES] = if (collapsed) current + subcategory else current - subcategory
         }
     }
 
@@ -145,6 +207,25 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override suspend fun setCrsShowCertifyingStaffContact(value: Boolean) {
         dataStore.edit { it[Keys.CRS_SHOW_CERTIFYING_STAFF_CONTACT] = value }
+    }
+
+    override val warningThresholds: Flow<WarningThresholds> =
+        dataStore.data.map { prefs ->
+            WarningThresholds(
+                licenceAmberDays = prefs[Keys.LICENCE_AMBER_DAYS] ?: WarningThresholds.DEFAULT_LICENCE_AMBER_DAYS,
+                licenceRedDays = prefs[Keys.LICENCE_RED_DAYS] ?: WarningThresholds.DEFAULT_LICENCE_RED_DAYS,
+                recencyAmberDays = prefs[Keys.RECENCY_AMBER_DAYS] ?: WarningThresholds.DEFAULT_RECENCY_AMBER_DAYS,
+                recencyRedDays = prefs[Keys.RECENCY_RED_DAYS] ?: WarningThresholds.DEFAULT_RECENCY_RED_DAYS,
+            )
+        }
+
+    override suspend fun setWarningThresholds(value: WarningThresholds) {
+        dataStore.edit { prefs ->
+            prefs[Keys.LICENCE_AMBER_DAYS] = value.licenceAmberDays
+            prefs[Keys.LICENCE_RED_DAYS] = value.licenceRedDays
+            prefs[Keys.RECENCY_AMBER_DAYS] = value.recencyAmberDays
+            prefs[Keys.RECENCY_RED_DAYS] = value.recencyRedDays
+        }
     }
 
     override val connectedGoogleAccountEmail: Flow<String?> =

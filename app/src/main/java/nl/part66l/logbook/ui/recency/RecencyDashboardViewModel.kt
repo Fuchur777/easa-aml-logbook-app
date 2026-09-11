@@ -9,17 +9,33 @@ import java.io.File
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import nl.part66l.logbook.data.RecencyRepository
+import nl.part66l.logbook.data.SettingsRepository
 import nl.part66l.logbook.domain.RecencyEvaluator
+import nl.part66l.logbook.domain.WarningThresholds
 
 @HiltViewModel
 class RecencyDashboardViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val recencyRepository: RecencyRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
+
+    /** Which subcategory cards have their route breakdown folded closed — persisted, so a hidden block stays hidden across restarts. */
+    val collapsedSubcategories: StateFlow<Set<String>> = settingsRepository.collapsedRecencySubcategories
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    val warningThresholds: StateFlow<WarningThresholds> = settingsRepository.warningThresholds
+        .stateIn(viewModelScope, SharingStarted.Eagerly, WarningThresholds())
+
+    fun onRoutesVisibilityToggled(subcategory: String, collapsed: Boolean) {
+        viewModelScope.launch { settingsRepository.setRecencySubcategoryCollapsed(subcategory, collapsed) }
+    }
 
     private val _results = MutableStateFlow<List<RecencyEvaluator.SubcategoryResult>>(emptyList())
     val results: StateFlow<List<RecencyEvaluator.SubcategoryResult>> = _results.asStateFlow()

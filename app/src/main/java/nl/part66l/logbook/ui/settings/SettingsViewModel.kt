@@ -15,6 +15,7 @@ import nl.part66l.logbook.data.ProfileEntity
 import nl.part66l.logbook.data.ProfileRepository
 import nl.part66l.logbook.data.SettingsRepository
 import nl.part66l.logbook.domain.CrsNumberFormat
+import nl.part66l.logbook.domain.WarningThresholds
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -22,11 +23,15 @@ class SettingsViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
 ) : ViewModel() {
 
-    val showArchivedAircraft: StateFlow<Boolean> = settingsRepository.showArchivedAircraft
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    /**
+     * Kept as text rather than Int so a half-typed or cleared field doesn't snap back to a number
+     * mid-edit; a value that doesn't parse simply isn't persisted.
+     */
+    val warningThresholds: StateFlow<WarningThresholds> = settingsRepository.warningThresholds
+        .stateIn(viewModelScope, SharingStarted.Eagerly, WarningThresholds())
 
-    fun onShowArchivedAircraftChange(value: Boolean) {
-        viewModelScope.launch { settingsRepository.setShowArchivedAircraft(value) }
+    fun onWarningThresholdChange(update: (WarningThresholds) -> WarningThresholds) {
+        viewModelScope.launch { settingsRepository.setWarningThresholds(update(warningThresholds.value)) }
     }
 
     val crsShowCertifyingStaffContact: StateFlow<Boolean> = settingsRepository.crsShowCertifyingStaffContact

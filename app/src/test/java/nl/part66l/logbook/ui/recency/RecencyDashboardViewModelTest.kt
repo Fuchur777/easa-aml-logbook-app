@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.setMain
 import nl.part66l.logbook.domain.RecencyEvaluator
 import nl.part66l.logbook.domain.Subcategory
 import nl.part66l.logbook.fakes.FakeRecencyRepository
+import nl.part66l.logbook.fakes.FakeSettingsRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -42,7 +43,7 @@ class RecencyDashboardViewModelTest {
     @Test
     fun `starts empty and loading, until refresh loads evaluateCurrent's results`() {
         val result = RecencyEvaluator.SubcategoryResult(subcategory = Subcategory.L1, current = true, routes = emptyList())
-        val viewModel = RecencyDashboardViewModel(context, FakeRecencyRepository(current = listOf(result)))
+        val viewModel = RecencyDashboardViewModel(context, FakeRecencyRepository(current = listOf(result)), FakeSettingsRepository())
 
         assertTrue(viewModel.results.value.isEmpty())
 
@@ -54,7 +55,7 @@ class RecencyDashboardViewModelTest {
 
     @Test
     fun `an empty evaluation (no subcategories held) is reflected as an empty list`() {
-        val viewModel = RecencyDashboardViewModel(context, FakeRecencyRepository(current = emptyList()))
+        val viewModel = RecencyDashboardViewModel(context, FakeRecencyRepository(current = emptyList()), FakeSettingsRepository())
 
         viewModel.refresh()
 

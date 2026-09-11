@@ -19,10 +19,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -36,7 +41,6 @@ fun SettingsScreen(
     onDriveSync: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
-    val showArchivedAircraft by viewModel.showArchivedAircraft.collectAsStateWithLifecycle()
     val recencyReductionGranted by viewModel.recencyReductionGranted.collectAsStateWithLifecycle()
     val recencyReductionReference by viewModel.recencyReductionReference.collectAsStateWithLifecycle()
     val researchCountsTowardRecency by viewModel.researchCountsTowardRecency.collectAsStateWithLifecycle()
@@ -45,6 +49,7 @@ fun SettingsScreen(
     val crsStartAt by viewModel.crsStartAt.collectAsStateWithLifecycle()
     val crsNumberingError by viewModel.crsNumberingError.collectAsStateWithLifecycle()
     val crsShowCertifyingStaffContact by viewModel.crsShowCertifyingStaffContact.collectAsStateWithLifecycle()
+    val warningThresholds by viewModel.warningThresholds.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -68,7 +73,7 @@ fun SettingsScreen(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Digital signing", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "The local signing key's certificate and fingerprint (§9.3) — export it once to " +
+                        "The local signing key's certificate and fingerprint — export it once to " +
                             "submit to your competent authority.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -95,24 +100,42 @@ fun SettingsScreen(
             }
 
             Card {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Aircraft", style = MaterialTheme.typography.titleMedium)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Show archived aircraft")
-                            Text(
-                                "Archived aircraft are hidden from the list by default",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(checked = showArchivedAircraft, onCheckedChange = viewModel::onShowArchivedAircraftChange)
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Expiry warnings", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "How far ahead the recency screen and its tab icon start showing amber, then " +
+                            "red. Colour only — nothing is ever blocked, and these reflect what this " +
+                            "device has recorded, not work logged elsewhere.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        DaysField(
+                            label = "Licence amber",
+                            days = warningThresholds.licenceAmberDays,
+                            onChange = { viewModel.onWarningThresholdChange { t -> t.copy(licenceAmberDays = it) } },
+                            modifier = Modifier.weight(1f),
+                        )
+                        DaysField(
+                            label = "Licence red",
+                            days = warningThresholds.licenceRedDays,
+                            onChange = { viewModel.onWarningThresholdChange { t -> t.copy(licenceRedDays = it) } },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        DaysField(
+                            label = "Recency amber",
+                            days = warningThresholds.recencyAmberDays,
+                            onChange = { viewModel.onWarningThresholdChange { t -> t.copy(recencyAmberDays = it) } },
+                            modifier = Modifier.weight(1f),
+                        )
+                        DaysField(
+                            label = "Recency red",
+                            days = warningThresholds.recencyRedDays,
+                            onChange = { viewModel.onWarningThresholdChange { t -> t.copy(recencyRedDays = it) } },
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                 }
             }
@@ -230,4 +253,22 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+/** A whole-number "days" field. A blank or unparseable value simply isn't persisted, so clearing it to retype doesn't snap back. */
+@Composable
+private fun DaysField(label: String, days: Int, onChange: (Int) -> Unit, modifier: Modifier = Modifier) {
+    var text by remember(days) { mutableStateOf(days.toString()) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { entered ->
+            text = entered.filter { it.isDigit() }
+            text.toIntOrNull()?.let(onChange)
+        },
+        label = { Text(label) },
+        suffix = { Text("days") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        singleLine = true,
+        modifier = modifier,
+    )
 }

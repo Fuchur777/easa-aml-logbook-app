@@ -46,15 +46,19 @@ class SettingsViewModelTest {
     )
 
     @Test
-    fun `showArchivedAircraft reflects and updates the settings repository`() {
-        val settingsRepository = FakeSettingsRepository(initialShowArchivedAircraft = false)
+    fun `warning thresholds default to the documented values and persist a change`() {
+        val settingsRepository = FakeSettingsRepository()
         val viewModel = SettingsViewModel(settingsRepository, FakeProfileRepository())
 
-        assertFalse(viewModel.showArchivedAircraft.value)
+        assertEquals(90, viewModel.warningThresholds.value.licenceAmberDays)
+        assertEquals(30, viewModel.warningThresholds.value.licenceRedDays)
+        assertEquals(60, viewModel.warningThresholds.value.recencyAmberDays)
 
-        viewModel.onShowArchivedAircraftChange(true)
+        viewModel.onWarningThresholdChange { it.copy(licenceAmberDays = 120) }
 
-        assertTrue(viewModel.showArchivedAircraft.value)
+        assertEquals(120, viewModel.warningThresholds.value.licenceAmberDays)
+        // Unrelated thresholds are left alone by a targeted change.
+        assertEquals(30, viewModel.warningThresholds.value.licenceRedDays)
     }
 
     @Test
