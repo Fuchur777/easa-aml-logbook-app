@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,6 +25,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,6 +35,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import nl.part66l.logbook.R
 import nl.part66l.logbook.domain.ExpiryWarning
 import nl.part66l.logbook.domain.RecencyEvaluator
 import nl.part66l.logbook.domain.RuleStatus
@@ -73,7 +76,15 @@ fun RecencyDashboardScreen(
                         onClick = { viewModel.exportEvidence { csv -> shareRecencyCsv(context, csv) } },
                         enabled = !loading && !exporting && results.isNotEmpty(),
                     ) {
-                        Text(if (exporting) "…" else "⬇️", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        if (exporting) {
+                            Text("…", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        } else {
+                            Icon(
+                                painterResource(R.drawable.ic_download),
+                                contentDescription = "Export the evidence as CSV",
+                                tint = Color.White,
+                            )
+                        }
                     }
                 },
                 colors = part66TopAppBarColors(),

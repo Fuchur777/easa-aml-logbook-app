@@ -38,6 +38,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import nl.part66l.logbook.data.AircraftWithRegistration
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
+import nl.part66l.logbook.ui.theme.part66TopBarSwitchColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +72,7 @@ fun AircraftListScreen(
                     Switch(
                         checked = showArchived,
                         onCheckedChange = viewModel::onShowArchivedChange,
+                        colors = part66TopBarSwitchColors(),
                         modifier = Modifier.padding(start = 8.dp, end = 4.dp),
                     )
                 },

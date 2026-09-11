@@ -37,6 +37,7 @@ import nl.part66l.logbook.data.DocumentEntity
 import nl.part66l.logbook.domain.DocumentCategory
 import nl.part66l.logbook.ui.components.DropdownField
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
+import nl.part66l.logbook.ui.theme.part66TopBarSwitchColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +60,15 @@ fun DocumentListScreen(
                 navigationIcon = {
                     IconButton(onClick = onClose) { Text("✕") }
                 },
+                actions = {
+                    Text("Archived", style = MaterialTheme.typography.labelMedium, color = Color.White)
+                    Switch(
+                        checked = showArchived,
+                        onCheckedChange = viewModel::onShowArchivedChange,
+                        colors = part66TopBarSwitchColors(),
+                        modifier = Modifier.padding(start = 8.dp, end = 4.dp),
+                    )
+                },
                 colors = part66TopAppBarColors(),
                 expandedHeight = 48.dp,
             )
@@ -72,40 +82,27 @@ fun DocumentListScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    DropdownField(
-                        label = "Category",
-                        value = category,
-                        options = listOf<DocumentCategory?>(null) + DocumentCategory.entries,
-                        optionLabel = { it?.displayLabel ?: "All categories" },
-                        onValueChange = viewModel::onCategoryChange,
-                        modifier = Modifier.weight(1f),
-                    )
-                    DropdownField(
-                        label = "Used on",
-                        value = aircraftId,
-                        options = listOf<String?>(null) + aircraftOptions.map { it.aircraft.id },
-                        optionLabel = { id ->
-                            id?.let { aid ->
-                                aircraftOptions.find { it.aircraft.id == aid }
-                                    ?.let { it.registration ?: "${it.aircraft.manufacturer} ${it.aircraft.type}" }
-                            } ?: "Any aircraft"
-                        },
-                        onValueChange = viewModel::onAircraftChange,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                Row(
+                DropdownField(
+                    label = "Category",
+                    value = category,
+                    options = listOf<DocumentCategory?>(null) + DocumentCategory.entries,
+                    optionLabel = { it?.displayLabel ?: "All categories" },
+                    onValueChange = viewModel::onCategoryChange,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Show archived", style = MaterialTheme.typography.bodyMedium)
-                    Switch(checked = showArchived, onCheckedChange = viewModel::onShowArchivedChange)
-                }
+                )
+                DropdownField(
+                    label = "Used on",
+                    value = aircraftId,
+                    options = listOf<String?>(null) + aircraftOptions.map { it.aircraft.id },
+                    optionLabel = { id ->
+                        id?.let { aid ->
+                            aircraftOptions.find { it.aircraft.id == aid }
+                                ?.let { it.registration ?: "${it.aircraft.manufacturer} ${it.aircraft.type}" }
+                        } ?: "Any aircraft"
+                    },
+                    onValueChange = viewModel::onAircraftChange,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
 
             if (documents.isEmpty()) {

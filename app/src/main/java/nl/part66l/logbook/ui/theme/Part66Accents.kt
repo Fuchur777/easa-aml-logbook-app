@@ -3,6 +3,8 @@ package nl.part66l.logbook.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.SwitchColors
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
@@ -37,3 +39,17 @@ fun part66ConfirmButtonColors(): ButtonColors = ButtonDefaults.buttonColors(
  */
 @Composable
 fun linkBlue(): Color = if (isSystemInDarkTheme()) Part66BlueLight else Part66Blue
+
+/**
+ * A switch sitting on the brand-blue top bar.
+ *
+ * Material's checked switch draws its track *and* its border in [primary], which on a
+ * primary-coloured bar leaves a white thumb apparently floating in the bar with no
+ * control around it. A white border gives the switch its edge back; the track stays
+ * blue, so "on" still reads as filled rather than outlined.
+ */
+@Composable
+fun part66TopBarSwitchColors(): SwitchColors = SwitchDefaults.colors(
+    checkedBorderColor = Color.White,
+    checkedThumbColor = Color.White,
+)

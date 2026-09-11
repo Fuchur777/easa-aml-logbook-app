@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -32,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import nl.part66l.logbook.R
 import nl.part66l.logbook.data.IssuedCrsRow
 import nl.part66l.logbook.ui.components.DropdownField
 import nl.part66l.logbook.ui.documents.openPdf
@@ -78,7 +81,17 @@ fun IssuedCrsListScreen(
                         IconButton(
                             onClick = { viewModel.exportSelected { zip -> shareCrsZip(context, zip) } },
                             enabled = !exporting,
-                        ) { Text(if (exporting) "…" else "⬇️", style = MaterialTheme.typography.titleMedium, color = Color.White) }
+                        ) {
+                            if (exporting) {
+                                Text("…", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                            } else {
+                                Icon(
+                                    painterResource(R.drawable.ic_download),
+                                    contentDescription = "Export the selected certificates",
+                                    tint = Color.White,
+                                )
+                            }
+                        }
                     },
                     colors = part66TopAppBarColors(),
                     expandedHeight = 48.dp,
