@@ -8,11 +8,10 @@ import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import nl.part66l.logbook.drive.DriveApiClient
 import nl.part66l.logbook.drive.DriveAuthManager
 import nl.part66l.logbook.drive.DriveManifest
+import nl.part66l.logbook.drive.DriveManifestStore
 
 /** Result of one "Sync now" run — [errors] holds a human-readable line per failed item, so one bad file never hides the rest. */
 data class SyncSummary(val uploaded: Int, val failed: Int, val errors: List<String>)
@@ -65,9 +64,8 @@ class DriveSyncRepositoryImpl @Inject constructor(
     private val attachmentDao: AttachmentDao,
     private val documentDao: DocumentDao,
     private val settingsRepository: SettingsRepository,
+    private val driveManifestStore: DriveManifestStore,
 ) : DriveSyncRepository {
-
-    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun connect(activity: FragmentActivity): Result<String> {
         val token = driveAuthManager.authorize(activity).getOrElse { return Result.failure(it) }
@@ -85,7 +83,18 @@ class DriveSyncRepositoryImpl @Inject constructor(
         return runSync(token)
     }
 
+    /**
+     * Refuses to run at all when no account is connected.
+     *
+     * Cancelling the work on disconnect is the primary fix, but a periodic request enqueued by
+     * an older build outlives an app update, so the worker itself has to check. Without this a
+     * user who disconnected before updating would keep uploading until they happened to open
+     * the Drive screen.
+     */
     override suspend fun syncNowSilently(context: Context): Result<SyncSummary> {
+        if (settingsRepository.connectedGoogleAccountEmail.first() == null) {
+            return Result.failure(IllegalStateException("Google Drive is not connected"))
+        }
         val token = driveAuthManager.authorizeSilently(context).getOrElse { return Result.failure(it) }
         return runSync(token)
     }
@@ -206,18 +215,24 @@ class DriveSyncRepositoryImpl @Inject constructor(
         return id
     }
 
-    /** Overwrites (as a fresh file — `drive.appdata` isn't user-visible) rather than patching a previous one. Read back by [DriveBackupRepository] to relocate folders on a fresh install, where `drive.file` scope alone can't search for them. */
+    /**
+     * Records the folders this repository owns — root, bench and per-aircraft — carrying forward
+     * whatever the backup path wrote for its own. See [DriveManifestStore].
+     */
     private suspend fun writeManifest(token: String, rootFolderId: String, benchFolderId: String) {
         val aircraftFolderIds = aircraftDao.observeAllWithRegistration(includeArchived = true).first()
             .mapNotNull { row -> row.aircraft.driveFolderId?.let { row.aircraft.id to it } }
             .toMap()
-        val manifest = DriveManifest(
-            rootFolderId = rootFolderId,
-            benchFolderId = benchFolderId,
-            backupsFolderId = settingsRepository.driveBackupsFolderId.first(),
-            aircraftFolderIds = aircraftFolderIds,
-            updatedAt = Instant.now().toEpochMilli(),
-        )
-        driveApiClient.uploadAppDataFile(token, "manifest.json", json.encodeToString(manifest).toByteArray()).getOrThrow()
+        driveManifestStore.update(token) { existing ->
+            DriveManifest(
+                rootFolderId = rootFolderId,
+                benchFolderId = benchFolderId,
+                // Not ours to set. A device that has never taken a backup has no local value, and
+                // writing that null would hide every backup the account already holds.
+                backupsFolderId = settingsRepository.driveBackupsFolderId.first() ?: existing?.backupsFolderId,
+                aircraftFolderIds = aircraftFolderIds,
+                updatedAt = Instant.now().toEpochMilli(),
+            )
+        }
     }
 }

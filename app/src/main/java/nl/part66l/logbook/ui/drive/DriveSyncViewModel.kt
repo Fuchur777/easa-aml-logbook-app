@@ -77,9 +77,22 @@ class DriveSyncViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Disconnecting has to stop the background worker too, not just forget the account.
+     *
+     * The periodic work is enqueued by name and survives process death, and the OAuth grant
+     * lives with Play Services rather than with us — so clearing the stored email alone left
+     * a worker that still got a token and kept uploading to the account the user had just
+     * disconnected. Worse, the "Sync automatically" switch sits inside the connected branch of
+     * this screen, so once disconnected there was no control left to turn it off with.
+     */
     fun disconnect() {
         _lastSummary.value = null
-        viewModelScope.launch { driveSyncRepository.disconnect() }
+        DriveSyncScheduler.cancel(appContext)
+        viewModelScope.launch {
+            settingsRepository.setDriveAutoSyncEnabled(false)
+            driveSyncRepository.disconnect()
+        }
     }
 
     fun onAutoSyncToggle(enabled: Boolean) {
