@@ -3,6 +3,8 @@ package nl.part66l.logbook.ui.crs
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,9 +15,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -43,12 +47,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
+import nl.part66l.logbook.R
 import nl.part66l.logbook.data.CrsEntity
 import nl.part66l.logbook.di.LocalKeystoreSignerEntryPoint
 import nl.part66l.logbook.domain.SignatureState
 import nl.part66l.logbook.signing.BiometricSigningGate
 import nl.part66l.logbook.ui.documents.openPdf
-import nl.part66l.logbook.ui.theme.Part66ConfirmGreen
+import nl.part66l.logbook.ui.theme.part66ConfirmButtonColors
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -133,9 +138,11 @@ fun CrsScreen(
                                 }
                             },
                             enabled = !state.generating && !state.signing,
-                            colors = ButtonDefaults.buttonColors(containerColor = Part66ConfirmGreen),
+                            colors = part66ConfirmButtonColors(),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
+                            Icon(painterResource(R.drawable.ic_esign), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                             Text(if (state.signing) "Signing…" else "Sign Digitally")
                         }
                     }
@@ -144,6 +151,8 @@ fun CrsScreen(
                         enabled = !state.generating && !state.signing,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
+                        Icon(painterResource(R.drawable.ic_printsign), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                         Text(if (state.generating) "Generating…" else "Print and Sign")
                     }
                 }
@@ -205,7 +214,7 @@ private fun CrsRow(crs: CrsEntity, onClick: () -> Unit, onPhotoAttached: (String
             if (signedPhotoPath != null) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(onClick = { openSignedPhoto(context, signedPhotoPath) }) {
-                        Text("🖼️", style = MaterialTheme.typography.titleMedium)
+                        Icon(painterResource(R.drawable.ic_photo), contentDescription = "Show signed copy")
                     }
                     Text(
                         "Show signed copy",
@@ -217,7 +226,7 @@ private fun CrsRow(crs: CrsEntity, onClick: () -> Unit, onPhotoAttached: (String
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(onClick = { photoPickerLauncher.launch("image/*") }) {
-                        Text("📷", style = MaterialTheme.typography.titleMedium)
+                        Icon(painterResource(R.drawable.ic_camera), contentDescription = "Attach signed copy")
                     }
                     Text(
                         "Attach signed copy",

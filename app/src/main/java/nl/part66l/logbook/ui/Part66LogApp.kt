@@ -1,8 +1,11 @@
 package nl.part66l.logbook.ui
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -13,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -24,6 +28,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import nl.part66l.logbook.ui.theme.color
+import nl.part66l.logbook.ui.theme.confirmGreen
+import nl.part66l.logbook.R
+import nl.part66l.logbook.domain.WarningLevel
 import nl.part66l.logbook.ui.about.AboutScreen
 import nl.part66l.logbook.ui.aircraft.AircraftFormScreen
 import nl.part66l.logbook.ui.aircraft.AircraftListScreen
@@ -48,23 +56,51 @@ fun Part66LogApp() {
     val appViewModel: AppViewModel = hiltViewModel()
     val state by appViewModel.state.collectAsStateWithLifecycle()
 
+    val warningLevel by appViewModel.warningLevel.collectAsStateWithLifecycle()
+
     when (state) {
         AppStartState.Loading -> LoadingScreen()
-        AppStartState.NeedsProfile -> AppNavHost(startDestination = Destination.ProfileSetup.route, onProfileSaved = appViewModel::markProfileReady)
-        AppStartState.Ready -> AppNavHost(startDestination = Destination.WorkEntries.route, onProfileSaved = appViewModel::markProfileReady)
+        AppStartState.NeedsProfile -> AppNavHost(
+            startDestination = Destination.ProfileSetup.route,
+            onProfileSaved = appViewModel::markProfileReady,
+            warningLevel = warningLevel,
+            onRecencyEntered = appViewModel::refreshWarningLevel,
+        )
+        AppStartState.Ready -> AppNavHost(
+            startDestination = Destination.WorkEntries.route,
+            onProfileSaved = appViewModel::markProfileReady,
+            warningLevel = warningLevel,
+            onRecencyEntered = appViewModel::refreshWarningLevel,
+        )
     }
 }
 
-private data class BottomBarDestination(val destination: Destination, val icon: String, val label: String)
+private data class BottomBarDestination(val destination: Destination, @DrawableRes val icon: Int, val label: String)
 
 private val bottomBarDestinations = listOf(
-    BottomBarDestination(Destination.WorkEntries, "🔧", "Work"),
-    BottomBarDestination(Destination.Aircraft, "🛩️", "Aircraft"),
-    BottomBarDestination(Destination.Recency, "🕐", "Recency"),
+    BottomBarDestination(Destination.WorkEntries, R.drawable.ic_work, "Work"),
+    BottomBarDestination(Destination.Aircraft, R.drawable.ic_aircraft, "Aircraft"),
+    BottomBarDestination(Destination.Recency, R.drawable.ic_recency_current, "Recency"),
 )
 
+/**
+ * Two glyphs across three levels. Amber means the records still show the subcategory as current,
+ * just running out — so it keeps the "recent" glyph and only the colour changes. The "expired"
+ * glyph is reserved for red, which is the one level that covers an actual lapse.
+ */
+@DrawableRes
+private fun recencyIcon(level: WarningLevel): Int = when (level) {
+    WarningLevel.NONE, WarningLevel.AMBER -> R.drawable.ic_recency_current
+    WarningLevel.RED -> R.drawable.ic_recency_expired
+}
+
 @Composable
-private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
+private fun AppNavHost(
+    startDestination: String,
+    onProfileSaved: () -> Unit,
+    warningLevel: WarningLevel,
+    onRecencyEntered: () -> Unit,
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination
@@ -98,10 +134,17 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                 NavigationBar {
                     bottomBarDestinations.forEach { (destination, icon, label) ->
                         val selected = currentRoute?.hierarchy?.any { it.route == destination.route } == true
+                        val isRecency = destination == Destination.Recency
                         NavigationBarItem(
                             selected = selected,
                             onClick = { navController.navigateSingleTopTo(destination.route) },
-                            icon = { Text(icon) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(if (isRecency) recencyIcon(warningLevel) else icon),
+                                    contentDescription = label,
+                                    tint = if (isRecency) warningLevel.color() ?: confirmGreen() else LocalContentColor.current,
+                                )
+                            },
                             label = { Text(label) },
                         )
                     }
@@ -211,7 +254,7 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                     onClose = { navController.popBackStack() },
                 )
             }
-            composable(Destination.Recency.route) { RecencyDashboardScreen() }
+            composable(Destination.Recency.route) { RecencyDashboardScreen(onEvaluated = onRecencyEntered) }
             composable(Destination.Documents.route) {
                 DocumentListScreen(
                     onAddDocument = { navController.navigate(Destination.DocumentForm.route) },

@@ -1,5 +1,6 @@
 package nl.part66l.logbook.ui.components
 
+import androidx.compose.material3.Icon
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -13,11 +14,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import nl.part66l.logbook.R
 
 private val DISPLAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy")
 
@@ -41,7 +44,7 @@ fun DatePickerField(
         label = { Text(label) },
         isError = isError,
         supportingText = supportingText?.let { { Text(it) } },
-        trailingIcon = { IconButton(onClick = { showDialog = true }) { Text("📅") } },
+        trailingIcon = { IconButton(onClick = { showDialog = true }) { Icon(painterResource(R.drawable.ic_datepicker), contentDescription = "Pick a date") } },
         modifier = modifier,
     )
 

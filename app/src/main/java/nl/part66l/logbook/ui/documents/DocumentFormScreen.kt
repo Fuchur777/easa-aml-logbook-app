@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -32,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -40,11 +44,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import nl.part66l.logbook.R
+import nl.part66l.logbook.ui.theme.linkBlue
 import nl.part66l.logbook.domain.DocumentCategory
 import nl.part66l.logbook.ui.components.DatePickerField
 import nl.part66l.logbook.ui.components.DropdownField
 import nl.part66l.logbook.ui.components.UnsavedChangesDialog
-import nl.part66l.logbook.ui.theme.Part66ConfirmGreen
+import nl.part66l.logbook.ui.theme.part66ConfirmButtonColors
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -157,10 +163,17 @@ fun DocumentFormScreen(
                 Text("PDF attachment", style = MaterialTheme.typography.labelLarge)
                 if (state.pdfFileName.isNotBlank()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painterResource(R.drawable.ic_pdf),
+                            contentDescription = null,
+                            tint = linkBlue(),
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.size(6.dp))
                         Text(
-                            "📄 ${state.pdfFileName}",
+                            state.pdfFileName,
                             style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = linkBlue(),
                             modifier = Modifier
                                 .weight(1f)
                                 .clickable { openPdf(context, state.pdfPath) },
@@ -179,7 +192,7 @@ fun DocumentFormScreen(
             Button(
                 onClick = viewModel::save,
                 enabled = state.canSave,
-                colors = ButtonDefaults.buttonColors(containerColor = Part66ConfirmGreen),
+                colors = part66ConfirmButtonColors(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(if (state.saving) "Saving…" else "Save")
