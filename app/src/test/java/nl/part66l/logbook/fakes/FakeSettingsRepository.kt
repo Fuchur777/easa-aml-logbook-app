@@ -1,5 +1,6 @@
 package nl.part66l.logbook.fakes
 
+import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import nl.part66l.logbook.data.SettingsRepository
@@ -12,6 +13,13 @@ class FakeSettingsRepository(
     initialCrsAnnualReset: Boolean = true,
     initialCrsStartAt: Int = 1,
     initialCrsShowCertifyingStaffContact: Boolean = false,
+    initialConnectedGoogleAccountEmail: String? = null,
+    initialDriveRootFolderId: String? = null,
+    initialDriveBenchFolderId: String? = null,
+    initialDriveDocumentsFolderId: String? = null,
+    initialDriveBackupsFolderId: String? = null,
+    initialLastDriveSyncAt: Instant? = null,
+    initialDriveAutoSyncEnabled: Boolean = false,
 ) : SettingsRepository {
     private val showArchived = MutableStateFlow(initialShowArchivedAircraft)
     private val sectionOrder = MutableStateFlow(initialCatalogueSectionOrder)
@@ -20,6 +28,13 @@ class FakeSettingsRepository(
     private val crsAnnualResetFlow = MutableStateFlow(initialCrsAnnualReset)
     private val crsStartAtFlow = MutableStateFlow(initialCrsStartAt)
     private val crsShowCertifyingStaffContactFlow = MutableStateFlow(initialCrsShowCertifyingStaffContact)
+    private val connectedGoogleAccountEmailFlow = MutableStateFlow(initialConnectedGoogleAccountEmail)
+    private val driveRootFolderIdFlow = MutableStateFlow(initialDriveRootFolderId)
+    private val driveBenchFolderIdFlow = MutableStateFlow(initialDriveBenchFolderId)
+    private val driveDocumentsFolderIdFlow = MutableStateFlow(initialDriveDocumentsFolderId)
+    private val driveBackupsFolderIdFlow = MutableStateFlow(initialDriveBackupsFolderId)
+    private val lastDriveSyncAtFlow = MutableStateFlow(initialLastDriveSyncAt)
+    private val driveAutoSyncEnabledFlow = MutableStateFlow(initialDriveAutoSyncEnabled)
 
     override val showArchivedAircraft: Flow<Boolean> = showArchived
 
@@ -61,5 +76,47 @@ class FakeSettingsRepository(
 
     override suspend fun setCrsShowCertifyingStaffContact(value: Boolean) {
         crsShowCertifyingStaffContactFlow.value = value
+    }
+
+    override val connectedGoogleAccountEmail: Flow<String?> = connectedGoogleAccountEmailFlow
+
+    override suspend fun setConnectedGoogleAccountEmail(value: String?) {
+        connectedGoogleAccountEmailFlow.value = value
+    }
+
+    override val driveRootFolderId: Flow<String?> = driveRootFolderIdFlow
+
+    override suspend fun setDriveRootFolderId(value: String?) {
+        driveRootFolderIdFlow.value = value
+    }
+
+    override val driveBenchFolderId: Flow<String?> = driveBenchFolderIdFlow
+
+    override suspend fun setDriveBenchFolderId(value: String?) {
+        driveBenchFolderIdFlow.value = value
+    }
+
+    override val driveDocumentsFolderId: Flow<String?> = driveDocumentsFolderIdFlow
+
+    override suspend fun setDriveDocumentsFolderId(value: String?) {
+        driveDocumentsFolderIdFlow.value = value
+    }
+
+    override val driveBackupsFolderId: Flow<String?> = driveBackupsFolderIdFlow
+
+    override suspend fun setDriveBackupsFolderId(value: String?) {
+        driveBackupsFolderIdFlow.value = value
+    }
+
+    override val lastDriveSyncAt: Flow<Instant?> = lastDriveSyncAtFlow
+
+    override suspend fun setLastDriveSyncAt(value: Instant) {
+        lastDriveSyncAtFlow.value = value
+    }
+
+    override val driveAutoSyncEnabled: Flow<Boolean> = driveAutoSyncEnabledFlow
+
+    override suspend fun setDriveAutoSyncEnabled(value: Boolean) {
+        driveAutoSyncEnabledFlow.value = value
     }
 }

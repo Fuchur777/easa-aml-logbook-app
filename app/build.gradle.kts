@@ -97,6 +97,12 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     ksp(libs.hilt.android.compiler)
 
+    // Auto-sync (§10) — WorkManager, plus Hilt's WorkManager integration so DriveSyncWorker can
+    // be @Inject-constructed like everything else instead of manually wiring its dependencies.
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.paging)
@@ -115,11 +121,15 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.exifinterface)
 
+    implementation(libs.play.services.auth)
+    implementation(libs.okhttp)
+
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.paging.testing)
+    testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

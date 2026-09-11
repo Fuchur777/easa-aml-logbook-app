@@ -14,6 +14,10 @@ import nl.part66l.logbook.data.DeferredItemRepository
 import nl.part66l.logbook.data.DeferredItemRepositoryImpl
 import nl.part66l.logbook.data.DocumentRepository
 import nl.part66l.logbook.data.DocumentRepositoryImpl
+import nl.part66l.logbook.data.DriveBackupRepository
+import nl.part66l.logbook.data.DriveBackupRepositoryImpl
+import nl.part66l.logbook.data.DriveSyncRepository
+import nl.part66l.logbook.data.DriveSyncRepositoryImpl
 import nl.part66l.logbook.data.PersonRepository
 import nl.part66l.logbook.data.PersonRepositoryImpl
 import nl.part66l.logbook.data.ProfileRepository
@@ -58,4 +62,10 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindDeferredItemRepository(impl: DeferredItemRepositoryImpl): DeferredItemRepository
+
+    @Binds
+    abstract fun bindDriveSyncRepository(impl: DriveSyncRepositoryImpl): DriveSyncRepository
+
+    @Binds
+    abstract fun bindDriveBackupRepository(impl: DriveBackupRepositoryImpl): DriveBackupRepository
 }

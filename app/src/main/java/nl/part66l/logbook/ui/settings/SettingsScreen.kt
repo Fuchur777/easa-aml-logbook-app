@@ -33,6 +33,7 @@ import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 fun SettingsScreen(
     onClose: () -> Unit,
     onSigningInfo: () -> Unit = {},
+    onDriveSync: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val showArchivedAircraft by viewModel.showArchivedAircraft.collectAsStateWithLifecycle()
@@ -74,6 +75,21 @@ fun SettingsScreen(
                     )
                     OutlinedButton(onClick = onSigningInfo, modifier = Modifier.fillMaxWidth()) {
                         Text("Signing certificate")
+                    }
+                }
+            }
+
+            Card {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Google Drive backup", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Back up signed certificates and photo attachments to Drive — optional; " +
+                            "the app is fully functional offline without it.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(onClick = onDriveSync, modifier = Modifier.fillMaxWidth()) {
+                        Text("Drive backup")
                     }
                 }
             }

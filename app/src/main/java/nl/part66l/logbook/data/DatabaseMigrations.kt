@@ -101,4 +101,25 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
     }
 }
 
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_12_13, MIGRATION_13_14)
+/**
+ * Google Drive backup (§10) — v1, manual "Sync now" only. Three plain additive columns, so
+ * unlike the two migrations above this is a real `ALTER TABLE ... ADD COLUMN`, not a table
+ * rebuild: SQLite has always supported adding a nullable column without one (it's only
+ * *dropping* a column that historically needed the recreate-table dance).
+ */
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `aircraft` ADD COLUMN `driveFolderId` TEXT")
+        db.execSQL("ALTER TABLE `work_entry` ADD COLUMN `driveFolderId` TEXT")
+        db.execSQL("ALTER TABLE `work_entry` ADD COLUMN `drivePhotosFolderId` TEXT")
+    }
+}
+
+/** Google Drive backup, Documents sync (§10 v2) — the same additive `driveFileId` column CRS and attachments already have. */
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `document` ADD COLUMN `driveFileId` TEXT")
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)

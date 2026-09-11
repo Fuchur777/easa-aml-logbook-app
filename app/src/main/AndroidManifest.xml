@@ -9,6 +9,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- For Google Drive backup (§10) — the app is fully functional offline without it; this only gates the optional sync feature. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".Part66LogApplication"
         android:allowBackup="true"

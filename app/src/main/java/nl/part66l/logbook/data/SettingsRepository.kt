@@ -5,8 +5,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -37,6 +39,33 @@ interface SettingsRepository {
     /** Off by default — the certifying staff's phone/email are personal data, printed on the CRS only when opted in. */
     val crsShowCertifyingStaffContact: Flow<Boolean>
     suspend fun setCrsShowCertifyingStaffContact(value: Boolean)
+
+    /** Google Drive backup (§10). Null means "not connected" — the app is fully functional offline without any of these. */
+    val connectedGoogleAccountEmail: Flow<String?>
+    suspend fun setConnectedGoogleAccountEmail(value: String?)
+
+    /** The root "AMLog" folder's Drive file ID, created once on first sync. */
+    val driveRootFolderId: Flow<String?>
+    suspend fun setDriveRootFolderId(value: String?)
+
+    /** The single folder bench/component work (no aircraft) syncs into, created once on first sync. */
+    val driveBenchFolderId: Flow<String?>
+    suspend fun setDriveBenchFolderId(value: String?)
+
+    /** The single "Documents" folder the document library syncs into, created lazily on first pending upload. */
+    val driveDocumentsFolderId: Flow<String?>
+    suspend fun setDriveDocumentsFolderId(value: String?)
+
+    /** The single "Backups" folder full-device backups upload into, created lazily on first backup. */
+    val driveBackupsFolderId: Flow<String?>
+    suspend fun setDriveBackupsFolderId(value: String?)
+
+    val lastDriveSyncAt: Flow<Instant?>
+    suspend fun setLastDriveSyncAt(value: Instant)
+
+    /** Off by default — periodic background sync via WorkManager, in addition to manual "Sync now". */
+    val driveAutoSyncEnabled: Flow<Boolean>
+    suspend fun setDriveAutoSyncEnabled(value: Boolean)
 }
 
 @Singleton
@@ -52,6 +81,13 @@ class SettingsRepositoryImpl @Inject constructor(
         val CRS_ANNUAL_RESET = booleanPreferencesKey("crs_annual_reset")
         val CRS_START_AT = intPreferencesKey("crs_start_at")
         val CRS_SHOW_CERTIFYING_STAFF_CONTACT = booleanPreferencesKey("crs_show_certifying_staff_contact")
+        val CONNECTED_GOOGLE_ACCOUNT_EMAIL = stringPreferencesKey("connected_google_account_email")
+        val DRIVE_ROOT_FOLDER_ID = stringPreferencesKey("drive_root_folder_id")
+        val DRIVE_BENCH_FOLDER_ID = stringPreferencesKey("drive_bench_folder_id")
+        val DRIVE_DOCUMENTS_FOLDER_ID = stringPreferencesKey("drive_documents_folder_id")
+        val DRIVE_BACKUPS_FOLDER_ID = stringPreferencesKey("drive_backups_folder_id")
+        val LAST_DRIVE_SYNC_AT = longPreferencesKey("last_drive_sync_at")
+        val DRIVE_AUTO_SYNC_ENABLED = booleanPreferencesKey("drive_auto_sync_enabled")
     }
 
     /** ASCII unit separator (code point 31) - won't appear in a section name, so it safely joins/splits the stored order string. */
@@ -109,5 +145,64 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override suspend fun setCrsShowCertifyingStaffContact(value: Boolean) {
         dataStore.edit { it[Keys.CRS_SHOW_CERTIFYING_STAFF_CONTACT] = value }
+    }
+
+    override val connectedGoogleAccountEmail: Flow<String?> =
+        dataStore.data.map { it[Keys.CONNECTED_GOOGLE_ACCOUNT_EMAIL] }
+
+    override suspend fun setConnectedGoogleAccountEmail(value: String?) {
+        dataStore.edit { prefs ->
+            if (value == null) prefs.remove(Keys.CONNECTED_GOOGLE_ACCOUNT_EMAIL) else prefs[Keys.CONNECTED_GOOGLE_ACCOUNT_EMAIL] = value
+        }
+    }
+
+    override val driveRootFolderId: Flow<String?> =
+        dataStore.data.map { it[Keys.DRIVE_ROOT_FOLDER_ID] }
+
+    override suspend fun setDriveRootFolderId(value: String?) {
+        dataStore.edit { prefs ->
+            if (value == null) prefs.remove(Keys.DRIVE_ROOT_FOLDER_ID) else prefs[Keys.DRIVE_ROOT_FOLDER_ID] = value
+        }
+    }
+
+    override val driveBenchFolderId: Flow<String?> =
+        dataStore.data.map { it[Keys.DRIVE_BENCH_FOLDER_ID] }
+
+    override suspend fun setDriveBenchFolderId(value: String?) {
+        dataStore.edit { prefs ->
+            if (value == null) prefs.remove(Keys.DRIVE_BENCH_FOLDER_ID) else prefs[Keys.DRIVE_BENCH_FOLDER_ID] = value
+        }
+    }
+
+    override val driveDocumentsFolderId: Flow<String?> =
+        dataStore.data.map { it[Keys.DRIVE_DOCUMENTS_FOLDER_ID] }
+
+    override suspend fun setDriveDocumentsFolderId(value: String?) {
+        dataStore.edit { prefs ->
+            if (value == null) prefs.remove(Keys.DRIVE_DOCUMENTS_FOLDER_ID) else prefs[Keys.DRIVE_DOCUMENTS_FOLDER_ID] = value
+        }
+    }
+
+    override val driveBackupsFolderId: Flow<String?> =
+        dataStore.data.map { it[Keys.DRIVE_BACKUPS_FOLDER_ID] }
+
+    override suspend fun setDriveBackupsFolderId(value: String?) {
+        dataStore.edit { prefs ->
+            if (value == null) prefs.remove(Keys.DRIVE_BACKUPS_FOLDER_ID) else prefs[Keys.DRIVE_BACKUPS_FOLDER_ID] = value
+        }
+    }
+
+    override val lastDriveSyncAt: Flow<Instant?> =
+        dataStore.data.map { prefs -> prefs[Keys.LAST_DRIVE_SYNC_AT]?.let { Instant.ofEpochMilli(it) } }
+
+    override suspend fun setLastDriveSyncAt(value: Instant) {
+        dataStore.edit { it[Keys.LAST_DRIVE_SYNC_AT] = value.toEpochMilli() }
+    }
+
+    override val driveAutoSyncEnabled: Flow<Boolean> =
+        dataStore.data.map { it[Keys.DRIVE_AUTO_SYNC_ENABLED] ?: false }
+
+    override suspend fun setDriveAutoSyncEnabled(value: Boolean) {
+        dataStore.edit { it[Keys.DRIVE_AUTO_SYNC_ENABLED] = value }
     }
 }

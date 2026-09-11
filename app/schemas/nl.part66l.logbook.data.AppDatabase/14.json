@@ -1,0 +1,1620 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 14,
+    "identityHash": "468b2fefa2a5198c499b2da84793e3f8",
+    "entities": [
+      {
+        "tableName": "aircraft",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `manufacturer` TEXT NOT NULL, `type` TEXT NOT NULL, `serialNumber` TEXT NOT NULL, `propulsion` TEXT NOT NULL, `structure` TEXT NOT NULL, `subcategoryOverride` TEXT, `ownershipRelation` TEXT NOT NULL, `notes` TEXT, `archived` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "manufacturer",
+            "columnName": "manufacturer",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serialNumber",
+            "columnName": "serialNumber",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "propulsion",
+            "columnName": "propulsion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "structure",
+            "columnName": "structure",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "subcategoryOverride",
+            "columnName": "subcategoryOverride",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ownershipRelation",
+            "columnName": "ownershipRelation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "archived",
+            "columnName": "archived",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_aircraft_manufacturer_serialNumber",
+            "unique": true,
+            "columnNames": [
+              "manufacturer",
+              "serialNumber"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_aircraft_manufacturer_serialNumber` ON `${TABLE_NAME}` (`manufacturer`, `serialNumber`)"
+          }
+        ]
+      },
+      {
+        "tableName": "aircraft_registration",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `aircraftId` TEXT NOT NULL, `registration` TEXT NOT NULL, `registrationNormalised` TEXT NOT NULL, `validFrom` TEXT NOT NULL, `validTo` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`aircraftId`) REFERENCES `aircraft`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "aircraftId",
+            "columnName": "aircraftId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "registration",
+            "columnName": "registration",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "registrationNormalised",
+            "columnName": "registrationNormalised",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "validFrom",
+            "columnName": "validFrom",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "validTo",
+            "columnName": "validTo",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_aircraft_registration_aircraftId",
+            "unique": false,
+            "columnNames": [
+              "aircraftId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_aircraft_registration_aircraftId` ON `${TABLE_NAME}` (`aircraftId`)"
+          },
+          {
+            "name": "index_aircraft_registration_registrationNormalised",
+            "unique": false,
+            "columnNames": [
+              "registrationNormalised"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_aircraft_registration_registrationNormalised` ON `${TABLE_NAME}` (`registrationNormalised`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "aircraft",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "aircraftId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "person",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `licenceNumber` TEXT, `email` TEXT, `archived` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "licenceNumber",
+            "columnName": "licenceNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "archived",
+            "columnName": "archived",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "work_entry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `aircraftId` TEXT, `description` TEXT NOT NULL, `explanation` TEXT, `supervisedAnother` INTEGER NOT NULL, `airframeHoursAtWork` REAL, `launchesAtWork` INTEGER, `workorderIssuerName` TEXT, `workorderDate` TEXT, `workorderRequestedWork` TEXT, `workorderReference` TEXT, `workorderReferenceNormalised` TEXT, `workorderAttachmentId` TEXT, `annualInspection` INTEGER NOT NULL, `concurrentWithArc` INTEGER NOT NULL, `provenance` TEXT NOT NULL, `externalId` TEXT, `daysWorkedOverride` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`aircraftId`) REFERENCES `aircraft`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "aircraftId",
+            "columnName": "aircraftId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "explanation",
+            "columnName": "explanation",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "supervisedAnother",
+            "columnName": "supervisedAnother",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "airframeHoursAtWork",
+            "columnName": "airframeHoursAtWork",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "launchesAtWork",
+            "columnName": "launchesAtWork",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "workorderIssuerName",
+            "columnName": "workorderIssuerName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "workorderDate",
+            "columnName": "workorderDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "workorderRequestedWork",
+            "columnName": "workorderRequestedWork",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "workorderReference",
+            "columnName": "workorderReference",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "workorderReferenceNormalised",
+            "columnName": "workorderReferenceNormalised",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "workorderAttachmentId",
+            "columnName": "workorderAttachmentId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "annualInspection",
+            "columnName": "annualInspection",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "concurrentWithArc",
+            "columnName": "concurrentWithArc",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "provenance",
+            "columnName": "provenance",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "externalId",
+            "columnName": "externalId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "daysWorkedOverride",
+            "columnName": "daysWorkedOverride",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_work_entry_aircraftId",
+            "unique": false,
+            "columnNames": [
+              "aircraftId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_work_entry_aircraftId` ON `${TABLE_NAME}` (`aircraftId`)"
+          },
+          {
+            "name": "index_work_entry_provenance",
+            "unique": false,
+            "columnNames": [
+              "provenance"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_work_entry_provenance` ON `${TABLE_NAME}` (`provenance`)"
+          },
+          {
+            "name": "index_work_entry_workorderReferenceNormalised",
+            "unique": false,
+            "columnNames": [
+              "workorderReferenceNormalised"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_work_entry_workorderReferenceNormalised` ON `${TABLE_NAME}` (`workorderReferenceNormalised`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "aircraft",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "aircraftId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "work_entry_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`entryId` TEXT NOT NULL, `description` TEXT NOT NULL, `workorder` TEXT NOT NULL, `people` TEXT NOT NULL, tokenize=unicode61 `remove_diacritics=1`, notindexed=`entryId`)",
+        "fields": [
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "workorder",
+            "columnName": "workorder",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "people",
+            "columnName": "people",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowid"
+          ]
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "unicode61",
+          "tokenizerArgs": [
+            "remove_diacritics=1"
+          ],
+          "contentTable": "",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [
+            "entryId"
+          ],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": []
+      },
+      {
+        "tableName": "work_entry_activity_type",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryId` TEXT NOT NULL, `activityType` TEXT NOT NULL, PRIMARY KEY(`entryId`, `activityType`), FOREIGN KEY(`entryId`) REFERENCES `work_entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activityType",
+            "columnName": "activityType",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "entryId",
+            "activityType"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_work_entry_activity_type_entryId",
+            "unique": false,
+            "columnNames": [
+              "entryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_work_entry_activity_type_entryId` ON `${TABLE_NAME}` (`entryId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "work_entry",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "entryId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "work_session",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `entryId` TEXT NOT NULL, `date` TEXT NOT NULL, `partialDays` REAL, `hours` REAL, PRIMARY KEY(`id`), FOREIGN KEY(`entryId`) REFERENCES `work_entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partialDays",
+            "columnName": "partialDays",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "hours",
+            "columnName": "hours",
+            "affinity": "REAL"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_work_session_entryId",
+            "unique": false,
+            "columnNames": [
+              "entryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_work_session_entryId` ON `${TABLE_NAME}` (`entryId`)"
+          },
+          {
+            "name": "index_work_session_date",
+            "unique": false,
+            "columnNames": [
+              "date"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_work_session_date` ON `${TABLE_NAME}` (`date`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "work_entry",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "entryId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "entry_helper",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryId` TEXT NOT NULL, `personId` TEXT NOT NULL, `role` TEXT NOT NULL, PRIMARY KEY(`entryId`, `personId`), FOREIGN KEY(`entryId`) REFERENCES `work_entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`personId`) REFERENCES `person`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "personId",
+            "columnName": "personId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "role",
+            "columnName": "role",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "entryId",
+            "personId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_entry_helper_personId",
+            "unique": false,
+            "columnNames": [
+              "personId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_entry_helper_personId` ON `${TABLE_NAME}` (`personId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "work_entry",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "entryId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "person",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "personId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "documentation_ref",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `entryId` TEXT NOT NULL, `reference` TEXT NOT NULL, `referenceNormalised` TEXT NOT NULL, `category` TEXT, `revision` TEXT, `revisionDate` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`entryId`) REFERENCES `work_entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reference",
+            "columnName": "reference",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "referenceNormalised",
+            "columnName": "referenceNormalised",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "revisionDate",
+            "columnName": "revisionDate",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_documentation_ref_entryId",
+            "unique": false,
+            "columnNames": [
+              "entryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_documentation_ref_entryId` ON `${TABLE_NAME}` (`entryId`)"
+          },
+          {
+            "name": "index_documentation_ref_referenceNormalised",
+            "unique": false,
+            "columnNames": [
+              "referenceNormalised"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_documentation_ref_referenceNormalised` ON `${TABLE_NAME}` (`referenceNormalised`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "work_entry",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "entryId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "part_used",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `entryId` TEXT NOT NULL, `partNumber` TEXT NOT NULL, `partNumberNormalised` TEXT NOT NULL, `description` TEXT, `batchOrSerial` TEXT, `formOneRef` TEXT, `quantity` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`entryId`) REFERENCES `work_entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partNumber",
+            "columnName": "partNumber",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partNumberNormalised",
+            "columnName": "partNumberNormalised",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "batchOrSerial",
+            "columnName": "batchOrSerial",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "formOneRef",
+            "columnName": "formOneRef",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "quantity",
+            "columnName": "quantity",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_part_used_entryId",
+            "unique": false,
+            "columnNames": [
+              "entryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_part_used_entryId` ON `${TABLE_NAME}` (`entryId`)"
+          },
+          {
+            "name": "index_part_used_partNumberNormalised",
+            "unique": false,
+            "columnNames": [
+              "partNumberNormalised"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_part_used_partNumberNormalised` ON `${TABLE_NAME}` (`partNumberNormalised`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "work_entry",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "entryId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "attachment",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `entryId` TEXT NOT NULL, `kind` TEXT NOT NULL, `caption` TEXT, `sha256` TEXT NOT NULL, `capturedAt` INTEGER, `localPath` TEXT NOT NULL, `driveFileId` TEXT, `bytes` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`entryId`) REFERENCES `work_entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "caption",
+            "columnName": "caption",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sha256",
+            "columnName": "sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "capturedAt",
+            "columnName": "capturedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "localPath",
+            "columnName": "localPath",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "driveFileId",
+            "columnName": "driveFileId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bytes",
+            "columnName": "bytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_attachment_entryId",
+            "unique": false,
+            "columnNames": [
+              "entryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_attachment_entryId` ON `${TABLE_NAME}` (`entryId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "work_entry",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "entryId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "crs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `entryId` TEXT NOT NULL, `number` TEXT NOT NULL, `numberNormalised` TEXT NOT NULL, `baseNumber` TEXT NOT NULL, `revision` INTEGER NOT NULL, `sequence` INTEGER NOT NULL, `year` INTEGER, `basis` TEXT NOT NULL, `statementVersion` TEXT NOT NULL, `completionDate` TEXT NOT NULL, `limitations` TEXT, `maintenanceIncomplete` INTEGER NOT NULL, `signatureState` TEXT NOT NULL, `supersedesCrsId` TEXT, `voidReason` TEXT, `snapshotJson` TEXT NOT NULL, `signedAt` INTEGER, `signedDevice` TEXT, `signedAuthMethod` TEXT, `signedAppVersion` TEXT, `signingCertificatePem` TEXT, `signingCertificateFingerprint` TEXT, `timestampAuthority` TEXT, `timestampedAt` INTEGER, `pdfLocalPath` TEXT, `pdfSha256` TEXT, `driveFileId` TEXT, `signedPhotoLocalPath` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`entryId`) REFERENCES `work_entry`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "number",
+            "columnName": "number",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "numberNormalised",
+            "columnName": "numberNormalised",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baseNumber",
+            "columnName": "baseNumber",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sequence",
+            "columnName": "sequence",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "basis",
+            "columnName": "basis",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "statementVersion",
+            "columnName": "statementVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completionDate",
+            "columnName": "completionDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "limitations",
+            "columnName": "limitations",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "maintenanceIncomplete",
+            "columnName": "maintenanceIncomplete",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "signatureState",
+            "columnName": "signatureState",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "supersedesCrsId",
+            "columnName": "supersedesCrsId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "voidReason",
+            "columnName": "voidReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "snapshotJson",
+            "columnName": "snapshotJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "signedAt",
+            "columnName": "signedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "signedDevice",
+            "columnName": "signedDevice",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "signedAuthMethod",
+            "columnName": "signedAuthMethod",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "signedAppVersion",
+            "columnName": "signedAppVersion",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "signingCertificatePem",
+            "columnName": "signingCertificatePem",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "signingCertificateFingerprint",
+            "columnName": "signingCertificateFingerprint",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "timestampAuthority",
+            "columnName": "timestampAuthority",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "timestampedAt",
+            "columnName": "timestampedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pdfLocalPath",
+            "columnName": "pdfLocalPath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "pdfSha256",
+            "columnName": "pdfSha256",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "driveFileId",
+            "columnName": "driveFileId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "signedPhotoLocalPath",
+            "columnName": "signedPhotoLocalPath",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_crs_number",
+            "unique": true,
+            "columnNames": [
+              "number"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_crs_number` ON `${TABLE_NAME}` (`number`)"
+          },
+          {
+            "name": "index_crs_entryId",
+            "unique": false,
+            "columnNames": [
+              "entryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_crs_entryId` ON `${TABLE_NAME}` (`entryId`)"
+          },
+          {
+            "name": "index_crs_numberNormalised",
+            "unique": false,
+            "columnNames": [
+              "numberNormalised"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_crs_numberNormalised` ON `${TABLE_NAME}` (`numberNormalised`)"
+          },
+          {
+            "name": "index_crs_sequence",
+            "unique": false,
+            "columnNames": [
+              "sequence"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_crs_sequence` ON `${TABLE_NAME}` (`sequence`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "work_entry",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "entryId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "signing_key",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `fingerprint` TEXT NOT NULL, `certificatePem` TEXT NOT NULL, `keyStorage` TEXT NOT NULL, `generatedAt` INTEGER NOT NULL, `retiredAt` INTEGER, `retiredReason` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fingerprint",
+            "columnName": "fingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "certificatePem",
+            "columnName": "certificatePem",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "keyStorage",
+            "columnName": "keyStorage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generatedAt",
+            "columnName": "generatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retiredAt",
+            "columnName": "retiredAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "retiredReason",
+            "columnName": "retiredReason",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "deferred_item",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `raisedByCrsId` TEXT NOT NULL, `description` TEXT NOT NULL, `userNote` TEXT, `closed` INTEGER NOT NULL, `closedByEntryId` TEXT, `closedDate` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`raisedByCrsId`) REFERENCES `crs`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "raisedByCrsId",
+            "columnName": "raisedByCrsId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userNote",
+            "columnName": "userNote",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "closed",
+            "columnName": "closed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "closedByEntryId",
+            "columnName": "closedByEntryId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "closedDate",
+            "columnName": "closedDate",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_deferred_item_raisedByCrsId",
+            "unique": false,
+            "columnNames": [
+              "raisedByCrsId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_deferred_item_raisedByCrsId` ON `${TABLE_NAME}` (`raisedByCrsId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "crs",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "raisedByCrsId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "catalogue_task",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `catalogueVersion` TEXT NOT NULL, `table` TEXT NOT NULL, `section` TEXT NOT NULL, `sectionCode` TEXT NOT NULL, `text` TEXT NOT NULL, `reference` TEXT NOT NULL, `appliesToL1` INTEGER NOT NULL, `appliesToL1C` INTEGER NOT NULL, `appliesToL2` INTEGER NOT NULL, `appliesToL2C` INTEGER NOT NULL, `supersedes` TEXT, `status` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "catalogueVersion",
+            "columnName": "catalogueVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "table",
+            "columnName": "table",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "section",
+            "columnName": "section",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sectionCode",
+            "columnName": "sectionCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reference",
+            "columnName": "reference",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appliesToL1",
+            "columnName": "appliesToL1",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appliesToL1C",
+            "columnName": "appliesToL1C",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appliesToL2",
+            "columnName": "appliesToL2",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appliesToL2C",
+            "columnName": "appliesToL2C",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "supersedes",
+            "columnName": "supersedes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_catalogue_task_catalogueVersion",
+            "unique": false,
+            "columnNames": [
+              "catalogueVersion"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_catalogue_task_catalogueVersion` ON `${TABLE_NAME}` (`catalogueVersion`)"
+          },
+          {
+            "name": "index_catalogue_task_section",
+            "unique": false,
+            "columnNames": [
+              "section"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_catalogue_task_section` ON `${TABLE_NAME}` (`section`)"
+          },
+          {
+            "name": "index_catalogue_task_sectionCode",
+            "unique": false,
+            "columnNames": [
+              "sectionCode"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_catalogue_task_sectionCode` ON `${TABLE_NAME}` (`sectionCode`)"
+          }
+        ]
+      },
+      {
+        "tableName": "task_completion",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `entryId` TEXT NOT NULL, `taskId` TEXT NOT NULL, `catalogueVersion` TEXT NOT NULL, `taskTextSnapshot` TEXT NOT NULL, `substituteText` TEXT, `substituteJustification` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`entryId`) REFERENCES `work_entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taskId",
+            "columnName": "taskId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "catalogueVersion",
+            "columnName": "catalogueVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taskTextSnapshot",
+            "columnName": "taskTextSnapshot",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "substituteText",
+            "columnName": "substituteText",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "substituteJustification",
+            "columnName": "substituteJustification",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_task_completion_entryId",
+            "unique": false,
+            "columnNames": [
+              "entryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_task_completion_entryId` ON `${TABLE_NAME}` (`entryId`)"
+          },
+          {
+            "name": "index_task_completion_taskId",
+            "unique": false,
+            "columnNames": [
+              "taskId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_task_completion_taskId` ON `${TABLE_NAME}` (`taskId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "work_entry",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "entryId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "profile",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `phoneNumber` TEXT, `email` TEXT, `licenceNumber` TEXT, `issuingAuthority` TEXT, `licenceValidFrom` TEXT, `licenceExpiry` TEXT, `initialCertificationDate` TEXT, `holdsL1` INTEGER NOT NULL, `holdsL1C` INTEGER NOT NULL, `holdsL2` INTEGER NOT NULL, `holdsL2C` INTEGER NOT NULL, `limitationsAndRatings` TEXT, `pilotLicenceNumber` TEXT, `preferredBasis` TEXT, `recencyReductionGranted` INTEGER NOT NULL, `recencyReductionAuthority` TEXT, `recencyReductionReference` TEXT, `recencyReductionDate` TEXT, `researchCountsTowardRecency` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phoneNumber",
+            "columnName": "phoneNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "licenceNumber",
+            "columnName": "licenceNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "issuingAuthority",
+            "columnName": "issuingAuthority",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "licenceValidFrom",
+            "columnName": "licenceValidFrom",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "licenceExpiry",
+            "columnName": "licenceExpiry",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "initialCertificationDate",
+            "columnName": "initialCertificationDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "holdsL1",
+            "columnName": "holdsL1",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "holdsL1C",
+            "columnName": "holdsL1C",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "holdsL2",
+            "columnName": "holdsL2",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "holdsL2C",
+            "columnName": "holdsL2C",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "limitationsAndRatings",
+            "columnName": "limitationsAndRatings",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "pilotLicenceNumber",
+            "columnName": "pilotLicenceNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "preferredBasis",
+            "columnName": "preferredBasis",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "recencyReductionGranted",
+            "columnName": "recencyReductionGranted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recencyReductionAuthority",
+            "columnName": "recencyReductionAuthority",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "recencyReductionReference",
+            "columnName": "recencyReductionReference",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "recencyReductionDate",
+            "columnName": "recencyReductionDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "researchCountsTowardRecency",
+            "columnName": "researchCountsTowardRecency",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "document",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `category` TEXT NOT NULL, `revision` TEXT, `revisionDate` TEXT, `link` TEXT, `pdfPath` TEXT, `pdfFileName` TEXT, `archived` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "revisionDate",
+            "columnName": "revisionDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "link",
+            "columnName": "link",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "pdfPath",
+            "columnName": "pdfPath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "pdfFileName",
+            "columnName": "pdfFileName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "archived",
+            "columnName": "archived",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '468b2fefa2a5198c499b2da84793e3f8')"
+    ]
+  }
+}

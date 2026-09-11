@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +49,7 @@ import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 fun ProfileFormScreen(
     onSaved: () -> Unit,
     onClose: (() -> Unit)? = null,
+    onRestore: (() -> Unit)? = null,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -73,6 +75,7 @@ fun ProfileFormScreen(
                     }
                 },
                 colors = part66TopAppBarColors(),
+                expandedHeight = 48.dp,
             )
         },
     ) { padding ->
@@ -84,6 +87,12 @@ fun ProfileFormScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (onClose == null && onRestore != null) {
+                TextButton(onClick = onRestore, modifier = Modifier.fillMaxWidth()) {
+                    Text("Setting up a new device? Restore from a Drive backup instead")
+                }
+            }
+
             Card {
                 Column(
                     modifier = Modifier.padding(16.dp),

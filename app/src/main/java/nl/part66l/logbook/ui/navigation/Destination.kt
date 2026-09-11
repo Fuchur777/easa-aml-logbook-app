@@ -112,6 +112,16 @@ sealed interface Destination {
         override val route = "signing-info"
     }
 
+    /** Reached from Settings — connect Google Drive and run a manual backup sync (§10). */
+    data object DriveSync : Destination {
+        override val route = "drive-sync"
+    }
+
+    /** Reached from the Drive backup screen, and from the first-run profile screen (a fresh install has no other way to reach Settings). */
+    data object DriveRestore : Destination {
+        override val route = "drive-restore"
+    }
+
     /** Reached from the hamburger menu — every issued certificate app-wide (latest revision only), across every work entry. */
     data object IssuedCrs : Destination {
         override val route = "issued-crs"

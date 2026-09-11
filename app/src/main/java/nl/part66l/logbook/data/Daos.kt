@@ -33,6 +33,14 @@ interface WorkEntryDao {
     @Query("SELECT * FROM work_entry WHERE id = :id")
     suspend fun byId(id: String): WorkEntryEntity?
 
+    /** Google Drive backup (§10) — the entry's own session folder, created once on first sync. */
+    @Query("UPDATE work_entry SET driveFolderId = :driveFolderId WHERE id = :id")
+    suspend fun setDriveFolderId(id: String, driveFolderId: String)
+
+    /** As [setDriveFolderId], for the nested "photos" subfolder — created lazily, only once a photo on this entry actually needs uploading. */
+    @Query("UPDATE work_entry SET drivePhotosFolderId = :driveFolderId WHERE id = :id")
+    suspend fun setDrivePhotosFolderId(id: String, driveFolderId: String)
+
     /**
      * Structured filtering. Null arguments mean "no constraint", which keeps one
      * query serving the whole filter UI instead of a combinatorial explosion.
@@ -126,6 +134,13 @@ interface DocumentDao {
 
     @Query("DELETE FROM document WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("UPDATE document SET driveFileId = :driveFileId WHERE id = :id")
+    suspend fun setDriveFileId(id: String, driveFileId: String)
+
+    /** Google Drive backup (§10) — every document with a real PDF on disk that hasn't been uploaded yet. */
+    @Query("SELECT * FROM document WHERE driveFileId IS NULL AND pdfPath IS NOT NULL")
+    suspend fun pendingDriveUploads(): List<DocumentEntity>
 }
 
 @Dao
@@ -469,6 +484,13 @@ interface CrsDao {
     @Query("SELECT * FROM crs WHERE entryId = :entryId ORDER BY number DESC")
     fun forEntry(entryId: String): Flow<List<CrsEntity>>
 
+    @Query("UPDATE crs SET driveFileId = :driveFileId WHERE id = :id")
+    suspend fun setDriveFileId(id: String, driveFileId: String)
+
+    /** Google Drive backup (§10) — every certificate with a real PDF on disk that hasn't been uploaded yet. */
+    @Query("SELECT * FROM crs WHERE driveFileId IS NULL AND pdfLocalPath IS NOT NULL")
+    suspend fun pendingDriveUploads(): List<CrsEntity>
+
     /**
      * The latest revision of every issued certificate app-wide, one row per [CrsEntity.baseNumber]
      * — a later revision fully supersedes every earlier one (crs-field-mapping.md: "a correction
@@ -540,6 +562,10 @@ interface AircraftDao {
     @Query("SELECT * FROM aircraft WHERE id = :id")
     suspend fun byId(id: String): AircraftEntity?
 
+    /** Google Drive backup (§10) — the aircraft's own top-level folder, created once on first sync. */
+    @Query("UPDATE aircraft SET driveFolderId = :driveFolderId WHERE id = :id")
+    suspend fun setDriveFolderId(id: String, driveFolderId: String)
+
     /** Registration as it stood on a given date — so old certificates print correctly. */
     @Query("""
         SELECT registration FROM aircraft_registration
@@ -599,6 +625,10 @@ interface AttachmentDao {
 
     @Query("UPDATE attachment SET driveFileId = :driveFileId WHERE id = :id")
     suspend fun setDriveFileId(id: String, driveFileId: String)
+
+    /** Google Drive backup (§10) — every photo not yet uploaded. Workorder attachments aren't included: that kind is a reserved column nothing populates yet. */
+    @Query("SELECT * FROM attachment WHERE kind = 'PHOTO' AND driveFileId IS NULL")
+    suspend fun pendingPhotoUploads(): List<AttachmentEntity>
 
     /** The entry's own full-save-replaces-children pattern (see WorkEntryRepositoryImpl.update) — [kind]-scoped so clearing photos never touches a workorder attachment on the same entry. */
     @Query("DELETE FROM attachment WHERE entryId = :entryId AND kind = :kind")

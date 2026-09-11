@@ -33,6 +33,8 @@ data class AircraftEntity(
     val archived: Boolean = false,
     /** Manual display order in the aircraft list — lower shows first. Renumbered as a whole on every drag reorder. */
     val sortOrder: Int = 0,
+    /** The aircraft's own Drive folder (§10), created once on first sync. Null means "not yet synced". */
+    val driveFolderId: String? = null,
 )
 
 /** Registration is a dated attribute, so an old CRS still prints what it said at the time. */
@@ -131,6 +133,11 @@ data class WorkEntryEntity(
     val daysWorkedOverride: Int? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
+
+    /** This entry's own session folder in Drive (§10), created once on first sync. Null means "not yet synced". */
+    val driveFolderId: String? = null,
+    /** The nested "photos" subfolder under [driveFolderId] — created lazily, only once a photo on this entry actually needs uploading. */
+    val drivePhotosFolderId: String? = null,
 )
 
 /**
@@ -255,6 +262,8 @@ data class DocumentEntity(
     /** Original filename, for display — [pdfPath] itself is a generated UUID name. */
     val pdfFileName: String? = null,
     val archived: Boolean = false,
+    /** Google Drive backup (§10), created once on first sync. Null means "not yet synced". */
+    val driveFileId: String? = null,
 )
 
 // ---------------------------------------------------------------------------

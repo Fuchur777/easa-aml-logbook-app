@@ -483,8 +483,13 @@ One tabular schema serves both.
 
 - **Records export** — CSV/XLSX, signed PDFs, photos. Goes to third parties.
   Never contains identity documents.
-- **Full backup** — JSON bundle including identity documents, encrypted with a user
-  passphrase, with a plain warning about passphrase loss.
+- **Full backup** (§10) — a raw copy of the Room database file plus every folder it
+  references (`crs/`, `attachments/`, `documents/`), zipped and uploaded as-is to a
+  "Backups" folder in Drive. Not a hand-rolled export format: restoring is "swap the
+  files back and let Room's own migrations run" against the current app version, the
+  same path a normal app update already takes. Unencrypted — Drive's own
+  account-level access control is the protection, same as the rest of §10's sync;
+  there is no passphrase to lose. Drive-only, no local save/share fallback.
 
 ## 12. Reports
 

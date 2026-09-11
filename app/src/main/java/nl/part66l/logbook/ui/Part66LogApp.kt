@@ -33,6 +33,8 @@ import nl.part66l.logbook.ui.crs.CrsScreen
 import nl.part66l.logbook.ui.crs.IssuedCrsListScreen
 import nl.part66l.logbook.ui.documents.DocumentFormScreen
 import nl.part66l.logbook.ui.documents.DocumentListScreen
+import nl.part66l.logbook.ui.drive.DriveRestoreScreen
+import nl.part66l.logbook.ui.drive.DriveSyncScreen
 import nl.part66l.logbook.ui.navigation.Destination
 import nl.part66l.logbook.ui.profile.ProfileFormScreen
 import nl.part66l.logbook.ui.recency.RecencyDashboardScreen
@@ -82,6 +84,8 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
         Destination.ContactForm.route,
         Destination.ContactEdit.ROUTE_PATTERN,
         Destination.SigningInfo.route,
+        Destination.DriveSync.route,
+        Destination.DriveRestore.route,
         Destination.IssuedCrs.route,
         Destination.About.route,
     )
@@ -152,6 +156,7 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                             popUpTo(Destination.ProfileSetup.route) { inclusive = true }
                         }
                     },
+                    onRestore = { navController.navigate(Destination.DriveRestore.route) },
                 )
             }
             composable(Destination.WorkEntries.route) {
@@ -238,10 +243,20 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                 SettingsScreen(
                     onClose = { navController.popBackStack() },
                     onSigningInfo = { navController.navigate(Destination.SigningInfo.route) },
+                    onDriveSync = { navController.navigate(Destination.DriveSync.route) },
                 )
             }
             composable(Destination.SigningInfo.route) {
                 SigningInfoScreen(onClose = { navController.popBackStack() })
+            }
+            composable(Destination.DriveSync.route) {
+                DriveSyncScreen(
+                    onClose = { navController.popBackStack() },
+                    onRestore = { navController.navigate(Destination.DriveRestore.route) },
+                )
+            }
+            composable(Destination.DriveRestore.route) {
+                DriveRestoreScreen(onClose = { navController.popBackStack() })
             }
             composable(Destination.IssuedCrs.route) {
                 IssuedCrsListScreen(onClose = { navController.popBackStack() })
