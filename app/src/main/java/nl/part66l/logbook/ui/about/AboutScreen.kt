@@ -95,7 +95,7 @@ fun AboutScreen(onClose: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("AMlog", style = MaterialTheme.typography.titleMedium)
+                        Text("AMLog", style = MaterialTheme.typography.titleMedium)
                         Text(
                             "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                             style = MaterialTheme.typography.bodyMedium,
@@ -127,7 +127,7 @@ fun AboutScreen(onClose: () -> Unit) {
                             "where your competent authority agreed a reduction in advance. Every logged " +
                             "day counts once, whatever its length.\n\n" +
                             "The same AMC lets up to 20% of the duration be replaced by training, " +
-                            "technical support or maintenance planning. AMlog does not model that — it " +
+                            "technical support or maintenance planning. AMLog does not model that — it " +
                             "would put a claim flag on every entry to serve a case most independent " +
                             "certifying staff never make, and anyone who does make it has already " +
                             "agreed it with their authority.",
@@ -153,7 +153,7 @@ fun AboutScreen(onClose: () -> Unit) {
                             "This applies only when that date is recorded on your profile.",
                     )
                     Text(
-                        "AMlog can only count what is in it. Work logged on paper, or before you " +
+                        "AMLog can only count what is in it. Work logged on paper, or before you " +
                             "installed the app, is invisible to this calculation — so a subcategory " +
                             "shown as not current may simply be incompletely recorded.",
                         style = MaterialTheme.typography.bodySmall,
@@ -203,17 +203,17 @@ fun AboutScreen(onClose: () -> Unit) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Disclaimer", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "AMlog does not determine your privileges or recency status — it records what " +
+                        "AMLog does not determine your privileges or recency status — it records what " +
                             "you enter and shows a calculation from it. You remain solely responsible for " +
                             "verifying compliance with your competent authority's requirements before " +
                             "relying on anything this app displays.\n\n" +
                             "Certificates signed on-device use a hardware-backed key with no third-party " +
                             "trust provider behind it — your competent authority, not this app, is the " +
                             "trust anchor for that signature (see the Signing certificate screen).\n\n" +
-                            "AMlog has no backend of its own and the developer never receives your " +
+                            "AMLog has no backend of its own and the developer never receives your " +
                             "data. Two things can copy your records off this device, both into your " +
                             "own Google account and neither to anyone else:\n\n" +
-                            "Android's own app backup is on by default, for AMlog as for most apps. It " +
+                            "Android's own app backup is on by default, for AMLog as for most apps. It " +
                             "copies your entries, photos and certificates into your Google account's " +
                             "backup so a replacement phone can restore them. It is encrypted with your " +
                             "device screen lock, so Google cannot read it. Turn it off in Android's " +

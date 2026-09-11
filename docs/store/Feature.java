@@ -39,7 +39,7 @@ public class Feature {
         int tx = mx + mark + 40;
         int avail = W - tx - MARGIN;
 
-        String name = "AMlog", l1 = "Maintenance logbook and CRS generator", l2 = "for EASA Part-66 certifying staff";
+        String name = "AMLog", l1 = "Maintenance logbook and CRS generator", l2 = "for EASA Part-66 certifying staff";
         Font fName = fit(g, name, "Segoe UI Semibold", Font.BOLD, 104, avail);
         Font fLine = fit(g, l1, "Segoe UI", Font.PLAIN, 34, avail);
         if (g.getFontMetrics(fLine).stringWidth(l2) > avail) fLine = fit(g, l2, "Segoe UI", Font.PLAIN, 34, avail);

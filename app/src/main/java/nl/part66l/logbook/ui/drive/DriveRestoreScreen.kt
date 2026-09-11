@@ -71,7 +71,7 @@ fun DriveRestoreScreen(
             ) {
                 Text("Restore complete", style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "AMlog has to start fresh to read the restored records — the database was " +
+                    "AMLog has to start fresh to read the restored records — the database was " +
                         "replaced underneath it while it was running.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -90,7 +90,7 @@ fun DriveRestoreScreen(
                     },
                     modifier = Modifier.padding(top = 24.dp),
                 ) {
-                    Text("Close AMlog")
+                    Text("Close AMLog")
                 }
                 Text(
                     "Then open it again from your home screen.",

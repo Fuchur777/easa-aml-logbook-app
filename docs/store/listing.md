@@ -12,7 +12,7 @@ Maintenance logbook and CRS generator for EASA Part-66 certifying staff
 ## Full description (4000 max)
 
 ```
-AMlog is a personal maintenance logbook and certificate-of-release-to-service generator for holders of an EASA Part-66 aircraft maintenance licence. It is built for independent certifying staff keeping their own records — not a fleet system, not a CAMO tool, and not something that reports to anyone.
+AMLog is a personal maintenance logbook and certificate-of-release-to-service generator for holders of an EASA Part-66 aircraft maintenance licence. It is built for independent certifying staff keeping their own records — not a fleet system, not a CAMO tool, and not something that reports to anyone.
 
 RECENCY, WORKED OUT AS YOU LOG
 
@@ -39,13 +39,13 @@ Optionally connect your own Google Drive. Certificates, photos, documents and fu
 
 PRIVACY
 
-AMlog has no backend and the developer never receives your data. Your records are held on this device, and copied only into your own Google account — by Android's own app backup, and by Drive sync if you switch it on. Nothing is sent anywhere else. There is no analytics and no advertising.
+AMLog has no backend and the developer never receives your data. Your records are held on this device, and copied only into your own Google account — by Android's own app backup, and by Drive sync if you switch it on. Nothing is sent anywhere else. There is no analytics and no advertising.
 
 IMPORTANT
 
-AMlog does not determine your privileges or your recency status. It records what you enter and shows a calculation from it, and it cannot see work logged on paper or before you installed it — so a subcategory shown as not current may simply be incompletely recorded. You remain solely responsible for verifying compliance with your competent authority's requirements before relying on anything the app displays.
+AMLog does not determine your privileges or your recency status. It records what you enter and shows a calculation from it, and it cannot see work logged on paper or before you installed it — so a subcategory shown as not current may simply be incompletely recorded. You remain solely responsible for verifying compliance with your competent authority's requirements before relying on anything the app displays.
 
 Certificates signed on the device use a hardware-backed key with no third-party trust provider behind it. Your competent authority, not this app, is the trust anchor for that signature.
 
-AMlog is an independent tool. It is not affiliated with, endorsed by, or produced by EASA or any national aviation authority.
+AMLog is an independent tool. It is not affiliated with, endorsed by, or produced by EASA or any national aviation authority.
 ```
