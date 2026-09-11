@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import nl.part66l.logbook.data.CrsEntity
 import nl.part66l.logbook.data.CrsRepository
+import nl.part66l.logbook.data.IssuedCrsRow
 import nl.part66l.logbook.domain.CertificationBasis
 import nl.part66l.logbook.domain.SignatureState
 import nl.part66l.logbook.signing.LocalKeystoreSigner
@@ -35,6 +36,23 @@ class FakeCrsRepository(initial: List<CrsEntity> = emptyList()) : CrsRepository 
 
     override fun forEntry(entryId: String): Flow<List<CrsEntity>> =
         entries.map { list -> list.filter { it.entryId == entryId } }
+
+    /** Backs [latestIssued] — set directly by a test; `CrsDaoTest` covers the real SQL. */
+    private val issuedRows = MutableStateFlow<List<IssuedCrsRow>>(emptyList())
+    fun seedIssued(rows: List<IssuedCrsRow>) {
+        issuedRows.value = rows
+    }
+
+    override fun latestIssued(aircraftId: String?, numberQuery: String?, helperQuery: String?, ascending: Boolean): Flow<List<IssuedCrsRow>> =
+        issuedRows.map { rows ->
+            rows.filter { row ->
+                (aircraftId == null || row.aircraftId == aircraftId) &&
+                    (numberQuery.isNullOrBlank() || row.crs.number.contains(numberQuery, ignoreCase = true)) &&
+                    (helperQuery.isNullOrBlank() || row.helperNames.any { it.contains(helperQuery, ignoreCase = true) })
+            }.let { filtered ->
+                if (ascending) filtered.sortedBy { it.crs.completionDate } else filtered.sortedByDescending { it.crs.completionDate }
+            }
+        }
 
     override suspend fun generateUnsigned(
         entryId: String,

@@ -8,4 +8,6 @@
     <files-path name="signing" path="signing/" />
     <!-- Matches WorkPhotoAttachments' processed-photo destination and camera-capture staging file: context.filesDir/attachments/. -->
     <files-path name="attachments" path="attachments/" />
+    <!-- Matches CrsExport.kt's zip destination: context.filesDir/crs-export/. -->
+    <files-path name="crs-export" path="crs-export/" />
 </paths>

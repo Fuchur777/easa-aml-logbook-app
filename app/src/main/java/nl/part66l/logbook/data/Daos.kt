@@ -402,6 +402,48 @@ interface CrsDao {
 
     @Query("SELECT * FROM crs WHERE entryId = :entryId ORDER BY number DESC")
     fun forEntry(entryId: String): Flow<List<CrsEntity>>
+
+    /**
+     * The latest revision of every issued certificate app-wide, one row per [CrsEntity.baseNumber]
+     * — a later revision fully supersedes every earlier one (crs-field-mapping.md: "a correction
+     * is a new row, never an edit"), so only the highest [CrsEntity.revision] per base number is
+     * shown. DRAFT (never finished) and VOID (never actually issued) rows are excluded — this is
+     * a list of certificates that exist, not attempts.
+     *
+     * [aircraftId] null means every aircraft (bench work included). [numberQuery] null/blank
+     * means no name filter; otherwise a case-insensitive substring match against the
+     * certificate number. [helperQuery] null/blank means no helper filter; otherwise a
+     * case-insensitive substring match against any helper named on the entry (empty for an
+     * entry with none, which then never matches a non-blank query). [ascending] false sorts
+     * newest completion date first.
+     */
+    @Transaction
+    @Query("""
+        SELECT c.*, e.aircraftId AS aircraftId, ar.registration AS aircraftRegistration,
+               GROUP_CONCAT(DISTINCT p.name) AS helperNamesCsv
+        FROM crs c
+        INNER JOIN (
+            -- Only ever-issued revisions compete for "latest" here — an abandoned DRAFT (a
+            -- crash mid-signing, never actually transitioned) must not hide a real, already
+            -- issued earlier revision of the same base number.
+            SELECT baseNumber, MAX(revision) AS maxRevision FROM crs
+            WHERE signatureState NOT IN ('DRAFT', 'VOID')
+            GROUP BY baseNumber
+        ) latest ON latest.baseNumber = c.baseNumber AND latest.maxRevision = c.revision
+        JOIN work_entry e ON e.id = c.entryId
+        LEFT JOIN aircraft_registration ar ON ar.aircraftId = e.aircraftId AND ar.validTo IS NULL
+        LEFT JOIN entry_helper eh ON eh.entryId = e.id
+        LEFT JOIN person p ON p.id = eh.personId
+        WHERE c.signatureState NOT IN ('DRAFT', 'VOID')
+          AND (:aircraftId IS NULL OR e.aircraftId = :aircraftId)
+          AND (:numberQuery IS NULL OR c.number LIKE '%' || :numberQuery || '%')
+        GROUP BY c.id
+        HAVING (:helperQuery IS NULL OR helperNamesCsv LIKE '%' || :helperQuery || '%')
+        ORDER BY
+            CASE WHEN :ascending = 1 THEN c.completionDate END ASC,
+            CASE WHEN :ascending = 0 THEN c.completionDate END DESC
+    """)
+    fun latestIssued(aircraftId: String?, numberQuery: String?, helperQuery: String?, ascending: Boolean): Flow<List<IssuedCrsRow>>
 }
 
 /** The local signer's own generation history (§9.3/§9.4) — see [SigningKeyEntity]'s doc comment for why this exists as its own table rather than being inferred from [CrsEntity] rows. */

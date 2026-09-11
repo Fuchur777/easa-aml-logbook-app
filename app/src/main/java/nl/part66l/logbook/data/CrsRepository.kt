@@ -43,6 +43,14 @@ interface CrsRepository {
     /** Every CRS issued against this entry, newest first — a correction is a new row, never an edit. */
     fun forEntry(entryId: String): Flow<List<CrsEntity>>
 
+    /** The latest revision of every issued certificate app-wide — see [CrsDao.latestIssued]. */
+    fun latestIssued(
+        aircraftId: String? = null,
+        numberQuery: String? = null,
+        helperQuery: String? = null,
+        ascending: Boolean = false,
+    ): Flow<List<IssuedCrsRow>>
+
     /**
      * Generates the §9.1 content, allocates the next number (§9.2, at generation
      * time so an abandoned attempt leaves no gap), renders the unsigned
@@ -188,6 +196,9 @@ class CrsRepositoryImpl @Inject constructor(
     private val json = Json { ignoreUnknownKeys = true }
 
     override fun forEntry(entryId: String): Flow<List<CrsEntity>> = crsDao.forEntry(entryId)
+
+    override fun latestIssued(aircraftId: String?, numberQuery: String?, helperQuery: String?, ascending: Boolean): Flow<List<IssuedCrsRow>> =
+        crsDao.latestIssued(aircraftId, numberQuery?.trim()?.ifBlank { null }, helperQuery?.trim()?.ifBlank { null }, ascending)
 
     override suspend fun generateUnsigned(
         entryId: String,

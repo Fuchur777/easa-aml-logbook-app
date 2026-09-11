@@ -4,12 +4,16 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import java.time.Instant
 import java.time.LocalDate
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import nl.part66l.logbook.domain.CertificationBasis
-import nl.part66l.logbook.domain.EntryRole
+import nl.part66l.logbook.domain.HelperRole
+import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.SignatureState
+import nl.part66l.logbook.domain.Structure
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,16 +47,27 @@ class CrsDaoTest {
         db.close()
     }
 
-    private fun crs(id: String, number: String, sequence: Int, state: SignatureState) = CrsEntity(
+    private fun crs(
+        id: String,
+        number: String,
+        sequence: Int,
+        state: SignatureState,
+        entryId: String = "e1",
+        baseNumber: String = number,
+        revision: Int = 0,
+        completionDate: LocalDate = LocalDate.of(2026, 3, 14),
+    ) = CrsEntity(
         id = id,
-        entryId = "e1",
+        entryId = entryId,
         number = number,
         numberNormalised = Identifiers.normalise(number),
+        baseNumber = baseNumber,
+        revision = revision,
         sequence = sequence,
         year = 2026,
         basis = CertificationBasis.ML_A_801_B2_INDEPENDENT,
         statementVersion = "v1",
-        completionDate = LocalDate.of(2026, 3, 14),
+        completionDate = completionDate,
         signatureState = state,
         snapshotJson = "{}",
     )
@@ -63,7 +78,6 @@ class CrsDaoTest {
                 id = "e1",
                 aircraftId = null,
                 description = "Annual inspection",
-                role = EntryRole.CERTIFIED_BY_ME_IN_APP,
                 createdAt = Instant.EPOCH,
                 updatedAt = Instant.EPOCH,
             ),
@@ -156,5 +170,92 @@ class CrsDaoTest {
 
         assertEquals(0, changed)
         assertEquals(null, db.crs().byId("c1")!!.pdfLocalPath)
+    }
+
+    @Test
+    fun `latestIssued returns only the highest revision per base number, excluding draft and void`() = runBlocking {
+        seedEntry()
+        db.crs().insert(crs("c1", "CRS-2026-0001", 1, SignatureState.SIGNED_LOCAL, baseNumber = "CRS-2026-0001", revision = 0))
+        db.crs().insert(crs("c2", "CRS-2026-0001-rev1", 1, SignatureState.SIGNED_LOCAL, baseNumber = "CRS-2026-0001", revision = 1))
+        db.crs().insert(crs("draft", "CRS-2026-0002", 2, SignatureState.DRAFT))
+        db.crs().insert(crs("void", "CRS-2026-0003", 3, SignatureState.VOID))
+
+        val rows = db.crs().latestIssued(aircraftId = null, numberQuery = null, helperQuery = null, ascending = false).first()
+
+        assertEquals(listOf("CRS-2026-0001-rev1"), rows.map { it.crs.number })
+    }
+
+    @Test
+    fun `an abandoned draft revision does not hide an earlier issued revision of the same base number`() = runBlocking {
+        // A crash between allocating a new revision's DRAFT row and actually finishing
+        // signing it (see CrsRepository.signLocal's own doc comment) would otherwise leave
+        // this exact shape: a higher-revision DRAFT sitting on top of a real, issued rev0.
+        seedEntry()
+        db.crs().insert(crs("c1", "CRS-2026-0001", 1, SignatureState.SIGNED_LOCAL, baseNumber = "CRS-2026-0001", revision = 0))
+        db.crs().insert(crs("c2", "CRS-2026-0001-rev1", 1, SignatureState.DRAFT, baseNumber = "CRS-2026-0001", revision = 1))
+
+        val rows = db.crs().latestIssued(aircraftId = null, numberQuery = null, helperQuery = null, ascending = false).first()
+
+        assertEquals(listOf("CRS-2026-0001"), rows.map { it.crs.number })
+    }
+
+    @Test
+    fun `latestIssued filters by aircraft, CRS name, and an assisted-by name substring, and sorts by completion date`() = runBlocking {
+        db.aircraft().insert(
+            AircraftEntity(
+                id = "ac1", manufacturer = "Schleicher", type = "ASK 21", serialNumber = "21123",
+                propulsion = Propulsion.UNPOWERED, structure = Structure.WOOD_AND_FABRIC,
+            ),
+        )
+        db.aircraft().insertRegistration(
+            AircraftRegistrationEntity(
+                id = "reg1", aircraftId = "ac1", registration = "PH-1234", registrationNormalised = "PH1234",
+                validFrom = LocalDate.of(2020, 1, 1), validTo = null,
+            ),
+        )
+        db.workEntries().insert(
+            WorkEntryEntity(id = "e1", aircraftId = "ac1", description = "Annual", createdAt = Instant.EPOCH, updatedAt = Instant.EPOCH),
+        )
+        db.workEntries().insert(
+            WorkEntryEntity(id = "e2", aircraftId = null, description = "Bench work", createdAt = Instant.EPOCH, updatedAt = Instant.EPOCH),
+        )
+        db.people().insert(PersonEntity(id = "p1", name = "Jan de Vries"))
+        db.entryHelpers().insert(EntryHelperEntity(entryId = "e1", personId = "p1", role = HelperRole.ASSISTED))
+
+        db.crs().insert(
+            crs(
+                "c1", "CRS-2026-0001", 1, SignatureState.SIGNED_LOCAL, entryId = "e1",
+                completionDate = LocalDate.of(2026, 1, 1),
+            ),
+        )
+        db.crs().insert(
+            crs(
+                "c2", "CRS-2026-0002", 2, SignatureState.ISSUED_UNSIGNED_PRINT, entryId = "e2",
+                completionDate = LocalDate.of(2026, 6, 1),
+            ),
+        )
+
+        val all = db.crs().latestIssued(aircraftId = null, numberQuery = null, helperQuery = null, ascending = false).first()
+        assertEquals(listOf("CRS-2026-0002", "CRS-2026-0001"), all.map { it.crs.number }) // newest first
+
+        val ascending = db.crs().latestIssued(aircraftId = null, numberQuery = null, helperQuery = null, ascending = true).first()
+        assertEquals(listOf("CRS-2026-0001", "CRS-2026-0002"), ascending.map { it.crs.number })
+
+        val byAircraft = db.crs().latestIssued(aircraftId = "ac1", numberQuery = null, helperQuery = null, ascending = false).first()
+        assertEquals(listOf("CRS-2026-0001"), byAircraft.map { it.crs.number })
+        assertEquals("PH-1234", byAircraft.first().aircraftRegistration)
+
+        val byNumber = db.crs().latestIssued(aircraftId = null, numberQuery = "0002", helperQuery = null, ascending = false).first()
+        assertEquals(listOf("CRS-2026-0002"), byNumber.map { it.crs.number })
+
+        val byNumberNoMatch = db.crs().latestIssued(aircraftId = null, numberQuery = "no-such-number", helperQuery = null, ascending = false).first()
+        assertEquals(emptyList<String>(), byNumberNoMatch.map { it.crs.number })
+
+        val byHelper = db.crs().latestIssued(aircraftId = null, numberQuery = null, helperQuery = "de vries", ascending = false).first()
+        assertEquals(listOf("CRS-2026-0001"), byHelper.map { it.crs.number })
+        assertTrue(byHelper.first().helperNames.contains("Jan de Vries"))
+
+        val byHelperNoMatch = db.crs().latestIssued(aircraftId = null, numberQuery = null, helperQuery = "nobody", ascending = false).first()
+        assertEquals(emptyList<String>(), byHelperNoMatch.map { it.crs.number })
     }
 }

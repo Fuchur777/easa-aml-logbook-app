@@ -349,6 +349,23 @@ data class CrsEntity(
 )
 
 /**
+ * The latest revision of one issued certificate (§5.6: "a correction is a new row, never an
+ * edit" — this is what that later revision superseded), across every work entry app-wide —
+ * what the "CRS Library" screen renders. Helper names are comma-joined, same reasoning as
+ * [WorkEntryListRow.activityTypesCsv] — Room can't project a one-to-many relation as a List
+ * column directly.
+ */
+data class IssuedCrsRow(
+    @Embedded val crs: CrsEntity,
+    val aircraftId: String?,
+    val aircraftRegistration: String?,
+    val helperNamesCsv: String?,
+) {
+    val helperNames: List<String>
+        get() = helperNamesCsv?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+}
+
+/**
  * One generation of the local signing key (§9.3) — a durable history the Keystore itself
  * doesn't keep: once a key is deleted (rotated, or destroyed by Android after a biometric
  * enrolment change), it's gone from the Keystore for good, but this row survives, so
