@@ -18,6 +18,8 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 private const val SCOPE_DRIVE_FILE = "https://www.googleapis.com/auth/drive.file"
@@ -106,47 +108,49 @@ class DriveAuthManagerImpl @Inject constructor() : DriveAuthManager {
         activity: FragmentActivity,
         client: AuthorizationClient,
         initial: AuthorizationResult,
-    ): AuthorizationResult? = suspendCancellableCoroutine { continuation ->
-        val pendingIntent = initial.pendingIntent
-        if (pendingIntent == null) {
-            continuation.resume(null)
-            return@suspendCancellableCoroutine
-        }
-        var launcher: ActivityResultLauncher<IntentSenderRequest>? = null
-        var observer: DefaultLifecycleObserver? = null
-
-        fun cleanUp() {
-            launcher?.unregister()
-            observer?.let { activity.lifecycle.removeObserver(it) }
-        }
-
-        observer = object : DefaultLifecycleObserver {
-            override fun onDestroy(owner: LifecycleOwner) {
-                cleanUp()
-                if (continuation.isActive) continuation.resume(null)
+    ): AuthorizationResult? = withContext(Dispatchers.Main) {
+        suspendCancellableCoroutine { continuation ->
+            val pendingIntent = initial.pendingIntent
+            if (pendingIntent == null) {
+                continuation.resume(null)
+                return@suspendCancellableCoroutine
             }
-        }
+            var launcher: ActivityResultLauncher<IntentSenderRequest>? = null
+            var observer: DefaultLifecycleObserver? = null
 
-        launcher = activity.activityResultRegistry.register(
-            "drive_authorize_${UUID.randomUUID()}",
-            ActivityResultContracts.StartIntentSenderForResult(),
-            ActivityResultCallback { result ->
-                cleanUp()
-                val data = result.data
-                val resolved = if (result.resultCode == Activity.RESULT_OK && data != null) {
-                    try {
-                        client.getAuthorizationResultFromIntent(data)
-                    } catch (e: Exception) {
+            fun cleanUp() {
+                launcher?.unregister()
+                observer?.let { activity.lifecycle.removeObserver(it) }
+            }
+
+            observer = object : DefaultLifecycleObserver {
+                override fun onDestroy(owner: LifecycleOwner) {
+                    cleanUp()
+                    if (continuation.isActive) continuation.resume(null)
+                }
+            }
+
+            launcher = activity.activityResultRegistry.register(
+                "drive_authorize_${UUID.randomUUID()}",
+                ActivityResultContracts.StartIntentSenderForResult(),
+                ActivityResultCallback { result ->
+                    cleanUp()
+                    val data = result.data
+                    val resolved = if (result.resultCode == Activity.RESULT_OK && data != null) {
+                        try {
+                            client.getAuthorizationResultFromIntent(data)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    } else {
                         null
                     }
-                } else {
-                    null
-                }
-                if (continuation.isActive) continuation.resume(resolved)
-            },
-        )
-        activity.lifecycle.addObserver(observer)
-        continuation.invokeOnCancellation { cleanUp() }
-        launcher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                    if (continuation.isActive) continuation.resume(resolved)
+                },
+            )
+            activity.lifecycle.addObserver(observer)
+            continuation.invokeOnCancellation { activity.runOnUiThread { cleanUp() } }
+            launcher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+        }
     }
 }
