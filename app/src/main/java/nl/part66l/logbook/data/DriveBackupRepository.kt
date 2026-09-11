@@ -60,6 +60,7 @@ class DriveBackupRepositoryImpl @Inject constructor(
     override suspend fun createBackup(activity: FragmentActivity): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val token = driveAuthManager.authorize(activity).getOrThrow()
+            hydrateFolderIdsFromManifest(token)
             checkpointDatabase()
             val zipFile = buildBackupZip()
             try {
@@ -171,6 +172,7 @@ class DriveBackupRepositoryImpl @Inject constructor(
                 // Neither of these is ours. They belong to the file-mirror sync, and blanking them
                 // here would make a fresh install re-create folders that already exist in Drive.
                 benchFolderId = settingsRepository.driveBenchFolderId.first() ?: existing?.benchFolderId,
+                documentsFolderId = existing?.documentsFolderId,
                 backupsFolderId = backupsFolderId,
                 aircraftFolderIds = existing?.aircraftFolderIds ?: emptyMap(),
                 updatedAt = Instant.now().toEpochMilli(),
@@ -184,19 +186,28 @@ class DriveBackupRepositoryImpl @Inject constructor(
      * Drive by name — only list children of a folder ID it already knows — so without this, a
      * reinstall would have no way to find its own Backups folder at all.
      */
+    /**
+     * Recovers folder IDs from the manifest before anything is created or looked up.
+     *
+     * `drive.file` scope cannot search Drive by name, so an install with nothing cached — a fresh
+     * one, a restore, a reconnect — can only find the folders an earlier install made by reading
+     * the manifest. Without it, a backup would create a second "AMLog" tree beside the first.
+     */
+    private suspend fun hydrateFolderIdsFromManifest(token: String) {
+        if (settingsRepository.driveRootFolderId.first() != null) return
+        val manifest = runCatching { driveManifestStore.read(token) }.getOrNull() ?: return
+        settingsRepository.setDriveRootFolderId(manifest.rootFolderId)
+        manifest.benchFolderId?.let { settingsRepository.setDriveBenchFolderId(it) }
+        manifest.documentsFolderId?.let { settingsRepository.setDriveDocumentsFolderId(it) }
+        manifest.backupsFolderId?.let { settingsRepository.setDriveBackupsFolderId(it) }
+    }
+
+    /** The Backups folder for this account, recovering it from the manifest if nothing is cached. */
     private suspend fun resolveBackupsFolderId(token: String): String {
         settingsRepository.driveBackupsFolderId.first()?.let { return it }
-        val manifest = driveManifestStore.read(token)
-            ?: throw IllegalStateException("No backups found for this Google account.")
-        settingsRepository.setDriveRootFolderId(manifest.rootFolderId)
-        // Only overwrite a local bench ID when the manifest actually carries one — a manifest last
-        // written by a device that never synced has none, and clearing a good local value would
-        // split bench work across two Drive folders.
-        manifest.benchFolderId?.let { settingsRepository.setDriveBenchFolderId(it) }
-        val backupsFolderId = manifest.backupsFolderId
+        hydrateFolderIdsFromManifest(token)
+        return settingsRepository.driveBackupsFolderId.first()
             ?: throw IllegalStateException("No backup has ever been created for this Google account.")
-        settingsRepository.setDriveBackupsFolderId(backupsFolderId)
-        return backupsFolderId
     }
 
     /**

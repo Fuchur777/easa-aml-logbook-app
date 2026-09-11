@@ -13,6 +13,7 @@ import kotlinx.serialization.Serializable
 data class DriveManifest(
     val rootFolderId: String,
     val benchFolderId: String? = null,
+    val documentsFolderId: String? = null,
     val backupsFolderId: String? = null,
     val aircraftFolderIds: Map<String, String>,
     val updatedAt: Long,

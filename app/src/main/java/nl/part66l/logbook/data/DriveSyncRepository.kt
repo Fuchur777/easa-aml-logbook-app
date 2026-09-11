@@ -73,14 +73,39 @@ class DriveSyncRepositoryImpl @Inject constructor(
     override suspend fun connect(activity: FragmentActivity): Result<String> {
         val token = driveAuthManager.authorize(activity).getOrElse { return Result.failure(it) }
         val email = driveApiClient.fetchAccountEmail(token).getOrElse { return Result.failure(it) }
+        // Connecting a different account than the one whose folders we have cached: those IDs name
+        // files the new account cannot see, and drive.file scope gives no way to notice that
+        // except by every upload failing 404.
+        if (settingsRepository.connectedGoogleAccountEmail.first().let { it != null && it != email }) {
+            clearCachedFolderIds()
+        }
         settingsRepository.setConnectedGoogleAccountEmail(email)
         return Result.success(email)
     }
 
+    /**
+     * Forgets the account and everything cached about its Drive layout.
+     *
+     * The folder IDs have to go with it. They are only meaningful for the account that created
+     * them, and nothing validates a cached ID before using it as an upload parent — so a stale one
+     * meant every upload failed 404 with no way back, since the IDs were only ever written and
+     * never re-derived. Clearing them here makes disconnect-and-reconnect a genuine repair for a
+     * Drive folder that was renamed, moved to another account, or deleted outright.
+     *
+     * The per-record driveFileId columns are deliberately left alone: reconnecting the same
+     * account must not re-upload everything as duplicates.
+     */
     override suspend fun disconnect() {
         settingsRepository.setConnectedGoogleAccountEmail(null)
+        clearCachedFolderIds()
     }
 
+    private suspend fun clearCachedFolderIds() {
+        settingsRepository.setDriveRootFolderId(null)
+        settingsRepository.setDriveBenchFolderId(null)
+        settingsRepository.setDriveDocumentsFolderId(null)
+        settingsRepository.setDriveBackupsFolderId(null)
+    }
     override suspend fun syncNow(activity: FragmentActivity): Result<SyncSummary> {
         val token = driveAuthManager.authorize(activity).getOrElse { return Result.failure(it) }
         return runSync(token)
@@ -108,6 +133,7 @@ class DriveSyncRepositoryImpl @Inject constructor(
      * pending photos meant thirty multi-megabyte blocking reads on the UI thread.
      */
     private suspend fun runSync(token: String): Result<SyncSummary> = withContext(Dispatchers.IO) {
+        hydrateFolderIdsFromManifest(token)
         val rootFolderId = ensureRootFolder(token).getOrElse { return@withContext Result.failure(it) }
         val benchFolderId = ensureBenchFolder(token, rootFolderId).getOrElse { return@withContext Result.failure(it) }
         val tally = SyncTally()
@@ -194,6 +220,26 @@ class DriveSyncRepositoryImpl @Inject constructor(
         }
     }
 
+    /**
+     * Recovers the folder IDs from the manifest before creating anything.
+     *
+     * `drive.file` scope cannot search Drive by name, so an install that has forgotten its folder
+     * IDs — a reconnect, a restore, cleared app data — has no way to find folders it created
+     * earlier except through the manifest. Without this, forgetting the IDs meant silently
+     * building a second "AMLog" tree beside the first.
+     *
+     * Best effort: a missing or unreadable manifest just means the folders get created, which is
+     * the correct outcome for an account that genuinely has none.
+     */
+    private suspend fun hydrateFolderIdsFromManifest(token: String) {
+        if (settingsRepository.driveRootFolderId.first() != null) return
+        val manifest = runCatching { driveManifestStore.read(token) }.getOrNull() ?: return
+        settingsRepository.setDriveRootFolderId(manifest.rootFolderId)
+        manifest.benchFolderId?.let { settingsRepository.setDriveBenchFolderId(it) }
+        manifest.documentsFolderId?.let { settingsRepository.setDriveDocumentsFolderId(it) }
+        manifest.backupsFolderId?.let { settingsRepository.setDriveBackupsFolderId(it) }
+    }
+
     private suspend fun ensureRootFolder(token: String): Result<String> {
         settingsRepository.driveRootFolderId.first()?.let { return Result.success(it) }
         return driveApiClient.createFolder(token, "AMLog", parentId = "root")
@@ -261,6 +307,7 @@ class DriveSyncRepositoryImpl @Inject constructor(
             DriveManifest(
                 rootFolderId = rootFolderId,
                 benchFolderId = benchFolderId,
+                documentsFolderId = settingsRepository.driveDocumentsFolderId.first() ?: existing?.documentsFolderId,
                 // Not ours to set. A device that has never taken a backup has no local value, and
                 // writing that null would hide every backup the account already holds.
                 backupsFolderId = settingsRepository.driveBackupsFolderId.first() ?: existing?.backupsFolderId,
