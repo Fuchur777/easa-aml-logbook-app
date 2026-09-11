@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,6 +23,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -32,6 +35,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import nl.part66l.logbook.data.DriveBackupEntry
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
+import kotlin.system.exitProcess
 
 private val BACKUP_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMMM yyyy, HH:mm").withZone(ZoneId.systemDefault())
 
@@ -63,12 +67,37 @@ fun DriveRestoreScreen(
             Column(
                 modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
                 verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text("Restore complete", style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "Close this app completely and reopen it to see the restored data.",
+                    "AMlog has to start fresh to read the restored records — the database was " +
+                        "replaced underneath it while it was running.",
                     style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = 8.dp),
+                )
+                Button(
+                    onClick = {
+                        // finishAffinity() alone only closes the activities; Android may keep the
+                        // process cached and hand it back on relaunch, and that process still holds
+                        // Room's handle on the database file we just replaced — so the user would
+                        // reopen the app and see the old data. Ending the process is the point of
+                        // this button, not a side effect of it.
+                        activity?.finishAffinity()
+                        exitProcess(0)
+                    },
+                    modifier = Modifier.padding(top = 24.dp),
+                ) {
+                    Text("Close AMlog")
+                }
+                Text(
+                    "Then open it again from your home screen.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 12.dp),
                 )
             }
         }
