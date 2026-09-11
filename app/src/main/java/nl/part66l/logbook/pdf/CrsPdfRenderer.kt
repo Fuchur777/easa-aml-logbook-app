@@ -210,6 +210,8 @@ class CrsPdfRenderer {
         // than PdfBox-Android's own AWTColor overload and fails to compile.
         val GREY = floatArrayOf(0.45f, 0.45f, 0.45f)
         val RULE_GREY = floatArrayOf(0.75f, 0.75f, 0.75f)
+        /** Printed where a table cell has no value. Kept ASCII: showText throws on anything the font cannot encode, and a certificate must not fail to generate over a placeholder. */
+        const val EMPTY_CELL = "n/a"
         val BLACK = floatArrayOf(0f, 0f, 0f)
 
         val HELVETICA: PDFont = PDType1Font.HELVETICA
@@ -364,6 +366,15 @@ private class PageWriter(
         y -= 4f * CrsPdfRenderer.MM
     }
 
+    /**
+     * A table row. An empty cell prints as an em dash rather than as nothing.
+     *
+     * On a certificate a blank cell is ambiguous — it reads as an oversight, and a reader cannot
+     * tell it apart from a value that was meant to be there and got lost. An explicit dash says
+     * the field was considered and there is nothing to record. This matters most for the parts
+     * table: a part can legitimately be identified by its description alone, with no part number,
+     * so that column is routinely and correctly empty.
+     */
     fun rows(cols: List<String>, data: List<List<String>>, widthsMm: List<Float>) {
         if (data.isEmpty()) return
         need(12f)
@@ -375,7 +386,7 @@ private class PageWriter(
             }
             var x = CrsPdfRenderer.L
             row.forEachIndexed { i, cell ->
-                text(x, y, cell, CrsPdfRenderer.HELVETICA, 8.5f, CrsPdfRenderer.BLACK)
+                text(x, y, cell.ifBlank { CrsPdfRenderer.EMPTY_CELL }, CrsPdfRenderer.HELVETICA, 8.5f, CrsPdfRenderer.BLACK)
                 x += widthsMm[i] * CrsPdfRenderer.MM
             }
             y -= 4.3f * CrsPdfRenderer.MM
