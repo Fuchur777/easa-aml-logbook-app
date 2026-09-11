@@ -111,12 +111,21 @@ fun WorkEntryFormScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showTaskPicker by remember { mutableStateOf(false) }
     val workorderCollapsedPreference by viewModel.workorderSectionCollapsed.collectAsStateWithLifecycle()
-    // Starts open only for an entry that actually records a workorder, and only when it wasn't
-    // explicitly folded away last time. An all-empty block stays out of the way until asked for.
-    // Keyed on load so an entry being fetched doesn't settle the state before its fields arrive.
-    var workorderExpanded by remember(state.entryId, state.loading) {
-        mutableStateOf(state.hasWorkorderContent && !workorderCollapsedPreference)
-    }
+    /*
+     * Null until the user folds or unfolds the block on this entry; the default below applies
+     * until then.
+     *
+     * Deliberately not seeded into a mutableStateOf at composition time. The preference reaches
+     * us from DataStore a frame or two after the entry itself loads, and capturing whatever it
+     * held at that moment is what made a saved fold state look like it was being ignored — the
+     * real value arrived immediately afterwards and nothing re-read it. Keying the remember on
+     * the preference instead would be worse: toggling writes the preference, which would re-key
+     * and recompute, so opening an empty block would snap it shut again.
+     */
+    var workorderToggled by remember(state.entryId, state.loading) { mutableStateOf<Boolean?>(null) }
+    // Open only for an entry that actually records a workorder, and only when it wasn't explicitly
+    // folded away last time. An all-empty block stays out of the way until asked for.
+    val workorderExpanded = workorderToggled ?: (state.hasWorkorderContent && !workorderCollapsedPreference)
     val dirty by viewModel.isDirty.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
@@ -171,8 +180,9 @@ fun WorkEntryFormScreen(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth().clickable {
-                            workorderExpanded = !workorderExpanded
-                            viewModel.onWorkorderSectionCollapsedChange(!workorderExpanded)
+                            val nowExpanded = !workorderExpanded
+                            workorderToggled = nowExpanded
+                            viewModel.onWorkorderSectionCollapsedChange(!nowExpanded)
                         },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
