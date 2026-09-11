@@ -53,13 +53,16 @@ private val REGULATIONS = listOf(
 
 private val LICENCES = listOf(
     OpenSourceLicence("Kotlin", "Apache License 2.0"),
-    OpenSourceLicence("AndroidX (Jetpack Compose, Room, Lifecycle, Navigation, Paging, DataStore, Biometric, ExifInterface, Core)", "Apache License 2.0"),
+    OpenSourceLicence("AndroidX (Jetpack Compose, Room, Lifecycle, Navigation, Paging, DataStore, WorkManager, Biometric, ExifInterface, Core)", "Apache License 2.0"),
     OpenSourceLicence("Material Components for Android", "Apache License 2.0"),
     OpenSourceLicence("Dagger / Hilt", "Apache License 2.0"),
     OpenSourceLicence("kotlinx.coroutines", "Apache License 2.0"),
     OpenSourceLicence("kotlinx.serialization", "Apache License 2.0"),
     OpenSourceLicence("PdfBox-Android", "Apache License 2.0"),
     OpenSourceLicence("Bouncy Castle (bcprov / bcpkix)", "Bouncy Castle Licence (MIT-style)"),
+    OpenSourceLicence("OkHttp (Square)", "Apache License 2.0"),
+    // Not open source — but it ships in the app and is what talks to Drive, so it is named here rather than quietly omitted.
+    OpenSourceLicence("Google Play services (auth)", "Google APIs Terms of Service — proprietary"),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -207,12 +210,21 @@ fun AboutScreen(onClose: () -> Unit) {
                             "Certificates signed on-device use a hardware-backed key with no third-party " +
                             "trust provider behind it — your competent authority, not this app, is the " +
                             "trust anchor for that signature (see the Signing certificate screen).\n\n" +
-                            "AMlog has no backend of its own and the developer never receives your data. " +
-                            "Your records live on this device. You can optionally connect your own Google " +
-                            "Drive account, in which case certificates, photos, documents and full-device " +
-                            "backups are uploaded to that account and nowhere else — you can disconnect " +
-                            "at any time, and the app remains fully functional offline without it.",
-                        style = MaterialTheme.typography.bodySmall,
+                            "AMlog has no backend of its own and the developer never receives your " +
+                            "data. Two things can copy your records off this device, both into your " +
+                            "own Google account and neither to anyone else:\n\n" +
+                            "Android's own app backup is on by default, for AMlog as for most apps. It " +
+                            "copies your entries, photos and certificates into your Google account's " +
+                            "backup so a replacement phone can restore them. It is encrypted with your " +
+                            "device screen lock, so Google cannot read it. Turn it off in Android's " +
+                            "Settings under Google, Backup.\n\n" +
+                            "Google Drive sync is off until you connect it. Once connected, " +
+                            "certificates, photos, documents and full-device backups are uploaded to " +
+                            "that account and nowhere else. You can disconnect at any time, and the app " +
+                            "remains fully functional offline without it.\n\n" +
+                            "Your signing key is the exception: it never leaves this device and is in " +
+                            "neither copy. A restored install can still verify certificates you have " +
+                            "already issued, but signs new ones with a new key.",
                     )
                 }
             }
