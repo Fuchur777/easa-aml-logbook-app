@@ -14,5 +14,14 @@
 .cxx
 local.properties
 /.kotlin
+
+# Signing material — never committed.
+*.jks
+*.keystore
+keystore.properties
+
+# Reference PDFs pulled from the authority's site — not ours to redistribute.
+/docs/reference/*.pdf
+
 # CRS PDFs and photos pulled off a device during testing — real records, never committed.
 /Download
