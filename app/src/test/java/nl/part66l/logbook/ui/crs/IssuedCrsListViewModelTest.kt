@@ -200,9 +200,50 @@ class IssuedCrsListViewModelTest {
         val viewModel = viewModel(crsRepository)
         viewModel.onAircraftFilterChange("ac1")
 
-        viewModel.onSelectAll()
+        viewModel.onSelectAllToggle()
 
         assertEquals(setOf("CRS-0001"), viewModel.selectedIds.value)
+    }
+
+    @Test
+    fun `select all toggles back off once everything under the filter is selected`() {
+        val crsRepository = FakeCrsRepository()
+        crsRepository.seedIssued(
+            listOf(
+                row("CRS-0001", LocalDate.of(2026, 1, 1)),
+                row("CRS-0002", LocalDate.of(2026, 6, 1)),
+            ),
+        )
+        val viewModel = viewModel(crsRepository)
+
+        assertFalse("nothing selected yet — the control offers to select", viewModel.allSelected.value)
+
+        viewModel.onSelectAllToggle()
+        assertEquals(setOf("CRS-0001", "CRS-0002"), viewModel.selectedIds.value)
+        assertTrue("everything is selected — the control now offers to unselect", viewModel.allSelected.value)
+
+        viewModel.onSelectAllToggle()
+        assertEquals(emptySet<String>(), viewModel.selectedIds.value)
+        assertFalse(viewModel.allSelected.value)
+    }
+
+    @Test
+    fun `a partial selection still offers select all, and completing it selects the rest`() {
+        val crsRepository = FakeCrsRepository()
+        crsRepository.seedIssued(
+            listOf(
+                row("CRS-0001", LocalDate.of(2026, 1, 1)),
+                row("CRS-0002", LocalDate.of(2026, 6, 1)),
+            ),
+        )
+        val viewModel = viewModel(crsRepository)
+        viewModel.onRowLongPress("CRS-0001")
+
+        assertFalse("one of two selected is not all of them", viewModel.allSelected.value)
+
+        viewModel.onSelectAllToggle()
+
+        assertEquals(setOf("CRS-0001", "CRS-0002"), viewModel.selectedIds.value)
     }
 
     @Test

@@ -8,6 +8,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -86,8 +87,23 @@ class IssuedCrsListViewModel @Inject constructor(
     /** Only meaningful once selection mode is already active — the screen routes a plain tap here itself, or to the normal open-PDF action, depending on [selectedIds]. */
     fun onRowToggleSelected(id: String) = _selectedIds.update { if (id in it) it - id else it + id }
 
-    /** Every row the current filter shows, not just what's scrolled into view. */
-    fun onSelectAll() = _selectedIds.update { rows.value.map { row -> row.crs.id }.toSet() }
+    /**
+     * Whether every row the current filter shows is selected — drives the select-all control's
+     * label, so it reads "Unselect all" exactly when pressing it would clear rather than select.
+     * Empty rows are never "all selected": there would be nothing to unselect.
+     */
+    val allSelected: StateFlow<Boolean> = combine(rows, _selectedIds) { rows, selected ->
+        rows.isNotEmpty() && rows.all { it.crs.id in selected }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /**
+     * Select every row the current filter shows — not just what's scrolled into view — or clear
+     * the selection if they are already all selected.
+     */
+    fun onSelectAllToggle() = _selectedIds.update { selected ->
+        val all = rows.value.map { row -> row.crs.id }.toSet()
+        if (all.isNotEmpty() && selected.containsAll(all)) emptySet() else all
+    }
 
     fun onClearSelection() {
         _selectedIds.value = emptySet()

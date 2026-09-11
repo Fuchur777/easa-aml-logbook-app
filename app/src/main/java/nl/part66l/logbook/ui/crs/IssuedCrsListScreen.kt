@@ -67,6 +67,7 @@ fun IssuedCrsListScreen(
     val aircraftOptions by viewModel.aircraftOptions.collectAsStateWithLifecycle()
     val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
     val exporting by viewModel.exporting.collectAsStateWithLifecycle()
+    val allSelected by viewModel.allSelected.collectAsStateWithLifecycle()
     val selectionMode = selectedIds.isNotEmpty()
     val context = LocalContext.current
 
@@ -77,7 +78,9 @@ fun IssuedCrsListScreen(
                     title = { Text("${selectedIds.size} selected") },
                     navigationIcon = { IconButton(onClick = viewModel::onClearSelection) { Text("✕") } },
                     actions = {
-                        TextButton(onClick = viewModel::onSelectAll) { Text("Select all", color = Color.White) }
+                        TextButton(onClick = viewModel::onSelectAllToggle) {
+                            Text(if (allSelected) "Unselect all" else "Select all", color = Color.White)
+                        }
                         IconButton(
                             onClick = { viewModel.exportSelected { zip -> shareCrsZip(context, zip) } },
                             enabled = !exporting,
