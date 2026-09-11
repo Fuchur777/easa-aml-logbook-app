@@ -7,7 +7,10 @@ import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import nl.part66l.logbook.drive.DriveApiClient
 import nl.part66l.logbook.drive.DriveAuthManager
 import nl.part66l.logbook.drive.DriveManifest
@@ -99,65 +102,96 @@ class DriveSyncRepositoryImpl @Inject constructor(
         return runSync(token)
     }
 
-    private suspend fun runSync(token: String): Result<SyncSummary> {
-        val rootFolderId = ensureRootFolder(token).getOrElse { return Result.failure(it) }
-        val benchFolderId = ensureBenchFolder(token, rootFolderId).getOrElse { return Result.failure(it) }
-
-        var uploaded = 0
-        var failed = 0
-        val errors = mutableListOf<String>()
+    /**
+     * Runs on [Dispatchers.IO]: the upload loops below read whole PDFs and photos off disk, and
+     * the manual entry point launches this from `viewModelScope` — i.e. the main thread. Thirty
+     * pending photos meant thirty multi-megabyte blocking reads on the UI thread.
+     */
+    private suspend fun runSync(token: String): Result<SyncSummary> = withContext(Dispatchers.IO) {
+        val rootFolderId = ensureRootFolder(token).getOrElse { return@withContext Result.failure(it) }
+        val benchFolderId = ensureBenchFolder(token, rootFolderId).getOrElse { return@withContext Result.failure(it) }
+        val tally = SyncTally()
 
         for (crs in crsDao.pendingDriveUploads()) {
-            try {
+            tally.record("CRS ${crs.number}") {
                 val entryFolderId = ensureEntryFolder(token, crs.entryId, rootFolderId, benchFolderId)
                 val pdfPath = crs.pdfLocalPath ?: throw IllegalStateException("no PDF on disk")
                 val bytes = File(pdfPath).readBytes()
                 val fileId = driveApiClient.uploadFile(token, "${crs.number}.pdf", entryFolderId, bytes, "application/pdf").getOrThrow()
                 crsDao.setDriveFileId(crs.id, fileId)
-                uploaded++
-            } catch (e: Exception) {
-                failed++
-                errors += "CRS ${crs.number}: ${e.message ?: e::class.simpleName}"
             }
         }
 
         for (attachment in attachmentDao.pendingPhotoUploads()) {
-            try {
+            tally.record("Photo ${attachment.id}") {
                 val entryFolderId = ensureEntryFolder(token, attachment.entryId, rootFolderId, benchFolderId)
                 val photosFolderId = ensurePhotosFolder(token, attachment.entryId, entryFolderId)
                 val bytes = File(attachment.localPath).readBytes()
                 val fileId = driveApiClient.uploadFile(token, attachment.id, photosFolderId, bytes, "image/jpeg").getOrThrow()
                 attachmentDao.setDriveFileId(attachment.id, fileId)
-                uploaded++
-            } catch (e: Exception) {
-                failed++
-                errors += "Photo ${attachment.id}: ${e.message ?: e::class.simpleName}"
             }
         }
 
         for (document in documentDao.pendingDriveUploads()) {
-            try {
+            tally.record("Document ${document.name}") {
                 val documentsFolderId = ensureDocumentsFolder(token, rootFolderId)
                 val pdfPath = document.pdfPath ?: throw IllegalStateException("no PDF on disk")
                 val bytes = File(pdfPath).readBytes()
                 val name = document.pdfFileName?.ifBlank { null } ?: "${document.name}.pdf"
                 val fileId = driveApiClient.uploadFile(token, name, documentsFolderId, bytes, "application/pdf").getOrThrow()
                 documentDao.setDriveFileId(document.id, fileId)
-                uploaded++
-            } catch (e: Exception) {
-                failed++
-                errors += "Document ${document.name}: ${e.message ?: e::class.simpleName}"
             }
         }
 
         try {
             writeManifest(token, rootFolderId, benchFolderId)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            errors += "Manifest: ${e.message ?: e::class.simpleName}"
+            tally.errors += "Manifest: ${e.message ?: e::class.simpleName}"
         }
 
-        settingsRepository.setLastDriveSyncAt(Instant.now())
-        return Result.success(SyncSummary(uploaded, failed, errors))
+        // Only stamp the timestamp for a run that actually finished cleanly. It used to be written
+        // unconditionally, so an offline run that failed every upload still reported "Last synced:
+        // just now" — and since the per-run summary is only held in memory, that timestamp was the
+        // one surviving signal a user had. A run with nothing pending and no errors is a success
+        // and does update it.
+        if (tally.isClean) settingsRepository.setLastDriveSyncAt(Instant.now())
+        Result.success(tally.summary())
+    }
+
+    /** Running counts for one sync, and the one place an item's outcome is recorded. */
+    private class SyncTally {
+        var uploaded = 0
+        var failed = 0
+        val errors = mutableListOf<String>()
+
+        val isClean: Boolean get() = failed == 0 && errors.isEmpty()
+
+        fun summary() = SyncSummary(uploaded, failed, errors)
+
+        /**
+         * Runs one item's upload and counts the outcome, so a single bad file doesn't abandon the
+         * rest of the run.
+         *
+         * Cancellation is rethrown rather than counted. CancellationException is an Exception in
+         * Kotlin, so catching it here treated the user leaving the screen as a per-item failure:
+         * the upload had already succeeded but setDriveFileId never ran, leaving the file on Drive
+         * unmarked and guaranteeing a duplicate on the next sync — and the loop then carried on,
+         * failing every remaining item at its first suspension point and reporting a fabricated
+         * "N failed".
+         */
+        suspend fun record(label: String, block: suspend () -> Unit) {
+            try {
+                block()
+                uploaded++
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                failed++
+                errors += "$label: ${e.message ?: e::class.simpleName}"
+            }
+        }
     }
 
     private suspend fun ensureRootFolder(token: String): Result<String> {

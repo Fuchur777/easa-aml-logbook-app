@@ -29,6 +29,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import kotlinx.coroutines.flow.first
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -257,5 +258,40 @@ class DriveSyncRepositoryTest {
         val secondSummary = repository.syncNow(activity).getOrThrow()
         assertEquals(0, secondSummary.uploaded)
         assertEquals(foldersAfterFirstSync, apiClient.createdFolders)
+    }
+
+    @Test
+    fun `a run where an upload failed does not stamp the last-synced time`() = runBlocking {
+        val aircraftId = createAircraft()
+        val entryId = createEntry(aircraftId)
+        val crs = createCrs(entryId)
+        apiClient.uploadFailures["${crs.number}.pdf"] = java.io.IOException("network down")
+
+        val summary = repository.syncNow(activity).getOrThrow()
+
+        assertEquals(0, summary.uploaded)
+        assertEquals(1, summary.failed)
+        // The per-run summary is only held in memory, so this timestamp is the one lasting signal
+        // the user has. Stamping it here would report "Last synced: just now" for a run that
+        // uploaded nothing — and would make it useless for confirming background sync ran.
+        assertNull(settingsRepository.lastDriveSyncAt.first())
+    }
+
+    @Test
+    fun `a clean run stamps the last-synced time, including one with nothing to upload`() = runBlocking {
+        val aircraftId = createAircraft()
+        val entryId = createEntry(aircraftId)
+        createCrs(entryId)
+
+        repository.syncNow(activity).getOrThrow()
+        val afterUpload = settingsRepository.lastDriveSyncAt.first()
+        assertNotNull(afterUpload)
+
+        // Nothing pending is not a failure — everything is already up to date, which is a
+        // successful sync and must move the timestamp on.
+        val secondSummary = repository.syncNow(activity).getOrThrow()
+        assertEquals(0, secondSummary.uploaded)
+        assertEquals(0, secondSummary.failed)
+        assertNotNull(settingsRepository.lastDriveSyncAt.first())
     }
 }
