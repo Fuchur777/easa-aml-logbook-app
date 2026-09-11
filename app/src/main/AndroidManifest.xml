@@ -50,6 +50,32 @@
             </intent-filter>
         </activity>
 
+
+        <!--
+          WorkManager's own App Startup initializer has to go, because
+          Part66LogApplication implements Configuration.Provider (on-demand
+          initialization).
+
+          Left in, it initializes WorkManager at process start with the default
+          configuration — before anything asks for ours — and the HiltWorkerFactory
+          in that configuration is never consulted. DriveSyncWorker is
+          @Inject-constructed, so it then cannot be instantiated at all and auto-sync
+          fails silently on device. Only release lint catches it.
+
+          Removing the meta-data rather than the whole provider leaves
+          InitializationProvider in place for any other library that uses App Startup.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
         <!-- Grants a viewer app temporary read access to a copied PDF without exposing filesDir directly. -->
         <provider
             android:name="androidx.core.content.FileProvider"
