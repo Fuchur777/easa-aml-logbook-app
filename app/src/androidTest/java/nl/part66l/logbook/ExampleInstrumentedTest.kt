@@ -19,6 +19,7 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("nl.part66l.logbook", appContext.packageName)
+        // The applicationId, which is not the same as this file's Kotlin package — see app/build.gradle.kts.
+        assertEquals("nl.schellenberg.amlog", appContext.packageName)
     }
 }

@@ -9,13 +9,19 @@ plugins {
 }
 
 android {
+    // The Kotlin package the code lives in. Deliberately not the same as applicationId:
+    // renaming it would touch every file's package declaration for no functional gain, and
+    // Android treats the two as independent on purpose.
     namespace = "nl.part66l.logbook"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "nl.part66l.logbook"
+        // The app's permanent identity on Google Play — it can never change once published,
+        // and it is half of what identifies the app to Google's OAuth (the other half being
+        // the signing certificate SHA-1). Not the same as `namespace` above.
+        applicationId = "nl.schellenberg.amlog"
         minSdk = 26
         targetSdk = 37
         versionCode = 1

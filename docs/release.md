@@ -1,6 +1,8 @@
 # Releasing to Google Play
 
-The app is `nl.part66l.logbook`, listed as **AMlog**. This covers getting a build onto a
+The app is **AMlog**, `nl.schellenberg.amlog` on Play. Note that the Kotlin package is
+still `nl.part66l.logbook` — `namespace` and `applicationId` are independent, and only the
+latter is what Google identifies the app by. This covers getting a build onto a
 Play testing track.
 
 ## The one thing that will break if you skip it
@@ -21,7 +23,7 @@ strips that signature and re-signs with an *app signing* key it holds. Testers i
 something signed with a certificate you never see until after the first upload.
 
 So three fingerprints end up needing to be registered as Android OAuth clients in Google
-Cloud Console for `nl.part66l.logbook`:
+Cloud Console for `nl.schellenberg.amlog` — the applicationId, not the Kotlin package:
 
 1. **Debug** — so Android Studio builds keep working.
 2. **Upload** — from your own keystore.
