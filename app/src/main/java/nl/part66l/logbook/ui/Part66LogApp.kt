@@ -105,17 +105,21 @@ private fun AppNavHost(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination
     /**
-     * Screens that suppress the bottom bar: the first-run gate, the restore flow, and every
-     * form.
+     * The bottom bar belongs to the three tabs and nowhere else.
      *
-     * Forms are the important case. A form guards unsaved work through its X button and
-     * through BackHandler, but a bottom-bar tab calls navigate() directly and goes through
-     * neither — so a bar here would let one reflexive tap discard a half-written entry with
-     * no prompt. Hiding it also frees the ~80dp these long forms would rather spend on
-     * fields, and makes "no bar" mean "you are editing something".
+     * Everything reached from the hamburger — Documents, Contacts, the CRS Library, Settings,
+     * About and the two screens behind Settings — closes with its own X and returns you to
+     * whichever tab you came from. Keeping the bar off them is what makes that consistent:
+     * one way in, one way out, and the tab you left is the tab you come back to.
      *
-     * Everything else — Documents, Contacts, the CRS Library, Settings — is a place you
-     * browse, a peer of the three tabs, and keeps the bar.
+     * Showing it there was tried and reverted. It let the menu be opened from the menu's own
+     * destinations, and those items navigate without launchSingleTop, so Documents -> Contacts
+     * -> Settings stacked up entries that each needed their own Back press to unwind.
+     *
+     * Forms suppress it for a second reason worth keeping in mind: a form guards unsaved work
+     * through its X and through BackHandler, but a bottom-bar tab calls navigate() directly and
+     * goes through neither, so a bar there would let one reflexive tap discard a half-written
+     * entry with no prompt.
      */
     val noBottomBarRoutes = setOf(
         Destination.ProfileSetup.route,
@@ -130,10 +134,6 @@ private fun AppNavHost(
         Destination.DocumentEdit.ROUTE_PATTERN,
         Destination.ContactForm.route,
         Destination.ContactEdit.ROUTE_PATTERN,
-    )
-
-    /** The menu's own destinations — the hamburger lights up while you are on one of them. */
-    val menuRoutes = setOf(
         Destination.IssuedCrs.route,
         Destination.Documents.route,
         Destination.Contacts.route,
@@ -166,7 +166,7 @@ private fun AppNavHost(
                         )
                     }
                     NavigationBarItem(
-                        selected = currentRoute?.hierarchy?.any { it.route in menuRoutes } == true,
+                        selected = false,
                         onClick = { menuExpanded = true },
                         icon = {
                             Text("☰")
