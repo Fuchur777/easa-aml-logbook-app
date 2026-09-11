@@ -111,4 +111,14 @@ sealed interface Destination {
     data object SigningInfo : Destination {
         override val route = "signing-info"
     }
+
+    /** Reached from the hamburger menu — every issued certificate app-wide (latest revision only), across every work entry. */
+    data object IssuedCrs : Destination {
+        override val route = "issued-crs"
+    }
+
+    /** Reached from the hamburger menu — developer contact, disclaimer, version, third-party licences. */
+    data object About : Destination {
+        override val route = "about"
+    }
 }

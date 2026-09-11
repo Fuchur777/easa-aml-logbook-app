@@ -24,11 +24,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import nl.part66l.logbook.ui.about.AboutScreen
 import nl.part66l.logbook.ui.aircraft.AircraftFormScreen
 import nl.part66l.logbook.ui.aircraft.AircraftListScreen
 import nl.part66l.logbook.ui.contacts.ContactFormScreen
 import nl.part66l.logbook.ui.contacts.ContactListScreen
 import nl.part66l.logbook.ui.crs.CrsScreen
+import nl.part66l.logbook.ui.crs.IssuedCrsListScreen
 import nl.part66l.logbook.ui.documents.DocumentFormScreen
 import nl.part66l.logbook.ui.documents.DocumentListScreen
 import nl.part66l.logbook.ui.navigation.Destination
@@ -51,10 +53,12 @@ fun Part66LogApp() {
     }
 }
 
+private data class BottomBarDestination(val destination: Destination, val icon: String, val label: String)
+
 private val bottomBarDestinations = listOf(
-    Destination.WorkEntries to "Work",
-    Destination.Aircraft to "Aircraft",
-    Destination.Recency to "Recency",
+    BottomBarDestination(Destination.WorkEntries, "🔧", "Work"),
+    BottomBarDestination(Destination.Aircraft, "🛩️", "Aircraft"),
+    BottomBarDestination(Destination.Recency, "🕐", "Recency"),
 )
 
 @Composable
@@ -78,6 +82,8 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
         Destination.ContactForm.route,
         Destination.ContactEdit.ROUTE_PATTERN,
         Destination.SigningInfo.route,
+        Destination.IssuedCrs.route,
+        Destination.About.route,
     )
     val showBottomBar = currentRoute?.hierarchy?.none { it.route in noBottomBarRoutes } ?: false
 
@@ -86,12 +92,12 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
             if (showBottomBar) {
                 var menuExpanded by remember { mutableStateOf(false) }
                 NavigationBar {
-                    bottomBarDestinations.forEach { (destination, label) ->
+                    bottomBarDestinations.forEach { (destination, icon, label) ->
                         val selected = currentRoute?.hierarchy?.any { it.route == destination.route } == true
                         NavigationBarItem(
                             selected = selected,
                             onClick = { navController.navigateSingleTopTo(destination.route) },
-                            icon = { Text(label.take(1)) },
+                            icon = { Text(icon) },
                             label = { Text(label) },
                         )
                     }
@@ -102,6 +108,18 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                             Text("☰")
                             DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                                 DropdownMenuItem(
+                                    text = { Text("CRS Library") },
+                                    onClick = { menuExpanded = false; navController.navigate(Destination.IssuedCrs.route) },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Documents") },
+                                    onClick = { menuExpanded = false; navController.navigate(Destination.Documents.route) },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Contacts") },
+                                    onClick = { menuExpanded = false; navController.navigate(Destination.Contacts.route) },
+                                )
+                                DropdownMenuItem(
                                     text = { Text("Profile") },
                                     onClick = { menuExpanded = false; navController.navigate(Destination.Profile.route) },
                                 )
@@ -110,8 +128,8 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
                                     onClick = { menuExpanded = false; navController.navigate(Destination.Settings.route) },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Documents") },
-                                    onClick = { menuExpanded = false; navController.navigate(Destination.Documents.route) },
+                                    text = { Text("About") },
+                                    onClick = { menuExpanded = false; navController.navigate(Destination.About.route) },
                                 )
                             }
                         },
@@ -127,12 +145,14 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
             modifier = Modifier.padding(padding),
         ) {
             composable(Destination.ProfileSetup.route) {
-                ProfileFormScreen(onSaved = {
-                    onProfileSaved()
-                    navController.navigate(Destination.WorkEntries.route) {
-                        popUpTo(Destination.ProfileSetup.route) { inclusive = true }
-                    }
-                })
+                ProfileFormScreen(
+                    onSaved = {
+                        onProfileSaved()
+                        navController.navigate(Destination.WorkEntries.route) {
+                            popUpTo(Destination.ProfileSetup.route) { inclusive = true }
+                        }
+                    },
+                )
             }
             composable(Destination.WorkEntries.route) {
                 WorkEntryListScreen(
@@ -217,12 +237,17 @@ private fun AppNavHost(startDestination: String, onProfileSaved: () -> Unit) {
             composable(Destination.Settings.route) {
                 SettingsScreen(
                     onClose = { navController.popBackStack() },
-                    onContacts = { navController.navigate(Destination.Contacts.route) },
                     onSigningInfo = { navController.navigate(Destination.SigningInfo.route) },
                 )
             }
             composable(Destination.SigningInfo.route) {
                 SigningInfoScreen(onClose = { navController.popBackStack() })
+            }
+            composable(Destination.IssuedCrs.route) {
+                IssuedCrsListScreen(onClose = { navController.popBackStack() })
+            }
+            composable(Destination.About.route) {
+                AboutScreen(onClose = { navController.popBackStack() })
             }
             composable(Destination.Contacts.route) {
                 ContactListScreen(
