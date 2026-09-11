@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -152,8 +153,8 @@ fun IssuedCrsListScreen(
             }
             HorizontalDivider()
             if (rows.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No issued certificates match this filter.")
+                Box(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
+                    Text("No issued certificates match this filter.", textAlign = TextAlign.Center)
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {

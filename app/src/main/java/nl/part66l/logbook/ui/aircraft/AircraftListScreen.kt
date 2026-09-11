@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -85,8 +86,8 @@ fun AircraftListScreen(
         },
     ) { padding ->
         if (items.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("No aircraft yet — tap + to add one.")
+            Box(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
+                Text("No aircraft yet — tap + to add one.", textAlign = TextAlign.Center)
             }
         } else {
             LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {

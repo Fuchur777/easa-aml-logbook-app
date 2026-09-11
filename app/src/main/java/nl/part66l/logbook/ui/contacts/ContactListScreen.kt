@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,8 +68,8 @@ fun ContactListScreen(
         },
     ) { padding ->
         if (contacts.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("No contacts yet — tap + to add one.")
+            Box(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
+                Text("No contacts yet — tap + to add one.", textAlign = TextAlign.Center)
             }
         } else {
             LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
