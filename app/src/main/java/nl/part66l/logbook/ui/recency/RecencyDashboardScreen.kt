@@ -40,6 +40,8 @@ import nl.part66l.logbook.domain.ExpiryWarning
 import nl.part66l.logbook.domain.RecencyEvaluator
 import nl.part66l.logbook.domain.RuleStatus
 import nl.part66l.logbook.domain.WarningLevel
+import nl.part66l.logbook.ui.theme.onColor
+import nl.part66l.logbook.ui.theme.onConfirmGreen
 import nl.part66l.logbook.ui.theme.confirmGreen
 import nl.part66l.logbook.ui.theme.color
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
@@ -167,15 +169,15 @@ private fun SubcategoryCard(
 @Composable
 private fun StatusBadge(current: Boolean, warning: WarningLevel) {
     // Amber says "current, but not for much longer" — still green would hide that, red would
-    // overstate it, since nothing has actually lapsed yet.
-    val background = when {
-        !current -> MaterialTheme.colorScheme.error
-        else -> warning.color() ?: confirmGreen()
-    }
+    // overstate it, since nothing has actually lapsed yet. forRecency already returns RED
+    // whenever `current` is false, so the fill needs no separate branch for it; `current` decides
+    // the wording only.
+    val background = warning.color() ?: confirmGreen()
+    val content = warning.onColor() ?: onConfirmGreen()
     Surface(color = background, shape = MaterialTheme.shapes.small) {
         Text(
             if (current) "Current" else "Not current",
-            color = Color.White,
+            color = content,
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )

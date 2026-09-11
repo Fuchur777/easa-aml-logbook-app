@@ -51,9 +51,19 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    // Same blue as light, on purpose — see Part66Blue.
-    primary = Part66Blue,
-    onPrimary = NeutralWhite,
+    /*
+     * The brand blue is #176FC1 wherever it is seen AS the brand — that is the top bar, and
+     * part66TopAppBarColors now names Part66Blue directly so it is identical in both themes.
+     *
+     * The `primary` *role* is a different job. Material hands it to every TextButton and
+     * OutlinedButton as their content colour, and #176FC1 on this dark surface measures 3.5:1 —
+     * below the 4.5:1 a line of text needs. Sixteen files use those buttons and none override
+     * the colour, so tying the role to the brand fill made every one of them fail in dark mode.
+     * The role therefore takes the lighter tint here (10.7:1), and onPrimary goes dark to suit
+     * the few places primary is still a fill, such as a checked Switch track.
+     */
+    primary = Part66BlueLight,
+    onPrimary = Part66OnBlueDark,
     primaryContainer = Part66BlueContainerDark,
     onPrimaryContainer = Part66OnBlueContainerDark,
     inversePrimary = Part66Blue,

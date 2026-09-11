@@ -45,7 +45,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import nl.part66l.logbook.R
-import nl.part66l.logbook.ui.theme.linkBlue
 import nl.part66l.logbook.domain.DocumentCategory
 import nl.part66l.logbook.ui.components.DatePickerField
 import nl.part66l.logbook.ui.components.DropdownField
@@ -166,14 +165,14 @@ fun DocumentFormScreen(
                         Icon(
                             painterResource(R.drawable.ic_pdf),
                             contentDescription = null,
-                            tint = linkBlue(),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp),
                         )
                         Spacer(Modifier.size(6.dp))
                         Text(
                             state.pdfFileName,
                             style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
-                            color = linkBlue(),
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
                                 .weight(1f)
                                 .clickable { openPdf(context, state.pdfPath) },

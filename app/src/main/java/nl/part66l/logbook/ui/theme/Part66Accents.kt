@@ -27,18 +27,6 @@ fun part66ConfirmButtonColors(): ButtonColors = ButtonDefaults.buttonColors(
     contentColor = NeutralDark06,
 )
 
-/**
- * Blue *text* — the handful of inline links and active labels that use the brand colour
- * as a foreground rather than a fill.
- *
- * The brand blue is one value everywhere it is seen as blue: the top bar, icon tints,
- * filled controls. But it is a mid tone, and on the dark surface it reaches only 3.5:1
- * — fine for an icon, short of the 4.5:1 a line of text needs. So text alone steps up
- * to the lighter tint in dark mode (10.7:1), which reads as the same blue because
- * nothing sits next to it for comparison.
- */
-@Composable
-fun linkBlue(): Color = if (isSystemInDarkTheme()) Part66BlueLight else Part66Blue
 
 /**
  * A switch sitting on the brand-blue top bar.
@@ -53,3 +41,13 @@ fun part66TopBarSwitchColors(): SwitchColors = SwitchDefaults.colors(
     checkedBorderColor = Color.White,
     checkedThumbColor = Color.White,
 )
+
+/**
+ * The label colour that is legible on [confirmGreen].
+ *
+ * White is not: it reaches 3.5:1 on the light-mode green and only 2.1:1 on the brighter
+ * dark-mode one. Exposed alongside the fill so no call site has to guess — handing out a
+ * background without its on-colour is what let the recency badge ship unreadable.
+ */
+@Composable
+fun onConfirmGreen(): Color = NeutralDark06

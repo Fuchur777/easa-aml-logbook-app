@@ -19,8 +19,11 @@ val Part66OnBlueContainer = Color(0xFF001C3B)
 val Part66BlueContainerDark = Color(0xFF00497D)
 val Part66OnBlueContainerDark = Color(0xFFD3E4FF)
 
-/** The brand blue lightened for dark grounds: inverse surfaces, and blue text (see linkBlue). */
+/** The brand blue lightened for dark grounds — the `primary` role in dark mode, and inverse surfaces. */
 val Part66BlueLight = Color(0xFF9FCAFF)
+
+/** Sits on [Part66BlueLight] where that is a fill rather than a foreground — a checked Switch track, a FAB. */
+val Part66OnBlueDark = Color(0xFF003258)
 
 /** Save / confirm actions only (per explicit instruction) — not part of the Material role palette. */
 val Part66ConfirmGreen = Color(0xFF5E9918)
