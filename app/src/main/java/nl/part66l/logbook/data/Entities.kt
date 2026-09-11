@@ -58,6 +58,9 @@ data class AircraftRegistrationEntity(
     val validTo: LocalDate?,
 )
 
+/** How one logged documentation reference identifies its directory entry — see [DocumentDao.observeUsageForAircraft]. */
+data class DocumentUsageRow(val documentId: String?, val referenceNormalised: String)
+
 /** An aircraft plus its current (validTo IS NULL) registration, if any — what the list screen actually needs to render a row. */
 data class AircraftWithRegistration(
     @Embedded val aircraft: AircraftEntity,
@@ -213,13 +216,19 @@ data class EntryHelperEntity(
 @Entity(
     tableName = "documentation_ref",
     foreignKeys = [ForeignKey(WorkEntryEntity::class, ["id"], ["entryId"], onDelete = ForeignKey.CASCADE)],
-    indices = [Index("entryId"), Index("referenceNormalised")],
+    indices = [Index("entryId"), Index("referenceNormalised"), Index("documentId")],
 )
 data class DocumentationRefEntity(
     @PrimaryKey val id: String,
     val entryId: String,
     val reference: String,
     val referenceNormalised: String,
+    /**
+     * The directory entry this was picked from, where it was picked from one at all — null for a
+     * reference typed by hand, and for rows written before this column existed. The snapshot
+     * fields below stay authoritative for what the entry *said*; this is only the link back.
+     */
+    val documentId: String? = null,
     val category: DocumentCategory? = null,
     val revision: String?,
     val revisionDate: LocalDate?,

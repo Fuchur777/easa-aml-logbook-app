@@ -129,6 +129,30 @@ interface DocumentDao {
     @Query("SELECT * FROM document WHERE archived = 0 OR :includeArchived = 1 ORDER BY category, name")
     fun observeAll(includeArchived: Boolean): Flow<List<DocumentEntity>>
 
+    /** As [observeAll], narrowed to one category. [category] null means every category. */
+    @Query("""
+        SELECT * FROM document
+        WHERE (archived = 0 OR :includeArchived = 1)
+          AND (:category IS NULL OR category = :category)
+        ORDER BY category, name
+    """)
+    fun observeByCategory(includeArchived: Boolean, category: DocumentCategory?): Flow<List<DocumentEntity>>
+
+    /**
+     * How each documentation reference logged against [aircraftId]'s work entries identifies its
+     * document: by id where it was picked from the directory, and otherwise only by the reference
+     * text it froze at the time. [DocumentRepository] resolves both against the directory, since
+     * normalising a name is Kotlin's job ([Identifiers.normalise]) rather than something to
+     * reimplement in SQL.
+     */
+    @Query("""
+        SELECT r.documentId AS documentId, r.referenceNormalised AS referenceNormalised
+        FROM documentation_ref r
+        JOIN work_entry e ON e.id = r.entryId
+        WHERE e.aircraftId = :aircraftId
+    """)
+    fun observeUsageForAircraft(aircraftId: String): Flow<List<DocumentUsageRow>>
+
     @Query("UPDATE document SET archived = :archived WHERE id = :id")
     suspend fun setArchived(id: String, archived: Boolean)
 

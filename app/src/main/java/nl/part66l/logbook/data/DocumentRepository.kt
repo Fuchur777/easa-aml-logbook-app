@@ -5,11 +5,19 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import nl.part66l.logbook.domain.DocumentCategory
 
 interface DocumentRepository {
     /** Ordered by category then name — what both the management screen and the entry-form picker render. */
     fun observeAll(includeArchived: Boolean): Flow<List<DocumentEntity>>
+
+    /**
+     * The directory narrowed by any combination of filters, ordered the same way. [category] null
+     * means every category; [aircraftId] null means every aircraft, otherwise only documents that
+     * have actually been used on a work entry for that aircraft.
+     */
+    fun observeFiltered(includeArchived: Boolean, category: DocumentCategory?, aircraftId: String?): Flow<List<DocumentEntity>>
 
     suspend fun byId(id: String): DocumentEntity?
 
@@ -51,6 +59,23 @@ class DocumentRepositoryImpl @Inject constructor(
 ) : DocumentRepository {
 
     override fun observeAll(includeArchived: Boolean): Flow<List<DocumentEntity>> = documentDao.observeAll(includeArchived)
+
+    override fun observeFiltered(
+        includeArchived: Boolean,
+        category: DocumentCategory?,
+        aircraftId: String?,
+    ): Flow<List<DocumentEntity>> {
+        val byCategory = documentDao.observeByCategory(includeArchived, category)
+        if (aircraftId == null) return byCategory
+        return combine(byCategory, documentDao.observeUsageForAircraft(aircraftId)) { documents, usage ->
+            // A reference picked from the directory carries its id. One typed by hand — or logged
+            // before ids were recorded — can only be recognised by the text it froze, so those
+            // fall back to matching the document's name as it reads now.
+            val usedIds = usage.mapNotNullTo(mutableSetOf()) { it.documentId }
+            val usedNames = usage.filter { it.documentId == null }.mapTo(mutableSetOf()) { it.referenceNormalised }
+            documents.filter { it.id in usedIds || Identifiers.normalise(it.name) in usedNames }
+        }
+    }
 
     override suspend fun byId(id: String): DocumentEntity? = documentDao.byId(id)
 

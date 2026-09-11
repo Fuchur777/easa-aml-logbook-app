@@ -122,4 +122,19 @@ val MIGRATION_15_16 = object : Migration(15, 16) {
     }
 }
 
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
+/**
+ * Links a documentation reference back to the directory entry it was picked from, so "documents
+ * used on this aircraft" is an exact join rather than a match on reference text that a later
+ * rename would break. Nullable by design: a reference typed by hand belongs to no directory entry,
+ * and rows written before this column existed keep matching on text.
+ *
+ * The snapshot columns are untouched — what a past entry says it used stays frozen.
+ */
+val MIGRATION_16_17 = object : Migration(16, 17) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `documentation_ref` ADD COLUMN `documentId` TEXT")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_documentation_ref_documentId` ON `documentation_ref` (`documentId`)")
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)

@@ -17,6 +17,8 @@ data class DocumentationRefInput(
     val revision: String? = null,
     val revisionDate: LocalDate? = null,
     val category: DocumentCategory? = null,
+    /** Set when picked from the document directory; null when the reference was typed by hand. */
+    val documentId: String? = null,
 )
 
 /** One row of the "Parts and materials" list (§5.3). */
@@ -195,7 +197,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
         val helperNames = entryHelperDao.forEntry(id).mapNotNull { personDao.byId(it.personId)?.name }
         val completedTaskIds = taskCompletionDao.forEntry(id).map { it.taskId }.toSet()
         val documentationRefs = documentationRefDao.forEntry(id)
-            .map { DocumentationRefInput(it.reference, it.revision, it.revisionDate, it.category) }
+            .map { DocumentationRefInput(it.reference, it.revision, it.revisionDate, it.category, it.documentId) }
         val partsUsed = partUsedDao.forEntry(id).map {
             PartUsedInput(it.partNumber, it.description, it.batchOrSerial, it.formOneRef, it.quantity)
         }
@@ -374,6 +376,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
                     entryId = entryId,
                     reference = ref.reference,
                     referenceNormalised = Identifiers.normalise(ref.reference),
+                    documentId = ref.documentId,
                     category = ref.category,
                     revision = ref.revision,
                     revisionDate = ref.revisionDate,

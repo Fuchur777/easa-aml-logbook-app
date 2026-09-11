@@ -12,8 +12,23 @@ import nl.part66l.logbook.domain.DocumentCategory
 class FakeDocumentRepository(initial: List<DocumentEntity> = emptyList()) : DocumentRepository {
     private val documents = MutableStateFlow(initial)
 
+    /** Which documents count as "used on" a given aircraft — set by a test rather than derived from work entries. */
+    val usageByAircraft = mutableMapOf<String, Set<String>>()
+
     override fun observeAll(includeArchived: Boolean): Flow<List<DocumentEntity>> =
         documents.map { list -> list.filter { includeArchived || !it.archived } }
+
+    override fun observeFiltered(
+        includeArchived: Boolean,
+        category: DocumentCategory?,
+        aircraftId: String?,
+    ): Flow<List<DocumentEntity>> = documents.map { list ->
+        list.filter { document ->
+            (includeArchived || !document.archived) &&
+                (category == null || document.category == category) &&
+                (aircraftId == null || document.id in usageByAircraft[aircraftId].orEmpty())
+        }
+    }
 
     override suspend fun byId(id: String): DocumentEntity? = documents.value.find { it.id == id }
 
