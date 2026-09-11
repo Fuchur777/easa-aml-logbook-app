@@ -4,10 +4,14 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -19,16 +23,33 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import nl.part66l.logbook.BuildConfig
+import nl.part66l.logbook.R
 import nl.part66l.logbook.ui.theme.part66TopAppBarColors
 
 private const val DEVELOPER_EMAIL = "frank+amlog@schellenberg.nl"
 
 /** One third-party dependency actually shipped in the release build — test-only libraries (Robolectric, JUnit, ...) aren't listed since they never reach a device. */
 private data class OpenSourceLicence(val name: String, val licence: String)
+
+/** One provision the app's behaviour actually traces to, and what it governs here. */
+private data class RegulationReference(val reference: String, val appliesTo: String)
+
+private val REGULATIONS = listOf(
+    RegulationReference("66.A.20(b)(2) and its AMC", "The recency requirement itself, the 24-month window, and the 100/50-day route."),
+    RegulationReference("AMC 66.A.45(h)", "The half-of-the-catalogue route, and the requirement to cover every section."),
+    RegulationReference(
+        "Appendix II to AMC to Annex III — Table B, and the engine blocks of Table A it cross-references",
+        "The task catalogue itself, against which completions are counted.",
+    ),
+    RegulationReference("NPA 2025-12 (proposed AMC2 66.A.20(b)(2))", "The annual-inspection route, shown but not counted while it remains a proposal."),
+    RegulationReference("ML.A.801(d), (e), (f), (g) and AMC1 ML.A.801(e)", "What a certificate of release to service must contain, and how assistance is recorded."),
+)
 
 private val LICENCES = listOf(
     OpenSourceLicence("Kotlin", "Apache License 2.0"),
@@ -65,11 +86,97 @@ fun AboutScreen(onClose: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Card {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("AMlog", style = MaterialTheme.typography.titleMedium)
+                Row(
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("AMlog", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Image(
+                        painter = painterResource(R.drawable.ic_amlog_logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(56.dp),
+                    )
+                }
+            }
+
+            Card {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("How recency is worked out", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                        style = MaterialTheme.typography.bodyMedium,
+                        "Recency is assessed separately for each subcategory you hold, over a rolling " +
+                            "24-month window ending today. A subcategory counts as current if any one " +
+                            "of the routes below is met — they are alternatives, not requirements to " +
+                            "combine. All of them are shown so you can see which one you are living on " +
+                            "and how close the others are.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    RouteExplanation(
+                        title = "Days of experience",
+                        body = "100 days on which you logged maintenance experience in the window, or 50 " +
+                            "where your competent authority agreed a reduction in advance. Every logged " +
+                            "day counts once, whatever its length.\n\n" +
+                            "The same AMC lets up to 20% of the duration be replaced by training, " +
+                            "technical support or maintenance planning. AMlog does not model that — it " +
+                            "would put a claim flag on every entry to serve a case most independent " +
+                            "certifying staff never make, and anyone who does make it has already " +
+                            "agreed it with their authority.",
+                    )
+                    RouteExplanation(
+                        title = "Share of the task catalogue",
+                        body = "Half of the Appendix II tasks that apply to the subcategory, completed " +
+                            "within the window, with at least one completion in every section. Where a " +
+                            "task is completed more than once only the latest counts, so repeating work " +
+                            "extends it rather than expiring early. A relevant substitute task may " +
+                            "stand in for a listed one.",
+                    )
+                    RouteExplanation(
+                        title = "Annual inspections",
+                        body = "A proposed third route, shown greyed out and not counted towards your " +
+                            "status. It becomes active only if and when the proposal is adopted, at " +
+                            "which point it applies to inspections already logged.",
+                    )
+                    RouteExplanation(
+                        title = "Recently certified",
+                        body = "Within 24 months of your initial certification date, you are current by " +
+                            "default: the window that would show a lapse has not yet fully elapsed. " +
+                            "This applies only when that date is recorded on your profile.",
+                    )
+                    Text(
+                        "AMlog can only count what is in it. Work logged on paper, or before you " +
+                            "installed the app, is invisible to this calculation — so a subcategory " +
+                            "shown as not current may simply be incompletely recorded.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Card {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Regulations applied", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Rules are taken from the Easy Access Rules for Continuing Airworthiness " +
+                            "(Regulation (EU) No 1321/2014), September 2025 revision.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    REGULATIONS.forEach { entry ->
+                        Column {
+                            Text(entry.reference, style = MaterialTheme.typography.bodyMedium)
+                            Text(entry.appliesTo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Text(
+                        "Where a rule changes, the calculation changes with it — nothing is frozen into " +
+                            "your records, so past entries are re-evaluated under the rules in force now.",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -100,7 +207,11 @@ fun AboutScreen(onClose: () -> Unit) {
                             "Certificates signed on-device use a hardware-backed key with no third-party " +
                             "trust provider behind it — your competent authority, not this app, is the " +
                             "trust anchor for that signature (see the Signing certificate screen).\n\n" +
-                            "AMlog has no backend and never transmits your data anywhere.",
+                            "AMlog has no backend of its own and the developer never receives your data. " +
+                            "Your records live on this device. You can optionally connect your own Google " +
+                            "Drive account, in which case certificates, photos, documents and full-device " +
+                            "backups are uploaded to that account and nowhere else — you can disconnect " +
+                            "at any time, and the app remains fully functional offline without it.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -118,6 +229,15 @@ fun AboutScreen(onClose: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+/** One route's name and what satisfies it, in the "How recency is worked out" card. */
+@Composable
+private fun RouteExplanation(title: String, body: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, style = MaterialTheme.typography.bodyMedium)
+        Text(body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
