@@ -33,7 +33,21 @@ Cloud Console for `nl.schellenberg.amlog` — the applicationId, not the Kotlin 
 Which means the first test build will have broken Drive sync until you go back and add (3).
 That is expected, not a bug. Everything else in the app works offline regardless.
 
-Get (1) and (2) with:
+The values for this app, read from the keystores and from the APK Play actually
+installed — fingerprints are public, not secrets:
+
+| Client | SHA-1 |
+| --- | --- |
+| Play app signing | `79:FF:AE:F1:50:0D:27:39:79:10:46:34:D8:49:7E:FC:CD:74:ED:11` |
+| Upload | `99:FA:44:33:E9:F7:51:B6:E0:2E:0B:98:BC:E3:F4:46:B8:5F:8C:B7` |
+| Debug | `E1:49:35:61:9F:F3:F6:53:14:41:83:03:9D:56:C0:DB:7F:2E:B9:CC` |
+
+**All three clients need the same package name, `nl.schellenberg.amlog`.** That is the
+half people get wrong: the fingerprints get careful attention and the package name gets
+pasted once and forgotten, so a client left on the pre-rename `nl.part66l.logbook`
+silently matches nothing. It cost an evening on 2026-09-11.
+
+To read them again yourself:
 
 ```
 keytool -list -v -alias androiddebugkey -keystore ~/.android/debug.keystore -storepass android -keypass android
@@ -82,3 +96,21 @@ R8 is deliberately off — see the comment in `app/build.gradle.kts`.
   with a small user list can run unverified, but each tester must be added explicitly and
   will see an "unverified app" warning.
 - **`android:allowBackup`.** See the note in `AndroidManifest.xml`.
+
+## Diagnosing an OAuth failure
+
+The app reports every unresolved consent as "Google account authorization was cancelled",
+which is not a useful signal — a certificate or package mismatch closes the consent screen
+the same way a real cancellation does. Do not trust that wording; measure instead.
+
+The ground truth for what Google checks is the certificate on the installed APK, not what
+any console page claims:
+
+```
+adb -s <device> shell pm path nl.schellenberg.amlog
+adb -s <device> pull <that path> phone-base.apk
+apksigner verify --print-certs phone-base.apk
+```
+
+A Play-installed build comes back as `CN=Android, O=Google Inc.` — that is Play App
+Signing, and its SHA-1 is the one that has to be registered.
