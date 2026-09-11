@@ -16,6 +16,7 @@ import nl.part66l.logbook.domain.Structure
 import nl.part66l.logbook.fakes.FakeDriveApiClient
 import nl.part66l.logbook.fakes.FakeDriveAuthManager
 import nl.part66l.logbook.fakes.FakeSettingsRepository
+import nl.part66l.logbook.drive.DriveManifestStore
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -59,6 +60,7 @@ class DriveSyncRepositoryTest {
             attachmentDao = db.attachments(),
             documentDao = db.documents(),
             settingsRepository = settingsRepository,
+            driveManifestStore = DriveManifestStore(apiClient),
         )
         filesDir = java.nio.file.Files.createTempDirectory("drive-sync-test").toFile()
         activity = Robolectric.buildActivity(FragmentActivity::class.java).create().get()
