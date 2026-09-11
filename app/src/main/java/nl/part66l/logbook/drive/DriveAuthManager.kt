@@ -7,6 +7,8 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import com.google.android.gms.auth.api.identity.AuthorizationClient
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.AuthorizationResult
@@ -85,7 +87,21 @@ class DriveAuthManagerImpl @Inject constructor() : DriveAuthManager {
                 .addOnFailureListener { if (continuation.isActive) continuation.resumeWithException(it) }
         }
 
-    /** Shows the account/consent picker when [initial] isn't already an outright grant — resolved via [Activity.RESULT_OK] on the returned [IntentSenderRequest]. */
+    /**
+     * Shows the account/consent picker when [initial] isn't already an outright grant — resolved
+     * via [Activity.RESULT_OK] on the returned [IntentSenderRequest].
+     *
+     * The launcher is registered against this activity's own registry under a one-shot key, so it
+     * cannot survive the activity being recreated. If that happens while the Play Services sheet
+     * is up — a rotation, or a low-memory kill — the result is delivered to a registry that has no
+     * callback under that key and is dropped. The coroutine, however, lives in viewModelScope and
+     * outlives the activity, so it would simply never resume: the Drive screen kept a spinner and
+     * every button disabled until the process was killed.
+     *
+     * Watching the lifecycle turns that into an ordinary failure. The flow really was interrupted
+     * and cannot be completed, so reporting it as such and letting the user tap again is the
+     * honest outcome.
+     */
     private suspend fun resolveConsent(
         activity: FragmentActivity,
         client: AuthorizationClient,
@@ -97,11 +113,25 @@ class DriveAuthManagerImpl @Inject constructor() : DriveAuthManager {
             return@suspendCancellableCoroutine
         }
         var launcher: ActivityResultLauncher<IntentSenderRequest>? = null
+        var observer: DefaultLifecycleObserver? = null
+
+        fun cleanUp() {
+            launcher?.unregister()
+            observer?.let { activity.lifecycle.removeObserver(it) }
+        }
+
+        observer = object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) {
+                cleanUp()
+                if (continuation.isActive) continuation.resume(null)
+            }
+        }
+
         launcher = activity.activityResultRegistry.register(
             "drive_authorize_${UUID.randomUUID()}",
             ActivityResultContracts.StartIntentSenderForResult(),
             ActivityResultCallback { result ->
-                launcher?.unregister()
+                cleanUp()
                 val data = result.data
                 val resolved = if (result.resultCode == Activity.RESULT_OK && data != null) {
                     try {
@@ -115,7 +145,8 @@ class DriveAuthManagerImpl @Inject constructor() : DriveAuthManager {
                 if (continuation.isActive) continuation.resume(resolved)
             },
         )
-        continuation.invokeOnCancellation { launcher.unregister() }
+        activity.lifecycle.addObserver(observer)
+        continuation.invokeOnCancellation { cleanUp() }
         launcher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
     }
 }
