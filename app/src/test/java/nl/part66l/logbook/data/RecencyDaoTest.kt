@@ -5,7 +5,6 @@ import androidx.test.core.app.ApplicationProvider
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
-import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.Structure
 import org.junit.After
@@ -54,7 +53,6 @@ class RecencyDaoTest {
         id = id,
         aircraftId = aircraftId,
         description = "test entry",
-        role = EntryRole.CERTIFIED_BY_ME_IN_APP,
         annualInspection = annualInspection,
         createdAt = Instant.EPOCH,
         updatedAt = Instant.EPOCH,

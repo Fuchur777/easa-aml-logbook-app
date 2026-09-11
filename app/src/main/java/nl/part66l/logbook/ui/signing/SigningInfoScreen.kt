@@ -49,6 +49,7 @@ fun SigningInfoScreen(
                 title = { Text("Signing certificate") },
                 navigationIcon = { IconButton(onClick = onClose) { Text("✕") } },
                 colors = part66TopAppBarColors(),
+                expandedHeight = 48.dp,
             )
         },
     ) { padding ->

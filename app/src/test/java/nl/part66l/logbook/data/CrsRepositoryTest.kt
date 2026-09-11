@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.DocumentCategory
-import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.SignatureState
 import nl.part66l.logbook.domain.Structure
@@ -19,6 +18,7 @@ import nl.part66l.logbook.fakes.FakeLocalKeystoreSigner
 import nl.part66l.logbook.fakes.FakeSettingsRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -106,7 +106,6 @@ class CrsRepositoryTest {
             aircraftId = aircraftId,
             description = "Annual inspection in accordance with the approved maintenance programme.",
             activityTypes = setOf(ActivityType.INSPECTION),
-            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = true,
             sessionDates = sessionDates,
             daysWorkedOverride = daysWorkedOverride,
@@ -155,6 +154,28 @@ class CrsRepositoryTest {
         assertTrue(text.contains("ACTIVITIES AND TASKS"))
         assertTrue(text.contains("Inspection"))
         assertTrue(text.contains("Weighing, weight & balance sheet"))
+    }
+
+    @Test
+    fun `certifying staff contact details print only when the setting is enabled`() = runBlocking {
+        val entryId = createEntry()
+        db.profile().upsert(
+            ProfileEntity(
+                name = "F. Example", licenceNumber = "NL.66.00000", issuingAuthority = "ILT", licenceExpiry = null, holdsL1 = true,
+                phoneNumber = "+31 6 1234 5678", email = "f.example@part66.example",
+            ),
+        )
+
+        val offCrs = repository.generateUnsigned(entryId, limitations = null, maintenanceIncomplete = false)!!
+        val offText = PDDocument.load(File(offCrs.pdfLocalPath!!)).use { PDFTextStripper().getText(it) }
+        assertFalse(offText.contains("+31 6 1234 5678"))
+        assertFalse(offText.contains("f.example@part66.example"))
+
+        settingsRepository.setCrsShowCertifyingStaffContact(true)
+        val onCrs = repository.generateUnsigned(entryId, limitations = null, maintenanceIncomplete = false)!!
+        val onText = PDDocument.load(File(onCrs.pdfLocalPath!!)).use { PDFTextStripper().getText(it) }
+        assertTrue(onText.contains("+31 6 1234 5678"))
+        assertTrue(onText.contains("f.example@part66.example"))
     }
 
     @Test

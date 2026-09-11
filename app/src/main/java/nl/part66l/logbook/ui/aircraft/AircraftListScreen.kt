@@ -61,6 +61,7 @@ fun AircraftListScreen(
             TopAppBar(
                 title = { Text("Aircraft") },
                 colors = part66TopAppBarColors(),
+                expandedHeight = 48.dp,
             )
         },
         floatingActionButton = {

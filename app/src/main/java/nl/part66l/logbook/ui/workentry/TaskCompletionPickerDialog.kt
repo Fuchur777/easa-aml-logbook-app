@@ -63,6 +63,7 @@ fun TaskCompletionPickerDialog(
                     title = { Text("Tasks completed (${selectedIds.size})") },
                     actions = { TextButton(onClick = onDone) { Text("Done", color = Color.White) } },
                     colors = part66TopAppBarColors(),
+                    expandedHeight = 48.dp,
                 )
             },
         ) { padding ->

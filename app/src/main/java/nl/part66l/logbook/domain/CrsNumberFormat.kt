@@ -1,13 +1,15 @@
 package nl.part66l.logbook.domain
 
 /**
- * A CRS numbering template (§9.2). Placeholders: `{PREFIX}`, `{YYYY}` (four
- * digits), `{REG}` (the aircraft registration, or `NOREG` for component/bench
- * work — always pre-normalised to alphanumeric-only by the caller) and
- * `{SEQ:N}` (zero-padded to N digits) — each usable at most once, with
- * arbitrary literal text around and between them. `{SEQ:N}` is required
- * exactly once and must be the last placeholder: nothing else may vary after
- * it, or "the highest issued number" stops being well-defined.
+ * A CRS numbering template (§9.2). Placeholders: `{YYYY}` (four digits),
+ * `{REG}` (the aircraft registration, or `NOREG` for component/bench work —
+ * always pre-normalised to alphanumeric-only by the caller) and `{SEQ:N}`
+ * (zero-padded to N digits) — each usable at most once, with arbitrary
+ * literal text around and between them (a fixed prefix included — there's no
+ * separate placeholder for one, since literal text in the template already
+ * does that). `{SEQ:N}` is required exactly once and must be the last
+ * placeholder: nothing else may vary after it, or "the highest issued
+ * number" stops being well-defined.
  *
  * The sequence is shared across every registration and NOREG alike — `{REG}`
  * varies the printed number, not the counter. A number-matching pass therefore
@@ -22,7 +24,6 @@ package nl.part66l.logbook.domain
  */
 class CrsNumberFormat(
     val template: String,
-    val prefix: String,
     val annualReset: Boolean,
     val startAt: Int = 1,
 ) {
@@ -57,7 +58,6 @@ class CrsNumberFormat(
         return tokens.joinToString("") { token ->
             when (token) {
                 is Token.Literal -> token.text
-                is Token.Prefix -> prefix
                 is Token.Year -> year!!.toString().padStart(4, '0')
                 is Token.Registration -> registration!!
                 is Token.Sequence -> sequence.toString().padStart(token.width, '0')
@@ -99,7 +99,6 @@ class CrsNumberFormat(
         val pattern = tokens.joinToString("") { token ->
             when (token) {
                 is Token.Literal -> Regex.escape(token.text)
-                is Token.Prefix -> Regex.escape(prefix)
                 is Token.Year -> if (pinnedYear != null) {
                     Regex.escape(pinnedYear.toString().padStart(4, '0'))
                 } else {
@@ -114,14 +113,13 @@ class CrsNumberFormat(
 
     private sealed interface Token {
         data class Literal(val text: String) : Token
-        data object Prefix : Token
         data object Year : Token
         data object Registration : Token
         data class Sequence(val width: Int) : Token
     }
 
     companion object {
-        private val TOKEN_PATTERN = Regex("\\{PREFIX\\}|\\{YYYY\\}|\\{REG\\}|\\{SEQ:(\\d+)\\}")
+        private val TOKEN_PATTERN = Regex("\\{YYYY\\}|\\{REG\\}|\\{SEQ:(\\d+)\\}")
 
         private fun tokenize(template: String): List<Token> {
             val tokens = mutableListOf<Token>()
@@ -129,7 +127,6 @@ class CrsNumberFormat(
             for (match in TOKEN_PATTERN.findAll(template)) {
                 if (match.range.first > last) tokens += Token.Literal(template.substring(last, match.range.first))
                 tokens += when (match.value) {
-                    "{PREFIX}" -> Token.Prefix
                     "{YYYY}" -> Token.Year
                     "{REG}" -> Token.Registration
                     else -> Token.Sequence(match.groupValues[1].toInt())

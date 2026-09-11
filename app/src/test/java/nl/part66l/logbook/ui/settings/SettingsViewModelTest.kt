@@ -101,14 +101,12 @@ class SettingsViewModelTest {
     fun `CRS numbering loads its stored values`() {
         val settingsRepository = FakeSettingsRepository(
             initialCrsNumberTemplate = "NL-{YYYY}-{SEQ:5}",
-            initialCrsNumberPrefix = "NL",
             initialCrsAnnualReset = false,
             initialCrsStartAt = 100,
         )
         val viewModel = SettingsViewModel(settingsRepository, FakeProfileRepository())
 
         assertEquals("NL-{YYYY}-{SEQ:5}", viewModel.crsNumberTemplate.value)
-        assertEquals("NL", viewModel.crsNumberPrefix.value)
         assertFalse(viewModel.crsAnnualReset.value)
         assertEquals("100", viewModel.crsStartAt.value)
     }
@@ -118,26 +116,24 @@ class SettingsViewModelTest {
         val settingsRepository = FakeSettingsRepository()
         val viewModel = SettingsViewModel(settingsRepository, FakeProfileRepository())
 
-        viewModel.onCrsNumberTemplateChange("{PREFIX}-{SEQ:6}")
-        viewModel.onCrsNumberPrefixChange("WO")
+        viewModel.onCrsNumberTemplateChange("WO-{SEQ:6}")
         viewModel.onCrsStartAtChange("50")
 
         assertEquals(null, viewModel.crsNumberingError.value)
-        assertEquals("{PREFIX}-{SEQ:6}", runBlocking { settingsRepository.crsNumberTemplate.first() })
-        assertEquals("WO", runBlocking { settingsRepository.crsNumberPrefix.first() })
+        assertEquals("WO-{SEQ:6}", runBlocking { settingsRepository.crsNumberTemplate.first() })
         assertEquals(50, runBlocking { settingsRepository.crsStartAt.first() })
     }
 
     @Test
     fun `an invalid CRS numbering template shows an error and is not persisted`() {
-        val settingsRepository = FakeSettingsRepository(initialCrsNumberTemplate = "{PREFIX}-{SEQ:4}")
+        val settingsRepository = FakeSettingsRepository(initialCrsNumberTemplate = "CRS-{SEQ:4}")
         val viewModel = SettingsViewModel(settingsRepository, FakeProfileRepository())
 
-        viewModel.onCrsNumberTemplateChange("{PREFIX}-no-sequence-placeholder")
+        viewModel.onCrsNumberTemplateChange("CRS-no-sequence-placeholder")
 
-        assertEquals("{PREFIX}-no-sequence-placeholder", viewModel.crsNumberTemplate.value) // still reflected, not snapped back
+        assertEquals("CRS-no-sequence-placeholder", viewModel.crsNumberTemplate.value) // still reflected, not snapped back
         assertTrue(viewModel.crsNumberingError.value != null)
-        assertEquals("{PREFIX}-{SEQ:4}", runBlocking { settingsRepository.crsNumberTemplate.first() }) // unchanged
+        assertEquals("CRS-{SEQ:4}", runBlocking { settingsRepository.crsNumberTemplate.first() }) // unchanged
     }
 
     @Test

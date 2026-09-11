@@ -29,6 +29,13 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setShowArchivedAircraft(value) }
     }
 
+    val crsShowCertifyingStaffContact: StateFlow<Boolean> = settingsRepository.crsShowCertifyingStaffContact
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun onCrsShowCertifyingStaffContactChange(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setCrsShowCertifyingStaffContact(value) }
+    }
+
     /**
      * Recency reduction and research-counts-toward-recency are Profile fields (regulatory
      * declarations tied to the licence), but edited here rather than on the Profile screen —
@@ -47,17 +54,14 @@ class SettingsViewModel @Inject constructor(
     val researchCountsTowardRecency: StateFlow<Boolean> = _researchCountsTowardRecency.asStateFlow()
 
     /**
-     * CRS numbering (§9.2) — template, prefix, annual reset and start-at are validated
-     * together, since [CrsNumberFormat]'s own constructor checks the combination (a
-     * `{SEQ:N}` placeholder must exist, be unique, and be last). Local buffers, not bound
-     * to the persisted flow, so a keystroke never snaps back mid-edit — only a value that
-     * actually constructs a valid [CrsNumberFormat] is written to [settingsRepository].
+     * CRS numbering (§9.2) — template, annual reset and start-at are validated together,
+     * since [CrsNumberFormat]'s own constructor checks the combination (a `{SEQ:N}`
+     * placeholder must exist, be unique, and be last). Local buffers, not bound to the
+     * persisted flow, so a keystroke never snaps back mid-edit — only a value that actually
+     * constructs a valid [CrsNumberFormat] is written to [settingsRepository].
      */
     private val _crsNumberTemplate = MutableStateFlow("")
     val crsNumberTemplate: StateFlow<String> = _crsNumberTemplate.asStateFlow()
-
-    private val _crsNumberPrefix = MutableStateFlow("")
-    val crsNumberPrefix: StateFlow<String> = _crsNumberPrefix.asStateFlow()
 
     private val _crsAnnualReset = MutableStateFlow(true)
     val crsAnnualReset: StateFlow<Boolean> = _crsAnnualReset.asStateFlow()
@@ -79,7 +83,6 @@ class SettingsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _crsNumberTemplate.value = settingsRepository.crsNumberTemplate.first()
-            _crsNumberPrefix.value = settingsRepository.crsNumberPrefix.first()
             _crsAnnualReset.value = settingsRepository.crsAnnualReset.first()
             _crsStartAt.value = settingsRepository.crsStartAt.first().toString()
         }
@@ -113,11 +116,6 @@ class SettingsViewModel @Inject constructor(
         validateAndPersistCrsNumbering()
     }
 
-    fun onCrsNumberPrefixChange(value: String) {
-        _crsNumberPrefix.value = value
-        validateAndPersistCrsNumbering()
-    }
-
     fun onCrsAnnualResetChange(value: Boolean) {
         _crsAnnualReset.value = value
         validateAndPersistCrsNumbering()
@@ -135,7 +133,7 @@ class SettingsViewModel @Inject constructor(
             return
         }
         try {
-            CrsNumberFormat(template = _crsNumberTemplate.value, prefix = _crsNumberPrefix.value, annualReset = _crsAnnualReset.value, startAt = startAt)
+            CrsNumberFormat(template = _crsNumberTemplate.value, annualReset = _crsAnnualReset.value, startAt = startAt)
         } catch (e: IllegalArgumentException) {
             _crsNumberingError.value = e.message
             return
@@ -143,7 +141,6 @@ class SettingsViewModel @Inject constructor(
         _crsNumberingError.value = null
         viewModelScope.launch {
             settingsRepository.setCrsNumberTemplate(_crsNumberTemplate.value)
-            settingsRepository.setCrsNumberPrefix(_crsNumberPrefix.value)
             settingsRepository.setCrsAnnualReset(_crsAnnualReset.value)
             settingsRepository.setCrsStartAt(startAt)
         }

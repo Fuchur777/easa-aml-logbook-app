@@ -17,7 +17,6 @@ import nl.part66l.logbook.data.PersonEntity
 import nl.part66l.logbook.data.PhotoInput
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.DocumentCategory
-import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.Structure
 import nl.part66l.logbook.fakes.FakeAircraftRepository
@@ -67,13 +66,11 @@ class WorkEntryFormViewModelTest {
     )
 
     @Test
-    fun `canSave requires a description, an aircraft selection and at least one activity, and defaults to no release claimed`() {
+    fun `canSave requires a description, an aircraft selection and at least one activity`() {
         val viewModel = viewModel()
 
         assertFalse(viewModel.state.value.canSave)
         assertEquals(AircraftSelection.Unselected, viewModel.state.value.aircraftSelection)
-        assertEquals(EntryRole.NO_RELEASE, viewModel.state.value.role)
-        assertFalse(viewModel.state.value.supervisedAnother)
 
         viewModel.onDescriptionChange("Bench-tested altimeter")
         assertFalse(viewModel.state.value.canSave) // no aircraft selection or activity yet
@@ -98,15 +95,13 @@ class WorkEntryFormViewModelTest {
     }
 
     @Test
-    fun `save creates the entry with the entered activities, role, supervision flag and helpers`() {
+    fun `save creates the entry with the entered activities, supervision flag and helpers`() {
         val repository = FakeWorkEntryRepository()
         val viewModel = viewModel(workEntryRepository = repository)
         viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
         viewModel.onDescriptionChange("Replaced altimeter seal")
         viewModel.onActivityTypeToggle(ActivityType.REPAIRING)
         viewModel.onActivityTypeToggle(ActivityType.INSPECTION)
-        viewModel.onRoleChange(EntryRole.CERTIFIED_BY_ME_IN_APP)
-        viewModel.onSupervisedAnotherChange(true)
         viewModel.onHelperAdd("Jan de Vries")
 
         viewModel.save()
@@ -116,9 +111,21 @@ class WorkEntryFormViewModelTest {
         assertEquals("Replaced altimeter seal", created.entry.description)
         assertNull(created.entry.aircraftId)
         assertEquals(setOf(ActivityType.REPAIRING, ActivityType.INSPECTION), created.activityTypes)
-        assertEquals(EntryRole.CERTIFIED_BY_ME_IN_APP, created.entry.role)
-        assertTrue(created.entry.supervisedAnother)
+        assertTrue(created.entry.supervisedAnother) // derived from having a named helper — there's no separate checkbox any more
         assertEquals(listOf("Jan de Vries"), created.helperNames)
+    }
+
+    @Test
+    fun `save records no supervision when no helper was added`() {
+        val repository = FakeWorkEntryRepository()
+        val viewModel = viewModel(workEntryRepository = repository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Solo bench work")
+        viewModel.onActivityTypeToggle(ActivityType.SERVICING)
+
+        viewModel.save()
+
+        assertFalse(repository.created.first().entry.supervisedAnother)
     }
 
     @Test
@@ -492,7 +499,7 @@ class WorkEntryFormViewModelTest {
         val id = runBlocking {
             repository.create(
                 aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
-                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+                supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             )
         }
         val editViewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
@@ -506,8 +513,8 @@ class WorkEntryFormViewModelTest {
             repository.create(
                 aircraftId = null,
                 description = "Annual inspection",
+                explanation = "Full airframe and engine inspection per the approved maintenance programme.",
                 activityTypes = setOf(ActivityType.INSPECTION, ActivityType.SERVICING),
-                role = EntryRole.CERTIFIED_BY_ME_IN_APP,
                 supervisedAnother = true,
                 sessionDates = listOf(LocalDate.of(2026, 1, 15)),
                 helperNames = listOf("Jan de Vries"),
@@ -524,10 +531,9 @@ class WorkEntryFormViewModelTest {
 
         assertFalse(viewModel.state.value.loading)
         assertEquals("Annual inspection", viewModel.state.value.description)
+        assertEquals("Full airframe and engine inspection per the approved maintenance programme.", viewModel.state.value.explanation)
         assertEquals(AircraftSelection.Bench, viewModel.state.value.aircraftSelection)
         assertEquals(setOf(ActivityType.INSPECTION, ActivityType.SERVICING), viewModel.state.value.activityTypes)
-        assertEquals(EntryRole.CERTIFIED_BY_ME_IN_APP, viewModel.state.value.role)
-        assertTrue(viewModel.state.value.supervisedAnother)
         assertEquals(listOf(LocalDate.of(2026, 1, 15)), viewModel.state.value.sessionDates)
         assertEquals(listOf("Jan de Vries"), viewModel.state.value.helperNames)
         assertEquals("Piet Bakker", viewModel.state.value.workorderIssuerName)
@@ -545,7 +551,7 @@ class WorkEntryFormViewModelTest {
         val id = runBlocking {
             repository.create(
                 aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
-                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+                supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             )
         }
 
@@ -580,8 +586,32 @@ class WorkEntryFormViewModelTest {
         viewModel.onDescriptionChange("Recalibrated transponder")
         viewModel.onActivityTypeToggle(ActivityType.REPAIRING)
         viewModel.onSessionDateAdd(LocalDate.of(2026, 4, 2))
-        viewModel.onClosesDeferredItemChange(itemId)
+        viewModel.onClosesDeferredItemToggle(itemId)
 
+        viewModel.save()
+
+        assertEquals(emptyList<String>(), viewModel.openDeferredItems.value.map { it.id })
+    }
+
+    @Test
+    fun `selecting several deferred items closes all of them on save`() {
+        val workEntryRepository = FakeWorkEntryRepository()
+        val deferredItemRepository = FakeDeferredItemRepository()
+        val itemId1 = runBlocking { deferredItemRepository.raise("crs-1", "Transponder recal outstanding") }
+        val itemId2 = runBlocking { deferredItemRepository.raise("crs-1", "Placard replacement outstanding") }
+        val viewModel = viewModel(workEntryRepository = workEntryRepository, deferredItemRepository = deferredItemRepository)
+        viewModel.onAircraftSelectionChange(AircraftSelection.Bench)
+        viewModel.onDescriptionChange("Recalibrated transponder and replaced placard")
+        viewModel.onActivityTypeToggle(ActivityType.REPAIRING)
+        viewModel.onSessionDateAdd(LocalDate.of(2026, 4, 2))
+        viewModel.onClosesDeferredItemToggle(itemId1)
+        viewModel.onClosesDeferredItemToggle(itemId2)
+        assertEquals(setOf(itemId1, itemId2), viewModel.state.value.closesDeferredItemIds)
+
+        viewModel.onClosesDeferredItemToggle(itemId1) // toggling again deselects it
+        assertEquals(setOf(itemId2), viewModel.state.value.closesDeferredItemIds)
+
+        viewModel.onClosesDeferredItemToggle(itemId1) // reselect, so both close on save
         viewModel.save()
 
         assertEquals(emptyList<String>(), viewModel.openDeferredItems.value.map { it.id })
@@ -623,7 +653,7 @@ class WorkEntryFormViewModelTest {
         val id = runBlocking {
             repository.create(
                 aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
-                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+                supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             )
         }
         val viewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
@@ -642,7 +672,7 @@ class WorkEntryFormViewModelTest {
         val id = runBlocking {
             repository.create(
                 aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
-                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+                supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             )
         }
         val viewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
@@ -660,7 +690,7 @@ class WorkEntryFormViewModelTest {
         val repository = FakeWorkEntryRepository()
         val id = repository.create(
             aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
-            role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+            supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
         )
         val viewModel = viewModel(savedStateHandle = newState(id), workEntryRepository = repository)
         viewModel.onDescriptionChange("First correction")
@@ -698,7 +728,7 @@ class WorkEntryFormViewModelTest {
         val id = runBlocking {
             repository.create(
                 aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
-                role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+                supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             )
         }
 

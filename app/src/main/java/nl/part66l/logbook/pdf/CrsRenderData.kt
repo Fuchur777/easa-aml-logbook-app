@@ -17,6 +17,8 @@ data class CrsRenderData(
     val basisLabel: String,             // e.g. "Independent certifying staff — ML.A.801(b)(2)"
     val aircraft: List<Pair<String, String>>,
     val description: String,
+    /** Optional multiline "explanation of work done", printed under [description]. */
+    val explanation: String? = null,
     val period: List<Pair<String, String>>,
     val documentation: List<DocRow>,
     val parts: List<PartRow>,
@@ -27,6 +29,9 @@ data class CrsRenderData(
     val statement: String,              // the certification statement itself, issuer's name NOT yet inlined
     val issuer: String,
     val licenceNumber: String,
+    /** Only populated when the user has opted in (Settings) — personal data, not printed by default. */
+    val issuerPhone: String? = null,
+    val issuerEmail: String? = null,
     val issuedDate: String,             // already formatted and unambiguous, e.g. "14 March 2026"
     val regulationFooter: String,
     val personnel: List<PersonnelRow>,

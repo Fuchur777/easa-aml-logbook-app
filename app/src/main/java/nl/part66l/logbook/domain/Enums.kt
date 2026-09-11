@@ -39,21 +39,6 @@ enum class ActivityType {
     RESEARCH_AND_PAPERWORK,
 }
 
-/**
- * What the user did on this entry and how it was released. Determines which
- * recency counters the entry can feed. Distinct from [ActivityType], which
- * describes the nature of the work.
- */
-enum class EntryRole {
-    CERTIFIED_BY_ME_IN_APP,
-    CERTIFIED_BY_ME_ON_PAPER,
-    PERFORMED_BY_ME_RELEASED_BY_OTHER,
-    PERFORMED_UNDER_SUPERVISION,
-    SUPERVISED_ANOTHER,
-    ASSISTED_ON_ARC,
-    NO_RELEASE,
-}
-
 /** Helper roles. Basis: ML.A.801(d) — assistance under direct and continuous control. */
 enum class HelperRole { ASSISTED, INDEPENDENT_INSPECTION }
 

@@ -12,7 +12,6 @@ import nl.part66l.logbook.data.WorkEntryEntity
 import nl.part66l.logbook.data.WorkEntryListRow
 import nl.part66l.logbook.data.WorkEntryRepository
 import nl.part66l.logbook.domain.ActivityType
-import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Provenance
 
 data class CreatedWorkEntry(
@@ -51,7 +50,6 @@ class FakeWorkEntryRepository : WorkEntryRepository {
 
     override fun filtered(
         aircraftId: String?,
-        role: EntryRole?,
         annualOnly: Boolean,
         provenance: Provenance?,
         from: LocalDate?,
@@ -59,7 +57,7 @@ class FakeWorkEntryRepository : WorkEntryRepository {
     ): PagingSource<Int, WorkEntryEntity> =
         throw UnsupportedOperationException("not faked — no ViewModel test needs this")
 
-    override fun pagedAllWithDetails(): PagingSource<Int, WorkEntryListRow> =
+    override fun pagedAllWithDetails(aircraftId: String?, ascending: Boolean): PagingSource<Int, WorkEntryListRow> =
         throw UnsupportedOperationException("not faked — no ViewModel test needs this")
 
     override suspend fun forEdit(id: String): WorkEntryEditData? {
@@ -67,8 +65,8 @@ class FakeWorkEntryRepository : WorkEntryRepository {
         return WorkEntryEditData(
             aircraftId = e.entry.aircraftId,
             description = e.entry.description,
+            explanation = e.entry.explanation,
             activityTypes = e.activityTypes,
-            role = e.entry.role,
             supervisedAnother = e.entry.supervisedAnother,
             sessionDates = e.sessionDates,
             daysWorkedOverride = e.entry.daysWorkedOverride,
@@ -91,8 +89,8 @@ class FakeWorkEntryRepository : WorkEntryRepository {
     override suspend fun create(
         aircraftId: String?,
         description: String,
+        explanation: String?,
         activityTypes: Set<ActivityType>,
-        role: EntryRole,
         supervisedAnother: Boolean,
         sessionDates: List<LocalDate>,
         daysWorkedOverride: Int?,
@@ -113,7 +111,7 @@ class FakeWorkEntryRepository : WorkEntryRepository {
         val id = UUID.randomUUID().toString()
         val entry = CreatedWorkEntry(
             entry = WorkEntryEntity(
-                id = id, aircraftId = aircraftId, description = description, role = role,
+                id = id, aircraftId = aircraftId, description = description, explanation = explanation,
                 supervisedAnother = supervisedAnother,
                 airframeHoursAtWork = airframeHoursAtWork, launchesAtWork = launchesAtWork,
                 workorderIssuerName = workorderIssuerName, workorderDate = workorderDate,
@@ -139,8 +137,8 @@ class FakeWorkEntryRepository : WorkEntryRepository {
         id: String,
         aircraftId: String?,
         description: String,
+        explanation: String?,
         activityTypes: Set<ActivityType>,
-        role: EntryRole,
         supervisedAnother: Boolean,
         sessionDates: List<LocalDate>,
         daysWorkedOverride: Int?,
@@ -161,7 +159,7 @@ class FakeWorkEntryRepository : WorkEntryRepository {
         val existing = entries[id] ?: return
         val updatedEntry = existing.copy(
             entry = existing.entry.copy(
-                aircraftId = aircraftId, description = description, role = role, supervisedAnother = supervisedAnother,
+                aircraftId = aircraftId, description = description, explanation = explanation, supervisedAnother = supervisedAnother,
                 airframeHoursAtWork = airframeHoursAtWork, launchesAtWork = launchesAtWork,
                 workorderIssuerName = workorderIssuerName, workorderDate = workorderDate,
                 workorderRequestedWork = workorderRequestedWork, workorderReference = workorderReference,

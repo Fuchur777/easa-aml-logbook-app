@@ -10,7 +10,6 @@ import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import nl.part66l.logbook.domain.ActivityType
-import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.Propulsion
 import nl.part66l.logbook.domain.Structure
 import org.junit.After
@@ -57,7 +56,6 @@ class WorkEntryRepositoryTest {
             aircraftId = null,
             description = "Bench work on a spare altimeter",
             activityTypes = setOf(ActivityType.TROUBLESHOOTING, ActivityType.REPAIRING),
-            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = false,
             sessionDates = listOf(LocalDate.of(2026, 1, 15)),
         )
@@ -80,7 +78,6 @@ class WorkEntryRepositoryTest {
             aircraftId = null,
             description = "Multi-day annual",
             activityTypes = setOf(ActivityType.INSPECTION),
-            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = false,
             sessionDates = listOf(LocalDate.of(2026, 3, 4), LocalDate.of(2026, 3, 5), LocalDate.of(2026, 3, 4)), // duplicate, deliberately
             daysWorkedOverride = 3,
@@ -104,7 +101,6 @@ class WorkEntryRepositoryTest {
             aircraftId = null,
             description = "Two-person inspection",
             activityTypes = setOf(ActivityType.INSPECTION),
-            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = true,
             sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             helperNames = listOf("Jan de Vries", "Piet Bakker"),
@@ -131,7 +127,6 @@ class WorkEntryRepositoryTest {
             aircraftId = null,
             description = "Practical task work",
             activityTypes = setOf(ActivityType.SERVICING),
-            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = false,
             sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             completedTaskIds = setOf("T1"),
@@ -150,7 +145,6 @@ class WorkEntryRepositoryTest {
             aircraftId = null,
             description = "Annual inspection",
             activityTypes = setOf(ActivityType.INSPECTION),
-            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = false,
             sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             airframeHoursAtWork = 1234.5,
@@ -204,7 +198,6 @@ class WorkEntryRepositoryTest {
             aircraftId = null,
             description = "Annual inspection",
             activityTypes = setOf(ActivityType.INSPECTION),
-            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = false,
             sessionDates = listOf(LocalDate.of(2026, 3, 14)),
             photos = listOf(photo),
@@ -224,14 +217,14 @@ class WorkEntryRepositoryTest {
         val original = PhotoInput(id = "p1", localPath = "/data/p1.jpg", sha256 = "hash1", capturedAt = Instant.now(), bytes = 100)
         val id = repository.create(
             aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
-            role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+            supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             photos = listOf(original),
         )
 
         val replacement = PhotoInput(id = "p2", localPath = "/data/p2.jpg", sha256 = "hash2", capturedAt = Instant.now(), bytes = 200)
         repository.update(
             id = id, aircraftId = null, description = "Bench work", activityTypes = setOf(ActivityType.SERVICING),
-            role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
+            supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             photos = listOf(replacement),
         )
 
@@ -246,7 +239,6 @@ class WorkEntryRepositoryTest {
             aircraftId = null,
             description = "Bench work",
             activityTypes = setOf(ActivityType.SERVICING),
-            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = false,
             sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             workorderIssuerName = "Piet Bakker",
@@ -266,7 +258,6 @@ class WorkEntryRepositoryTest {
             aircraftId = null,
             description = "Annual inspection",
             activityTypes = setOf(ActivityType.INSPECTION, ActivityType.SERVICING),
-            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = true,
             sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             helperNames = listOf("Jan de Vries"),
@@ -303,7 +294,6 @@ class WorkEntryRepositoryTest {
             aircraftId = null,
             description = "Bench work",
             activityTypes = setOf(ActivityType.SERVICING),
-            role = EntryRole.NO_RELEASE,
             supervisedAnother = false,
             sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             helperNames = listOf("Jan de Vries"),
@@ -315,8 +305,8 @@ class WorkEntryRepositoryTest {
             id = id,
             aircraftId = null,
             description = "Bench work, corrected",
+            explanation = "Replaced the worn bearing and re-torqued the mount.",
             activityTypes = setOf(ActivityType.REPAIRING),
-            role = EntryRole.CERTIFIED_BY_ME_IN_APP,
             supervisedAnother = false,
             sessionDates = listOf(LocalDate.of(2026, 2, 1)),
             helperNames = emptyList(),
@@ -326,7 +316,7 @@ class WorkEntryRepositoryTest {
 
         val entry = db.workEntries().byId(id)!!
         assertEquals("Bench work, corrected", entry.description)
-        assertEquals(EntryRole.CERTIFIED_BY_ME_IN_APP, entry.role)
+        assertEquals("Replaced the worn bearing and re-torqued the mount.", entry.explanation)
 
         val sessions = db.workSessions().forEntry(id)
         assertEquals(1, sessions.size) // replaced, not appended
@@ -351,7 +341,6 @@ class WorkEntryRepositoryTest {
             aircraftId = null,
             description = "Should not be stored",
             activityTypes = setOf(ActivityType.SERVICING),
-            role = EntryRole.NO_RELEASE,
             supervisedAnother = false,
             sessionDates = listOf(LocalDate.of(2026, 1, 1)),
         )
@@ -365,7 +354,6 @@ class WorkEntryRepositoryTest {
             aircraftId = null,
             description = "Bench work",
             activityTypes = setOf(ActivityType.SERVICING),
-            role = EntryRole.NO_RELEASE,
             supervisedAnother = false,
             sessionDates = listOf(LocalDate.of(2026, 1, 15)),
             helperNames = listOf("Jan de Vries"),
@@ -388,11 +376,11 @@ class WorkEntryRepositoryTest {
         )
         repository.create(
             aircraftId = aircraftId, description = "Older entry", activityTypes = setOf(ActivityType.INSPECTION),
-            role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 1)),
+            supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 1, 1)),
         )
         repository.create(
             aircraftId = null, description = "Newer bench entry", activityTypes = setOf(ActivityType.SERVICING),
-            role = EntryRole.NO_RELEASE, supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 6, 1)),
+            supervisedAnother = false, sessionDates = listOf(LocalDate.of(2026, 6, 1)),
         )
 
         val snapshot = Pager(PagingConfig(pageSize = 20)) { repository.pagedAllWithDetails() }.flow.asSnapshot()

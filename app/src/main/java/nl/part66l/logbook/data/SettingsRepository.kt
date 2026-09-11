@@ -28,14 +28,15 @@ interface SettingsRepository {
     val crsNumberTemplate: Flow<String>
     suspend fun setCrsNumberTemplate(value: String)
 
-    val crsNumberPrefix: Flow<String>
-    suspend fun setCrsNumberPrefix(value: String)
-
     val crsAnnualReset: Flow<Boolean>
     suspend fun setCrsAnnualReset(value: Boolean)
 
     val crsStartAt: Flow<Int>
     suspend fun setCrsStartAt(value: Int)
+
+    /** Off by default — the certifying staff's phone/email are personal data, printed on the CRS only when opted in. */
+    val crsShowCertifyingStaffContact: Flow<Boolean>
+    suspend fun setCrsShowCertifyingStaffContact(value: Boolean)
 }
 
 @Singleton
@@ -48,9 +49,9 @@ class SettingsRepositoryImpl @Inject constructor(
         val CATALOGUE_SECTION_ORDER = stringPreferencesKey("catalogue_section_order")
         val COLLAPSED_CATALOGUE_SECTIONS = stringSetPreferencesKey("collapsed_catalogue_sections")
         val CRS_NUMBER_TEMPLATE = stringPreferencesKey("crs_number_template")
-        val CRS_NUMBER_PREFIX = stringPreferencesKey("crs_number_prefix")
         val CRS_ANNUAL_RESET = booleanPreferencesKey("crs_annual_reset")
         val CRS_START_AT = intPreferencesKey("crs_start_at")
+        val CRS_SHOW_CERTIFYING_STAFF_CONTACT = booleanPreferencesKey("crs_show_certifying_staff_contact")
     }
 
     /** ASCII unit separator (code point 31) - won't appear in a section name, so it safely joins/splits the stored order string. */
@@ -89,13 +90,6 @@ class SettingsRepositoryImpl @Inject constructor(
         dataStore.edit { it[Keys.CRS_NUMBER_TEMPLATE] = value }
     }
 
-    override val crsNumberPrefix: Flow<String> =
-        dataStore.data.map { it[Keys.CRS_NUMBER_PREFIX] ?: "" }
-
-    override suspend fun setCrsNumberPrefix(value: String) {
-        dataStore.edit { it[Keys.CRS_NUMBER_PREFIX] = value }
-    }
-
     override val crsAnnualReset: Flow<Boolean> =
         dataStore.data.map { it[Keys.CRS_ANNUAL_RESET] ?: true }
 
@@ -108,5 +102,12 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override suspend fun setCrsStartAt(value: Int) {
         dataStore.edit { it[Keys.CRS_START_AT] = value }
+    }
+
+    override val crsShowCertifyingStaffContact: Flow<Boolean> =
+        dataStore.data.map { it[Keys.CRS_SHOW_CERTIFYING_STAFF_CONTACT] ?: false }
+
+    override suspend fun setCrsShowCertifyingStaffContact(value: Boolean) {
+        dataStore.edit { it[Keys.CRS_SHOW_CERTIFYING_STAFF_CONTACT] = value }
     }
 }

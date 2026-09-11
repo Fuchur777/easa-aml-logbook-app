@@ -7,7 +7,6 @@ import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import nl.part66l.logbook.domain.CertificationBasis
-import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.SignatureState
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -44,7 +43,7 @@ class DeferredItemRepositoryTest {
         db.workEntries().insert(
             WorkEntryEntity(
                 id = "e1", aircraftId = null, description = "Annual inspection",
-                role = EntryRole.CERTIFIED_BY_ME_IN_APP, createdAt = Instant.EPOCH, updatedAt = Instant.EPOCH,
+                createdAt = Instant.EPOCH, updatedAt = Instant.EPOCH,
             ),
         )
         db.crs().insert(

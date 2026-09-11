@@ -45,6 +45,7 @@ import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
 import nl.part66l.logbook.data.CrsEntity
 import nl.part66l.logbook.di.LocalKeystoreSignerEntryPoint
+import nl.part66l.logbook.domain.SignatureState
 import nl.part66l.logbook.signing.BiometricSigningGate
 import nl.part66l.logbook.ui.documents.openPdf
 import nl.part66l.logbook.ui.theme.Part66ConfirmGreen
@@ -71,6 +72,7 @@ fun CrsScreen(
                 title = { Text("Certificate of Release to Service") },
                 navigationIcon = { IconButton(onClick = onClose) { Text("✕") } },
                 colors = part66TopAppBarColors(),
+                expandedHeight = 48.dp,
             )
         },
     ) { padding ->
@@ -196,18 +198,33 @@ private fun CrsRow(crs: CrsEntity, onClick: () -> Unit, onPhotoAttached: (String
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (crs.pdfLocalPath != null) {
-            Text("📄", style = MaterialTheme.typography.titleMedium)
-        }
-        val signedPhotoPath = crs.signedPhotoLocalPath
-        if (signedPhotoPath != null) {
-            IconButton(onClick = { openSignedPhoto(context, signedPhotoPath) }) {
-                Text("🖼️", style = MaterialTheme.typography.titleMedium)
-            }
-            IconButton(onClick = { showRemovePhotoConfirm = true }) { Text("✕") }
-        } else {
-            IconButton(onClick = { photoPickerLauncher.launch("image/*") }) {
-                Text("📷", style = MaterialTheme.typography.titleMedium)
+        // Only the print-and-wet-sign path produces a paper original that needs a photographed
+        // record — an eSignature CRS is already the signed document, nothing further to attach.
+        if (crs.signatureState == SignatureState.ISSUED_UNSIGNED_PRINT) {
+            val signedPhotoPath = crs.signedPhotoLocalPath
+            if (signedPhotoPath != null) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconButton(onClick = { openSignedPhoto(context, signedPhotoPath) }) {
+                        Text("🖼️", style = MaterialTheme.typography.titleMedium)
+                    }
+                    Text(
+                        "Show signed copy",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = { showRemovePhotoConfirm = true }) { Text("✕") }
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconButton(onClick = { photoPickerLauncher.launch("image/*") }) {
+                        Text("📷", style = MaterialTheme.typography.titleMedium)
+                    }
+                    Text(
+                        "Attach signed copy",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

@@ -20,8 +20,6 @@ class Converters {
     @TypeConverter fun fromStructure(v: Structure?) = v?.name
     @TypeConverter fun toActivityType(v: String?) = v?.let(ActivityType::valueOf)
     @TypeConverter fun fromActivityType(v: ActivityType?) = v?.name
-    @TypeConverter fun toEntryRole(v: String?) = v?.let(EntryRole::valueOf)
-    @TypeConverter fun fromEntryRole(v: EntryRole?) = v?.name
     @TypeConverter fun toHelperRole(v: String?) = v?.let(HelperRole::valueOf)
     @TypeConverter fun fromHelperRole(v: HelperRole?) = v?.name
     @TypeConverter fun toBasis(v: String?) = v?.let(CertificationBasis::valueOf)
@@ -67,7 +65,7 @@ class Converters {
         ProfileEntity::class,
         DocumentEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

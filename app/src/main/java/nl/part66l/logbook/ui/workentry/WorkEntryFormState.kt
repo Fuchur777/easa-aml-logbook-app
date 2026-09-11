@@ -5,7 +5,6 @@ import nl.part66l.logbook.data.DocumentationRefInput
 import nl.part66l.logbook.data.PartUsedInput
 import nl.part66l.logbook.data.PhotoInput
 import nl.part66l.logbook.domain.ActivityType
-import nl.part66l.logbook.domain.EntryRole
 
 /**
  * A distinct "nothing chosen yet" state, separate from [Bench] — bench/component work
@@ -23,12 +22,11 @@ data class WorkEntryFormState(
     /** Null while adding a new entry; set once an existing one has been loaded for editing. */
     val entryId: String? = null,
     val aircraftSelection: AircraftSelection = AircraftSelection.Unselected,
+    /** Short line for headers, list rows and the CRS's own header line. */
     val description: String = "",
+    /** Optional multiline "explanation of work done" — printed under [description] on the CRS. */
+    val explanation: String = "",
     val activityTypes: Set<ActivityType> = emptySet(),
-    /** Deliberately the most conservative default — never presumes a certification happened. */
-    val role: EntryRole = EntryRole.NO_RELEASE,
-    /** Independent of [role] — set via its own checkbox, not the role dropdown. */
-    val supervisedAnother: Boolean = false,
     /** One job can span several days — always at least one date, never empty. */
     val sessionDates: List<LocalDate> = listOf(LocalDate.now()),
     /** Overrides the distinct-date count below when set — raw text so an empty field isn't 0. */
@@ -58,8 +56,8 @@ data class WorkEntryFormState(
     /** Already fully processed (§8) by the time they land here — see [nl.part66l.logbook.ui.workentry.processAndStorePhoto]. */
     val photos: List<PhotoInput> = emptyList(),
 
-    /** Optional — closes a note in the engineer's own record (§5.7), never a statement about the aircraft. Always starts unselected, even when editing. */
-    val closesDeferredItemId: String? = null,
+    /** Optional — closes notes in the engineer's own record (§5.7), never a statement about the aircraft. Always starts empty, even when editing. */
+    val closesDeferredItemIds: Set<String> = emptySet(),
 
     val loading: Boolean = false,
     val saving: Boolean = false,

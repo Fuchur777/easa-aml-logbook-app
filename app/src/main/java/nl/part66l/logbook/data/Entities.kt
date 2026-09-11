@@ -97,9 +97,10 @@ data class PersonEntity(
 data class WorkEntryEntity(
     @PrimaryKey val id: String,
     val aircraftId: String?,
+    /** Short line for headers, list rows and the CRS's own header line. */
     val description: String,
-    val role: EntryRole,
-    /** Independent of [role] — you can certify/release AND have supervised someone else on the same entry. */
+    /** Optional multiline "explanation of work done" — printed under [description] on the CRS. */
+    val explanation: String? = null,
     val supervisedAnother: Boolean = false,
 
     // Readings at the time of work — not counters.

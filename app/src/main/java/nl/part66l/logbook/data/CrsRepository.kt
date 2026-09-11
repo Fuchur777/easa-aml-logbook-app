@@ -91,6 +91,7 @@ private data class CrsSnapshot(
     val aircraftType: String?,
     val aircraftSerialNumber: String?,
     val description: String,
+    val explanation: String? = null,
     val documentationRefs: List<SnapshotDocRef>,
     val partsUsed: List<SnapshotPart>,
     val helpers: List<SnapshotHelper>,
@@ -339,7 +340,6 @@ class CrsRepositoryImpl @Inject constructor(
             // first opened — an abandoned attempt must leave no gap (§9.2).
             val format = CrsNumberFormat(
                 template = settingsRepository.crsNumberTemplate.first(),
-                prefix = settingsRepository.crsNumberPrefix.first(),
                 annualReset = settingsRepository.crsAnnualReset.first(),
                 startAt = settingsRepository.crsStartAt.first(),
             )
@@ -368,6 +368,10 @@ class CrsRepositoryImpl @Inject constructor(
         val basis = CertificationBasis.ML_A_801_B2_INDEPENDENT
         val issuer = profile?.name.orEmpty()
         val licenceNumber = profile?.licenceNumber.orEmpty()
+        // Opt-in (Settings) — the certifying staff's phone/email are personal data, not printed by default.
+        val showContact = settingsRepository.crsShowCertifyingStaffContact.first()
+        val issuerPhone = profile?.phoneNumber?.takeIf { showContact }
+        val issuerEmail = profile?.email?.takeIf { showContact }
 
         val hoursLaunches = if (entry.airframeHoursAtWork != null || entry.launchesAtWork != null) {
             "Hours / launches" to "${entry.airframeHoursAtWork?.let { "$it h" } ?: "—"} / ${entry.launchesAtWork ?: "—"}"
@@ -406,6 +410,7 @@ class CrsRepositoryImpl @Inject constructor(
                 hoursLaunches,
             ).ifEmpty { listOf("Scope" to "Bench / component work") },
             description = entry.description,
+            explanation = entry.explanation,
             period = listOfNotNull(
                 "Start" to workStarted.format(DATE_FORMAT),
                 "End" to completionDate.format(DATE_FORMAT),
@@ -431,6 +436,8 @@ class CrsRepositoryImpl @Inject constructor(
             statement = CertificationStatements.statement(basis),
             issuer = issuer,
             licenceNumber = licenceNumber,
+            issuerPhone = issuerPhone,
+            issuerEmail = issuerEmail,
             issuedDate = completionDate.format(DATE_FORMAT),
             regulationFooter = CertificationStatements.regulationFooter(basis),
             personnel = listOfNotNull(
@@ -455,6 +462,7 @@ class CrsRepositoryImpl @Inject constructor(
             aircraftType = aircraft?.type,
             aircraftSerialNumber = aircraft?.serialNumber,
             description = entry.description,
+            explanation = entry.explanation,
             documentationRefs = documentationRefs.map {
                 SnapshotDocRef(it.reference, it.category?.name, it.revision, it.revisionDate?.toString())
             },

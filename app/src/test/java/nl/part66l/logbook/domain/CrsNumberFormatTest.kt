@@ -9,8 +9,7 @@ import org.junit.Test
 class CrsNumberFormatTest {
 
     private fun standard(annualReset: Boolean, startAt: Int = 1) = CrsNumberFormat(
-        template = "{PREFIX}-{YYYY}-{SEQ:4}",
-        prefix = "CRS",
+        template = "CRS-{YYYY}-{SEQ:4}",
         annualReset = annualReset,
         startAt = startAt,
     )
@@ -20,7 +19,7 @@ class CrsNumberFormatTest {
     // -----------------------------------------------------------------
 
     @Test
-    fun `format renders prefix, year and zero-padded sequence in template order`() {
+    fun `format renders literal prefix text, year and zero-padded sequence in template order`() {
         assertEquals("CRS-2026-0007", standard(annualReset = true).format(sequence = 7, year = 2026))
     }
 
@@ -40,7 +39,7 @@ class CrsNumberFormatTest {
 
     @Test
     fun `a template without YYYY needs no year, at all`() {
-        val format = CrsNumberFormat(template = "{PREFIX}-{SEQ:6}", prefix = "LOG", annualReset = false)
+        val format = CrsNumberFormat(template = "LOG-{SEQ:6}", annualReset = false)
 
         assertEquals("LOG-000042", format.format(sequence = 42))
     }
@@ -51,7 +50,6 @@ class CrsNumberFormatTest {
 
     private fun withRegistration(annualReset: Boolean) = CrsNumberFormat(
         template = "{REG}-{YYYY}-{SEQ:4}",
-        prefix = "",
         annualReset = annualReset,
     )
 
@@ -109,7 +107,7 @@ class CrsNumberFormatTest {
 
     @Test
     fun `nextNumber respects a startAt above 1 when nothing has been issued yet`() {
-        val format = CrsNumberFormat(template = "{PREFIX}-{SEQ:3}", prefix = "X", annualReset = false, startAt = 500)
+        val format = CrsNumberFormat(template = "X-{SEQ:3}", annualReset = false, startAt = 500)
 
         assertEquals("X-500", format.nextNumber(emptyList()))
     }
@@ -171,27 +169,27 @@ class CrsNumberFormatTest {
     @Test
     fun `a template with no SEQ placeholder is rejected`() {
         assertThrows(IllegalArgumentException::class.java) {
-            CrsNumberFormat(template = "{PREFIX}-{YYYY}", prefix = "CRS", annualReset = true)
+            CrsNumberFormat(template = "CRS-{YYYY}", annualReset = true)
         }
     }
 
     @Test
     fun `a template with two SEQ placeholders is rejected`() {
         assertThrows(IllegalArgumentException::class.java) {
-            CrsNumberFormat(template = "{SEQ:4}-{SEQ:4}", prefix = "CRS", annualReset = false)
+            CrsNumberFormat(template = "{SEQ:4}-{SEQ:4}", annualReset = false)
         }
     }
 
     @Test
     fun `SEQ must be the last placeholder in the template`() {
         assertThrows(IllegalArgumentException::class.java) {
-            CrsNumberFormat(template = "{SEQ:4}-{YYYY}", prefix = "CRS", annualReset = true)
+            CrsNumberFormat(template = "{SEQ:4}-{YYYY}", annualReset = true)
         }
     }
 
     @Test
     fun `literal text is allowed after SEQ, so long as no other placeholder is`() {
-        val format = CrsNumberFormat(template = "{PREFIX}-{SEQ:4}-FINAL", prefix = "CRS", annualReset = false)
+        val format = CrsNumberFormat(template = "CRS-{SEQ:4}-FINAL", annualReset = false)
 
         assertEquals("CRS-0001-FINAL", format.nextNumber(emptyList()))
     }
@@ -199,7 +197,7 @@ class CrsNumberFormatTest {
     @Test
     fun `startAt below 1 is rejected`() {
         assertThrows(IllegalArgumentException::class.java) {
-            CrsNumberFormat(template = "{PREFIX}-{SEQ:4}", prefix = "CRS", annualReset = false, startAt = 0)
+            CrsNumberFormat(template = "CRS-{SEQ:4}", annualReset = false, startAt = 0)
         }
     }
 }

@@ -47,6 +47,7 @@ fun ContactListScreen(
                     IconButton(onClick = onClose) { Text("✕") }
                 },
                 colors = part66TopAppBarColors(),
+                expandedHeight = 48.dp,
             )
         },
         floatingActionButton = {

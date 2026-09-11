@@ -35,7 +35,6 @@ import nl.part66l.logbook.data.SettingsRepository
 import nl.part66l.logbook.data.WorkEntryRepository
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.DocumentCategory
-import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.ui.navigation.Destination
 
 /** Loading/saving/deleting are metadata, not pending edits — excluded from the [WorkEntryFormViewModel.isDirty] comparison. */
@@ -123,9 +122,8 @@ class WorkEntryFormViewModel @Inject constructor(
                             aircraftSelection = edit.aircraftId?.let { aircraftId -> AircraftSelection.Specific(aircraftId) }
                                 ?: AircraftSelection.Bench,
                             description = edit.description,
+                            explanation = edit.explanation.orEmpty(),
                             activityTypes = edit.activityTypes,
-                            role = edit.role,
-                            supervisedAnother = edit.supervisedAnother,
                             sessionDates = edit.sessionDates,
                             daysWorkedOverride = edit.daysWorkedOverride?.toString().orEmpty(),
                             helperNames = edit.helperNames,
@@ -154,17 +152,12 @@ class WorkEntryFormViewModel @Inject constructor(
 
     fun onAircraftSelectionChange(value: AircraftSelection) = _state.update { it.copy(aircraftSelection = value) }
     fun onDescriptionChange(value: String) = _state.update { it.copy(description = value) }
+    fun onExplanationChange(value: String) = _state.update { it.copy(explanation = value) }
 
     fun onActivityTypeToggle(type: ActivityType) = _state.update {
         it.copy(activityTypes = if (type in it.activityTypes) it.activityTypes - type else it.activityTypes + type)
     }
 
-    fun onRoleChange(value: EntryRole) = _state.update { it.copy(role = value) }
-
-    /** Unchecking clears any named helpers — they only mean something while this is checked. */
-    fun onSupervisedAnotherChange(value: Boolean) = _state.update {
-        it.copy(supervisedAnother = value, helperNames = if (value) it.helperNames else emptyList())
-    }
     /** One day spans several sessions — this adds another rather than replacing the current one. Duplicate dates are harmless but pointless, so skipped. */
     fun onSessionDateAdd(date: LocalDate) = _state.update {
         if (date in it.sessionDates) it else it.copy(sessionDates = it.sessionDates + date)
@@ -225,7 +218,9 @@ class WorkEntryFormViewModel @Inject constructor(
     /** Only drops it from the form — the processed file on disk is untouched, same as removing a CRS's signed-copy photo. */
     fun onPhotoRemove(id: String) = _state.update { it.copy(photos = it.photos.filterNot { photo -> photo.id == id }) }
 
-    fun onClosesDeferredItemChange(id: String?) = _state.update { it.copy(closesDeferredItemId = id) }
+    fun onClosesDeferredItemToggle(id: String) = _state.update {
+        it.copy(closesDeferredItemIds = if (id in it.closesDeferredItemIds) it.closesDeferredItemIds - id else it.closesDeferredItemIds + id)
+    }
 
     /** Adds straight to the directory — [documentOptions] picks it up reactively, no round trip needed here. */
     fun onCreateDocument(name: String, category: DocumentCategory, revision: String?, revisionDate: LocalDate?, link: String?) {
@@ -273,9 +268,9 @@ class WorkEntryFormViewModel @Inject constructor(
             workEntryRepository.create(
                 aircraftId = (current.aircraftSelection as? AircraftSelection.Specific)?.aircraftId,
                 description = current.description.trim(),
+                explanation = current.explanation.trim().ifBlank { null },
                 activityTypes = current.activityTypes,
-                role = current.role,
-                supervisedAnother = current.supervisedAnother,
+                supervisedAnother = current.helperNames.isNotEmpty(),
                 sessionDates = current.sessionDates,
                 daysWorkedOverride = current.daysWorkedOverride.toIntOrNull(),
                 helperNames = current.helperNames,
@@ -297,9 +292,9 @@ class WorkEntryFormViewModel @Inject constructor(
                 id = id,
                 aircraftId = (current.aircraftSelection as? AircraftSelection.Specific)?.aircraftId,
                 description = current.description.trim(),
+                explanation = current.explanation.trim().ifBlank { null },
                 activityTypes = current.activityTypes,
-                role = current.role,
-                supervisedAnother = current.supervisedAnother,
+                supervisedAnother = current.helperNames.isNotEmpty(),
                 sessionDates = current.sessionDates,
                 daysWorkedOverride = current.daysWorkedOverride.toIntOrNull(),
                 helperNames = current.helperNames,
@@ -320,7 +315,7 @@ class WorkEntryFormViewModel @Inject constructor(
         }
         // The work that resolved it happened by the entry's own last session date, not today —
         // matches how the CRS derives its own "completed" date from the same sessions.
-        current.closesDeferredItemId?.let { itemId ->
+        current.closesDeferredItemIds.forEach { itemId ->
             deferredItemRepository.close(itemId, savedEntryId, current.sessionDates.max())
         }
         // entryId flips state.isEditing to true on a brand-new entry's first save, revealing

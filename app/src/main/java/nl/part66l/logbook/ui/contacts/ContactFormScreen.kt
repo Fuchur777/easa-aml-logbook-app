@@ -67,6 +67,7 @@ fun ContactFormScreen(
                     }
                 },
                 colors = part66TopAppBarColors(),
+                expandedHeight = 48.dp,
             )
         },
     ) { padding ->

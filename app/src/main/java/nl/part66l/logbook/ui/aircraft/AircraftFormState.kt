@@ -13,7 +13,7 @@ data class AircraftFormState(
     val type: String = "",
     val serialNumber: String = "",
     val propulsion: Propulsion = Propulsion.UNPOWERED,
-    val structure: Structure = Structure.WOOD_AND_FABRIC,
+    val structure: Structure = Structure.COMPOSITE,
     val subcategoryOverride: Subcategory? = null,
     val registration: String = "",
     /** Effective date of a NEW registration — only used if [registration] is actually changed from what's on file. */

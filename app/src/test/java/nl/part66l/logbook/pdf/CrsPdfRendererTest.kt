@@ -9,6 +9,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,6 +45,9 @@ class CrsPdfRendererTest {
         activities: List<String> = defaultActivities,
         completedTasks: List<String> = defaultCompletedTasks,
         photos: List<PhotoRow> = emptyList(),
+        explanation: String? = null,
+        issuerPhone: String? = null,
+        issuerEmail: String? = null,
     ) = CrsRenderData(
         number = "NL66-2026-0007",
         basisLabel = "Independent certifying staff — ML.A.801(b)(2)",
@@ -54,6 +58,7 @@ class CrsPdfRendererTest {
             "Hours / launches" to "3412 h / 8907",
         ),
         description = "Annual inspection in accordance with the approved maintenance programme.",
+        explanation = explanation,
         period = listOf(
             "Start" to "11 March 2026",
             "End" to "14 March 2026",
@@ -68,6 +73,8 @@ class CrsPdfRendererTest {
             "ready for release to service.",
         issuer = "F. Example",
         licenceNumber = "NL.66.00000",
+        issuerPhone = issuerPhone,
+        issuerEmail = issuerEmail,
         issuedDate = "14 March 2026",
         regulationFooter = "Issued under ML.A.801(b)(2) of Regulation (EU) No 1321/2014, Annex Vb (Part-ML).",
         personnel = listOf(
@@ -93,6 +100,47 @@ class CrsPdfRendererTest {
             assertTrue(text.contains("CERTIFICATION"))
             assertTrue(text.contains("None.")) // limitations, always printed
             assertTrue(text.contains("Page 1 of 1"))
+        }
+    }
+
+    @Test
+    fun `explanation of work done prints under the short description, when given`() {
+        PDDocument().use { document ->
+            CrsPdfRenderer().render(
+                document,
+                sampleData(workOrders = emptyList(), explanation = "Removed both wheel fairings, inspected the wheel bearings for play and corrosion, found none, reassembled and greased per the AMM."),
+                context,
+            )
+
+            val text = textOf(document)
+            assertTrue(text.contains("Annual inspection in accordance with the approved maintenance programme."))
+            assertTrue(text.contains("Removed both wheel fairings, inspected the wheel bearings for play and corrosion"))
+        }
+    }
+
+    @Test
+    fun `issuer phone and email print next to the licence number, only when given`() {
+        PDDocument().use { document ->
+            CrsPdfRenderer().render(
+                document,
+                sampleData(workOrders = emptyList(), issuerPhone = "+31 6 1234 5678", issuerEmail = "f.example@part66.example"),
+                context,
+            )
+
+            val text = textOf(document)
+            assertTrue(text.contains("+31 6 1234 5678"))
+            assertTrue(text.contains("f.example@part66.example"))
+        }
+    }
+
+    @Test
+    fun `no phone or email prints when neither is given`() {
+        PDDocument().use { document ->
+            CrsPdfRenderer().render(document, sampleData(workOrders = emptyList()), context)
+
+            val text = textOf(document)
+            assertFalse(text.contains("PHONE"))
+            assertFalse(text.contains("EMAIL"))
         }
     }
 

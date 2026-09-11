@@ -42,7 +42,6 @@ interface WorkEntryDao {
         SELECT e.* FROM work_entry e
         LEFT JOIN work_session s ON s.entryId = e.id
         WHERE (:aircraftId IS NULL OR e.aircraftId = :aircraftId)
-          AND (:role IS NULL OR e.role = :role)
           AND (:annualOnly = 0 OR e.annualInspection = 1)
           AND (:provenance IS NULL OR e.provenance = :provenance)
           AND (:from IS NULL OR s.date >= :from)
@@ -52,7 +51,6 @@ interface WorkEntryDao {
     """)
     fun filtered(
         aircraftId: String?,
-        role: EntryRole?,
         annualOnly: Boolean,
         provenance: Provenance?,
         from: LocalDate?,
@@ -64,6 +62,11 @@ interface WorkEntryDao {
      * its aircraft's current registration, and its activity types (comma-joined).
      * The session and activity-type joins each multiply rows per entry, but MAX and
      * GROUP_CONCAT(DISTINCT ...) are both unaffected by that duplication.
+     *
+     * [aircraftId] null means every aircraft (bench work included). [ascending] flips sort
+     * direction on the same query rather than needing a second one — Room can't parameterise
+     * `ORDER BY ... ASC|DESC` directly, so each half is a CASE that's null (and so ignored by
+     * SQLite's ordering) whenever it isn't the active direction.
      */
     @Transaction
     @Query("""
@@ -73,10 +76,13 @@ interface WorkEntryDao {
         LEFT JOIN work_session s ON s.entryId = e.id
         LEFT JOIN aircraft_registration ar ON ar.aircraftId = e.aircraftId AND ar.validTo IS NULL
         LEFT JOIN work_entry_activity_type wat ON wat.entryId = e.id
+        WHERE (:aircraftId IS NULL OR e.aircraftId = :aircraftId)
         GROUP BY e.id
-        ORDER BY workDate DESC
+        ORDER BY
+            CASE WHEN :ascending = 1 THEN workDate END ASC,
+            CASE WHEN :ascending = 0 THEN workDate END DESC
     """)
-    fun pagedAllWithDetails(): PagingSource<Int, WorkEntryListRow>
+    fun pagedAllWithDetails(aircraftId: String?, ascending: Boolean): PagingSource<Int, WorkEntryListRow>
 }
 
 @Dao

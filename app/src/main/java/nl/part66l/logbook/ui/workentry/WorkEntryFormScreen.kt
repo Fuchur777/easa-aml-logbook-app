@@ -66,14 +66,12 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import nl.part66l.logbook.data.DeferredItemEntity
 import nl.part66l.logbook.data.DocumentEntity
 import nl.part66l.logbook.data.DocumentationRefInput
 import nl.part66l.logbook.data.PartUsedInput
 import nl.part66l.logbook.data.PhotoInput
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.DocumentCategory
-import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.ui.components.DatePickerField
 import nl.part66l.logbook.ui.components.DropdownField
 import nl.part66l.logbook.ui.components.PersonAutocompleteField
@@ -140,6 +138,7 @@ fun WorkEntryFormScreen(
                     }
                 },
                 colors = part66TopAppBarColors(),
+                expandedHeight = 48.dp,
             )
         },
     ) { padding ->
@@ -261,6 +260,13 @@ fun WorkEntryFormScreen(
                         supportingText = { state.descriptionError?.let { Text(it) } },
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    OutlinedTextField(
+                        value = state.explanation,
+                        onValueChange = viewModel::onExplanationChange,
+                        label = { Text("Explanation of work done") },
+                        minLines = 3,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     SessionDatesEditor(
                         dates = state.sessionDates,
                         onAdd = viewModel::onSessionDateAdd,
@@ -270,6 +276,28 @@ fun WorkEntryFormScreen(
                         daysWorkedOverrideError = state.daysWorkedOverrideError,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                }
+            }
+
+            if (openDeferredItems.isNotEmpty()) {
+                Card {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Deferred items", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Closes deferred item(s) (optional)",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            openDeferredItems.forEach { item ->
+                                FilterChip(
+                                    selected = item.id in state.closesDeferredItemIds,
+                                    onClick = { viewModel.onClosesDeferredItemToggle(item.id) },
+                                    label = { Text(item.description) },
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -325,25 +353,9 @@ fun WorkEntryFormScreen(
                 }
             }
 
-            if (openDeferredItems.isNotEmpty()) {
-                Card {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Deferred items", style = MaterialTheme.typography.titleMedium)
-                        DropdownField(
-                            label = "Closes deferred item (optional)",
-                            value = openDeferredItems.find { it.id == state.closesDeferredItemId },
-                            options = listOf<DeferredItemEntity?>(null) + openDeferredItems,
-                            optionLabel = { it?.description ?: "None" },
-                            onValueChange = { viewModel.onClosesDeferredItemChange(it?.id) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-            }
-
             Card {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Appendix II tasks (Route B)", style = MaterialTheme.typography.titleMedium)
+                    Text("Type of EASA tasks", style = MaterialTheme.typography.titleMedium)
                     OutlinedButton(onClick = { showTaskPicker = true }, modifier = Modifier.fillMaxWidth()) {
                         Text(
                             if (state.completedTaskIds.isEmpty()) "Select tasks completed"
@@ -373,29 +385,15 @@ fun WorkEntryFormScreen(
 
             Card {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Sign-off", style = MaterialTheme.typography.titleMedium)
-                    DropdownField(
-                        label = "Sign-off",
-                        value = state.role,
-                        options = EntryRole.entries.filter { it != EntryRole.SUPERVISED_ANOTHER },
-                        optionLabel = { it.displayLabel },
-                        onValueChange = viewModel::onRoleChange,
+                    Text("Assisted by", style = MaterialTheme.typography.titleMedium)
+                    PersonPickerField(
+                        knownNames = knownHelperNames,
+                        knownLicenceNumbers = knownHelperLicenceNumbers,
+                        selectedNames = state.helperNames,
+                        onAdd = viewModel::onHelperAdd,
+                        onRemove = viewModel::onHelperRemove,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = state.supervisedAnother, onCheckedChange = viewModel::onSupervisedAnotherChange)
-                        Text("Assisted by")
-                    }
-                    if (state.supervisedAnother) {
-                        PersonPickerField(
-                            knownNames = knownHelperNames,
-                            knownLicenceNumbers = knownHelperLicenceNumbers,
-                            selectedNames = state.helperNames,
-                            onAdd = viewModel::onHelperAdd,
-                            onRemove = viewModel::onHelperRemove,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
                 }
             }
 
@@ -584,7 +582,7 @@ private fun DocumentationRefEditor(
         )
         if (documentOptions.isEmpty()) {
             Text(
-                "No documents in the directory yet — add one below, or from the hamburger menu's Documents screen.",
+                "No documents in the directory yet — add one below.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -733,25 +731,25 @@ private fun PartUsedEditor(
                 modifier = Modifier.weight(1f),
             )
         }
-        OutlinedButton(
+        Button(
             onClick = {
-                if (partNumber.isNotBlank()) {
-                    onAdd(
-                        PartUsedInput(
-                            partNumber = partNumber.trim(),
-                            description = description.trim().ifBlank { null },
-                            batchOrSerial = batchOrSerial.trim().ifBlank { null },
-                            formOneRef = formOneRef.trim().ifBlank { null },
-                            quantity = quantity.trim().ifBlank { null },
-                        ),
-                    )
-                    description = ""
-                    partNumber = ""
-                    batchOrSerial = ""
-                    formOneRef = ""
-                    quantity = ""
-                }
+                onAdd(
+                    PartUsedInput(
+                        partNumber = partNumber.trim(),
+                        description = description.trim().ifBlank { null },
+                        batchOrSerial = batchOrSerial.trim().ifBlank { null },
+                        formOneRef = formOneRef.trim().ifBlank { null },
+                        quantity = quantity.trim().ifBlank { null },
+                    ),
+                )
+                description = ""
+                partNumber = ""
+                batchOrSerial = ""
+                formOneRef = ""
+                quantity = ""
             },
+            enabled = partNumber.isNotBlank(),
+            colors = ButtonDefaults.buttonColors(containerColor = Part66ConfirmGreen),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("+ Add part")
@@ -798,7 +796,7 @@ private fun PhotosEditor(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Photos", style = MaterialTheme.typography.titleMedium)
         Text(
-            "Evidence of the work performed. Downscaled and stripped of GPS location automatically; the capture time is kept.",
+            "Evidence of the work performed.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

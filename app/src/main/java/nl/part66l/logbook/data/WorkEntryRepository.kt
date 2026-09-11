@@ -8,7 +8,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import nl.part66l.logbook.domain.ActivityType
 import nl.part66l.logbook.domain.DocumentCategory
-import nl.part66l.logbook.domain.EntryRole
 import nl.part66l.logbook.domain.HelperRole
 import nl.part66l.logbook.domain.Provenance
 
@@ -48,8 +47,9 @@ data class PhotoInput(
 data class WorkEntryEditData(
     val aircraftId: String?,
     val description: String,
+    /** Multiline "explanation of work done" — [description] stays the short header/overview line. */
+    val explanation: String?,
     val activityTypes: Set<ActivityType>,
-    val role: EntryRole,
     val supervisedAnother: Boolean,
     val sessionDates: List<LocalDate>,
     val daysWorkedOverride: Int?,
@@ -73,15 +73,18 @@ interface WorkEntryRepository {
 
     fun filtered(
         aircraftId: String? = null,
-        role: EntryRole? = null,
         annualOnly: Boolean = false,
         provenance: Provenance? = null,
         from: LocalDate? = null,
         to: LocalDate? = null,
     ): PagingSource<Int, WorkEntryEntity>
 
-    /** What the list screen renders — each entry with its latest session date, current aircraft registration, and activity types. */
-    fun pagedAllWithDetails(): PagingSource<Int, WorkEntryListRow>
+    /**
+     * What the list screen renders — each entry with its latest session date, current aircraft
+     * registration, and activity types. [aircraftId] null means every aircraft (bench work
+     * included); [ascending] false sorts newest first.
+     */
+    fun pagedAllWithDetails(aircraftId: String? = null, ascending: Boolean = false): PagingSource<Int, WorkEntryListRow>
 
     /** Reassembles an entry and its child rows for the edit form. Null if the entry no longer exists. */
     suspend fun forEdit(id: String): WorkEntryEditData?
@@ -103,8 +106,8 @@ interface WorkEntryRepository {
     suspend fun create(
         aircraftId: String?,
         description: String,
+        explanation: String? = null,
         activityTypes: Set<ActivityType>,
-        role: EntryRole,
         supervisedAnother: Boolean,
         sessionDates: List<LocalDate>,
         daysWorkedOverride: Int? = null,
@@ -133,8 +136,8 @@ interface WorkEntryRepository {
         id: String,
         aircraftId: String?,
         description: String,
+        explanation: String? = null,
         activityTypes: Set<ActivityType>,
-        role: EntryRole,
         supervisedAnother: Boolean,
         sessionDates: List<LocalDate>,
         daysWorkedOverride: Int? = null,
@@ -175,15 +178,15 @@ class WorkEntryRepositoryImpl @Inject constructor(
 
     override fun filtered(
         aircraftId: String?,
-        role: EntryRole?,
         annualOnly: Boolean,
         provenance: Provenance?,
         from: LocalDate?,
         to: LocalDate?,
     ): PagingSource<Int, WorkEntryEntity> =
-        workEntryDao.filtered(aircraftId, role, annualOnly, provenance, from, to)
+        workEntryDao.filtered(aircraftId, annualOnly, provenance, from, to)
 
-    override fun pagedAllWithDetails(): PagingSource<Int, WorkEntryListRow> = workEntryDao.pagedAllWithDetails()
+    override fun pagedAllWithDetails(aircraftId: String?, ascending: Boolean): PagingSource<Int, WorkEntryListRow> =
+        workEntryDao.pagedAllWithDetails(aircraftId, ascending)
 
     override suspend fun forEdit(id: String): WorkEntryEditData? {
         val entry = workEntryDao.byId(id) ?: return null
@@ -202,8 +205,8 @@ class WorkEntryRepositoryImpl @Inject constructor(
         return WorkEntryEditData(
             aircraftId = entry.aircraftId,
             description = entry.description,
+            explanation = entry.explanation,
             activityTypes = activityTypes,
-            role = entry.role,
             supervisedAnother = entry.supervisedAnother,
             sessionDates = sessionDates,
             daysWorkedOverride = entry.daysWorkedOverride,
@@ -226,8 +229,8 @@ class WorkEntryRepositoryImpl @Inject constructor(
     override suspend fun create(
         aircraftId: String?,
         description: String,
+        explanation: String?,
         activityTypes: Set<ActivityType>,
-        role: EntryRole,
         supervisedAnother: Boolean,
         sessionDates: List<LocalDate>,
         daysWorkedOverride: Int?,
@@ -253,7 +256,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
                 id = entryId,
                 aircraftId = aircraftId,
                 description = description,
-                role = role,
+                explanation = explanation,
                 supervisedAnother = supervisedAnother,
                 airframeHoursAtWork = airframeHoursAtWork,
                 launchesAtWork = launchesAtWork,
@@ -280,8 +283,8 @@ class WorkEntryRepositoryImpl @Inject constructor(
         id: String,
         aircraftId: String?,
         description: String,
+        explanation: String?,
         activityTypes: Set<ActivityType>,
-        role: EntryRole,
         supervisedAnother: Boolean,
         sessionDates: List<LocalDate>,
         daysWorkedOverride: Int?,
@@ -305,7 +308,7 @@ class WorkEntryRepositoryImpl @Inject constructor(
             existing.copy(
                 aircraftId = aircraftId,
                 description = description,
-                role = role,
+                explanation = explanation,
                 supervisedAnother = supervisedAnother,
                 airframeHoursAtWork = airframeHoursAtWork,
                 launchesAtWork = launchesAtWork,

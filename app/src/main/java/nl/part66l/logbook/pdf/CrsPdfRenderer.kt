@@ -59,7 +59,11 @@ class CrsPdfRenderer {
         w.fields(data.aircraft)
 
         w.heading("Maintenance carried out")
-        w.para(data.description)
+        w.para(data.description, font = HELVETICA_BOLD)
+        data.explanation?.takeIf { it.isNotBlank() }?.let {
+            w.y -= 1f * MM
+            w.para(it)
+        }
         w.y -= 2f * MM
 
         w.heading("Work period")
@@ -99,7 +103,14 @@ class CrsPdfRenderer {
         w.y -= 6f * MM
         w.para(statementLine, size = 9.5f, leadingMm = 4.8f)
         w.y -= 2f * MM
-        w.fields(listOf("Licence number" to data.licenceNumber, "Date of issue" to data.issuedDate))
+        w.fields(
+            listOfNotNull(
+                "Licence number" to data.licenceNumber,
+                "Date of issue" to data.issuedDate,
+                data.issuerPhone?.takeIf { it.isNotBlank() }?.let { "Phone" to it },
+                data.issuerEmail?.takeIf { it.isNotBlank() }?.let { "Email" to it },
+            ),
+        )
         w.y -= 5f * MM
         val signatureBlock = data.signatureBlock
         if (signatureBlock == null) {

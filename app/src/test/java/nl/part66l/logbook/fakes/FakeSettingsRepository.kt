@@ -9,17 +9,17 @@ class FakeSettingsRepository(
     initialCatalogueSectionOrder: List<String> = emptyList(),
     initialCollapsedCatalogueSections: Set<String> = emptySet(),
     initialCrsNumberTemplate: String = "{REG}-{YYYY}-{SEQ:4}",
-    initialCrsNumberPrefix: String = "",
     initialCrsAnnualReset: Boolean = true,
     initialCrsStartAt: Int = 1,
+    initialCrsShowCertifyingStaffContact: Boolean = false,
 ) : SettingsRepository {
     private val showArchived = MutableStateFlow(initialShowArchivedAircraft)
     private val sectionOrder = MutableStateFlow(initialCatalogueSectionOrder)
     private val collapsedSections = MutableStateFlow(initialCollapsedCatalogueSections)
     private val crsNumberTemplateFlow = MutableStateFlow(initialCrsNumberTemplate)
-    private val crsNumberPrefixFlow = MutableStateFlow(initialCrsNumberPrefix)
     private val crsAnnualResetFlow = MutableStateFlow(initialCrsAnnualReset)
     private val crsStartAtFlow = MutableStateFlow(initialCrsStartAt)
+    private val crsShowCertifyingStaffContactFlow = MutableStateFlow(initialCrsShowCertifyingStaffContact)
 
     override val showArchivedAircraft: Flow<Boolean> = showArchived
 
@@ -45,12 +45,6 @@ class FakeSettingsRepository(
         crsNumberTemplateFlow.value = value
     }
 
-    override val crsNumberPrefix: Flow<String> = crsNumberPrefixFlow
-
-    override suspend fun setCrsNumberPrefix(value: String) {
-        crsNumberPrefixFlow.value = value
-    }
-
     override val crsAnnualReset: Flow<Boolean> = crsAnnualResetFlow
 
     override suspend fun setCrsAnnualReset(value: Boolean) {
@@ -61,5 +55,11 @@ class FakeSettingsRepository(
 
     override suspend fun setCrsStartAt(value: Int) {
         crsStartAtFlow.value = value
+    }
+
+    override val crsShowCertifyingStaffContact: Flow<Boolean> = crsShowCertifyingStaffContactFlow
+
+    override suspend fun setCrsShowCertifyingStaffContact(value: Boolean) {
+        crsShowCertifyingStaffContactFlow.value = value
     }
 }
